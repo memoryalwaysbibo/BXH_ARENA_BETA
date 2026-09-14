@@ -1,6 +1,6 @@
 name: Deploy Beta Firestore Rules
 
-# Secret configured; firebase.json generated at runtime
+# Secret configured; authenticate through google-github-actions/auth
 on:
   push:
     branches: [main]
@@ -37,26 +37,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA }}
+
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
-
-      - name: Prepare Firebase authentication
-        shell: bash
-        env:
-          FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA }}
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -n "${FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA:-}" ]; then
-            printf '%s' "$FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA" > "$RUNNER_TEMP/firebase-service-account.json"
-            echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
-            echo "FIREBASE_AUTH_MODE=service_account" >> "$GITHUB_ENV"
-          elif [ -n "${FIREBASE_TOKEN:-}" ]; then
-            echo "FIREBASE_AUTH_MODE=token" >> "$GITHUB_ENV"
-          else
-            echo "No Firebase credential found. Configure either FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA or FIREBASE_TOKEN in GitHub Actions secrets." >&2
-            exit 1
-          fi
 
       - name: Create Firebase config
         shell: bash
@@ -72,15 +59,9 @@ jobs:
 
       - name: Deploy Firestore rules to Beta
         shell: bash
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           set -euo pipefail
-          if [ "${FIREBASE_AUTH_MODE}" = "token" ]; then
-            firebase deploy --only firestore:rules --project bxh-arena-beta --token "$FIREBASE_TOKEN" --non-interactive
-          else
-            firebase deploy --only firestore:rules --project bxh-arena-beta --non-interactive
-          fi
+          firebase deploy --only firestore:rules --project bxh-arena-beta --non-interactive
 
       - name: Deployment summary
         run: |
