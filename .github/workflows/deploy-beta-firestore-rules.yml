@@ -1,6 +1,7 @@
 name: Deploy Beta Firestore Rules
 
 # Secret configured; authenticate through google-github-actions/auth
+# 2026-09-15: trigger deploy for tester admin-equivalent tournament permissions
 on:
   push:
     branches: [main]
@@ -30,7 +31,8 @@ jobs:
           test -s firestore.rules
           grep -q "validTesterTestCreate" firestore.rules
           grep -q "isTester() && tournamentExistsAfterFor(code)" firestore.rules
-          echo "Rules file present and BUG012 guards detected."
+          grep -q "function isTournamentAdminEquivalent()" firestore.rules
+          echo "Rules file present and tester admin-equivalent guards detected."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,4 +68,4 @@ jobs:
       - name: Deployment summary
         run: |
           echo "Firestore rules deployed to bxh-arena-beta."
-          echo "BUG012 tester room permission fix is now eligible for regression testing."
+          echo "Tester tournament permissions are admin-equivalent; tester room delete remains owner-only."
