@@ -1,0 +1,75 @@
+name: Deploy Beta Firestore Rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - '.github/workflows/deploy-beta-firestore-rules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beta-firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Beta target and rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s firestore.rules
+          grep -q "validTesterTestCreate" firestore.rules
+          grep -q "isTester() && tournamentExistsAfterFor(code)" firestore.rules
+          echo "Rules file present and BUG012 guards detected."
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+
+      - name: Prepare Firebase authentication
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA:-}" ]; then
+            printf '%s' "$FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA" > "$RUNNER_TEMP/firebase-service-account.json"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+            echo "FIREBASE_AUTH_MODE=service_account" >> "$GITHUB_ENV"
+          elif [ -n "${FIREBASE_TOKEN:-}" ]; then
+            echo "FIREBASE_AUTH_MODE=token" >> "$GITHUB_ENV"
+          else
+            echo "No Firebase credential found. Configure either FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA or FIREBASE_TOKEN in GitHub Actions secrets." >&2
+            exit 1
+          fi
+
+      - name: Deploy Firestore rules to Beta
+        shell: bash
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${FIREBASE_AUTH_MODE}" = "token" ]; then
+            firebase deploy --only firestore:rules --project bxh-arena-beta --token "$FIREBASE_TOKEN" --non-interactive
+          else
+            firebase deploy --only firestore:rules --project bxh-arena-beta --non-interactive
+          fi
+
+      - name: Deployment summary
+        run: |
+          echo "Firestore rules deployed to bxh-arena-beta."
+          echo "BUG012 tester room permission fix is now eligible for regression testing."
