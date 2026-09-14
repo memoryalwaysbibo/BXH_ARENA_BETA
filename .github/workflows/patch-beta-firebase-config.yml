@@ -1,9 +1,6 @@
 name: Patch Beta Firebase Config
 
 on:
-  push:
-    paths:
-      - '.github/workflows/patch-beta-firebase-config.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,12 +24,6 @@ jobs:
           p = Path('index.html')
           text = p.read_text(encoding='utf-8')
 
-          # Find a firebaseConfig object and update only its standard Web SDK fields.
-          m = re.search(r'(const\s+firebaseConfig\s*=\s*\{)(.*?)(\}\s*;)', text, flags=re.S)
-          if not m:
-              raise SystemExit('firebaseConfig object not found')
-
-          body = m.group(2)
           replacements = {
               'apiKey': 'AIzaSyBYyfPew1Ukf_ECSv5dqcqJbVvKpVLrnnc',
               'authDomain': 'bxh-arena-beta.firebaseapp.com',
@@ -42,27 +33,29 @@ jobs:
               'appId': '1:22424096074:web:74afa050d5266ab09185b3',
           }
 
+          updated = text
           for key, value in replacements.items():
               pattern = rf'({re.escape(key)}\s*:\s*)["\'][^"\']*["\']'
-              body, n = re.subn(pattern, rf'\1"{value}"', body, count=1)
-              if n != 1:
-                  raise SystemExit(f'Expected exactly one {key} field in firebaseConfig, found {n}')
+              updated, n = re.subn(pattern, rf'\1"{value}"', updated)
+              if n < 1:
+                  raise SystemExit(f'Firebase field not found: {key}')
+              print(f'{key}: replaced {n} occurrence(s)')
 
-          updated = text[:m.start(2)] + body + text[m.end(2):]
-
-          # Safety guards: ensure the selected config points to Beta and not production.
-          check = re.search(r'const\s+firebaseConfig\s*=\s*\{(.*?)\}\s*;', updated, flags=re.S)
-          assert check and 'projectId: "bxh-arena-beta"' in check.group(1)
-          assert 'authDomain: "bxh-arena-beta.firebaseapp.com"' in check.group(1)
+          # Safety: all project IDs in Firebase config-like fields must now be Beta.
+          project_ids = re.findall(r'projectId\s*:\s*["\']([^"\']+)["\']', updated)
+          if not project_ids or any(v != 'bxh-arena-beta' for v in project_ids):
+              raise SystemExit(f'Unsafe projectId values remain: {project_ids}')
+          if 'bxh-arena-beta.firebaseapp.com' not in updated:
+              raise SystemExit('Beta authDomain missing after patch')
 
           p.write_text(updated, encoding='utf-8')
-          print('Beta Firebase config patched successfully.')
+          print('Beta Firebase fields patched successfully.')
 
       - name: Commit Beta config patch
         shell: bash
         run: |
           if git diff --quiet -- index.html; then
-            echo "No index.html changes needed."
+            echo "No index.html changes detected."
             exit 0
           fi
           git config user.name "github-actions[bot]"
