@@ -16,33 +16,25 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Patch admin login for LINE in-app browser
-        shell: python
+        shell: bash
         run: |
+          set -euo pipefail
+          python3 <<'PY'
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old = '''  if(action==="admin-login-submit"){
-    if(loginBusy) return;
-    const remaining = lockoutRemainingSeconds();'''
-          new = '''  if(action==="admin-login-submit"){
-    if(loginBusy) return;
-    if(isLineInAppBrowser()){
-      loginError="目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成。請點右下角選單，改用 Safari 或 Chrome 開啟 BXH ARENA 後再登入。";
-      authVerifying=false;
-      loginBusy=false;
-      render();
-      return;
-    }
-    const remaining = lockoutRemainingSeconds();'''
+          old = '  if(action==="admin-login-submit"){\n    if(loginBusy) return;\n    const remaining = lockoutRemainingSeconds();'
+          new = '  if(action==="admin-login-submit"){\n    if(loginBusy) return;\n    if(isLineInAppBrowser()){\n      loginError="目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成。請點右下角選單，改用 Safari 或 Chrome 開啟 BXH ARENA 後再登入。";\n      authVerifying=false;\n      loginBusy=false;\n      render();\n      return;\n    }\n    const remaining = lockoutRemainingSeconds();'
           assert old in s, 'admin-login-submit target not found'
           s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Verify patch
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成' index.html
+          grep -Fq '目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成' index.html
 
       - name: Commit patch
         shell: bash
