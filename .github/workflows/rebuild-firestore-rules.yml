@@ -1,5 +1,6 @@
 name: Rebuild Firestore rules
 
+# manual recovery trigger
 on:
   push:
     paths:
