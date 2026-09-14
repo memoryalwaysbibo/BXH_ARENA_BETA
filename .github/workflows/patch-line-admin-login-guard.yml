@@ -1,4 +1,4 @@
-name: Patch iOS auth reliability
+name: Patch admin entry reliability
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch admin entry and iOS auth persistence
+      - name: Patch admin entry
         shell: bash
         run: |
           set -euo pipefail
@@ -23,45 +23,10 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
-          # 1) Admin entry must render immediately. Do not block the route on storage.get().
-          old_admin = '''  if(action==="select-role-admin"){
-    guestReadOnlyMode = false;
-    (async ()=>{
-      loginError=""; authFormError="";
-      try{'''
-          new_admin = '''  if(action==="select-role-admin"){
-    guestReadOnlyMode = false;
-    loginError=""; authFormError="";
-    appPhase="admin-login";
-    render();
-    (async ()=>{
-      try{'''
-          if old_admin in s:
-            s = s.replace(old_admin, new_admin, 1)
-
-          # 2) On iPhone/iPad prefer session persistence. Safari/WKWebView can stall on IndexedDB-backed local persistence.
-          old_persist = '''        const persistenceOutcome = await withTimeout(
-          authMod.setPersistence(authHandle, authMod.browserLocalPersistence).then(()=>"local").catch(()=>"failed"),
-          4000, "timeout"
-        );
-        if(persistenceOutcome!=="local"){
-          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
-          catch(e){ /* if even session persistence fails, proceed anyway — Auth still works in-memory for this page load */ }
-        }'''
-          new_persist = '''        const iosLike = /iP(hone|ad|od)/i.test((navigator&&navigator.userAgent)||"");
-        const primaryPersistence = iosLike ? authMod.browserSessionPersistence : authMod.browserLocalPersistence;
-        const persistenceOutcome = await withTimeout(
-          authMod.setPersistence(authHandle, primaryPersistence).then(()=>iosLike?"session":"local").catch(()=>"failed"),
-          4000, "timeout"
-        );
-        if(persistenceOutcome!=="local" && persistenceOutcome!=="session"){
-          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
-          catch(e){ /* proceed in-memory rather than blocking Auth */ }
-        }'''
-          if old_persist in s:
-            s = s.replace(old_persist, new_persist, 1)
-
+          old = '  if(action==="select-role-admin"){\n    guestReadOnlyMode = false;\n    (async ()=>{\n      loginError=""; authFormError="";\n      try{'
+          new = '  if(action==="select-role-admin"){\n    guestReadOnlyMode = false;\n    loginError=""; authFormError="";\n    appPhase="admin-login";\n    render();\n    (async ()=>{\n      try{'
+          assert old in s, 'select-role-admin target not found'
+          s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
           PY
 
@@ -69,8 +34,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -Fq 'if(action==="select-role-admin")' index.html
           grep -Fq 'appPhase="admin-login";' index.html
-          grep -Fq 'const iosLike = /iP(hone|ad|od)/i.test' index.html
 
       - name: Commit patch
         shell: bash
@@ -83,5 +48,5 @@ jobs:
             echo "No changes"
             exit 0
           fi
-          git commit -m "Fix iOS Safari admin entry and auth persistence"
+          git commit -m "Fix admin entry on iOS Safari"
           git push
