@@ -1,0 +1,82 @@
+name: BUG 012 tester room hotfix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/bug012-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch tester room assignment payload
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          text = p.read_text(encoding='utf-8')
+          guard = '// BUG012: tester sandbox assignment normalization'
+          if guard in text:
+              print('BUG012 patch already present; nothing to do.')
+              raise SystemExit(0)
+
+          start = text.find('    async createRoom(data){')
+          if start < 0:
+              raise SystemExit('createRoom(data) not found')
+          end = text.find('    async joinRoom(code)', start)
+          if end < 0:
+              end = min(len(text), start + 30000)
+
+          marker = '        const m = (data && data.meta) || {};\n'
+          idx = text.find(marker, start, end)
+          if idx < 0:
+              raise SystemExit('createRoom registration marker not found')
+
+          insert = (
+              '        // BUG012: tester sandbox assignment normalization\n'
+              '        // A tester may only create a test tournament assigned to self (or none).\n'
+              '        // Clear stale admin/staff referee assignments carried by the draft before\n'
+              '        // registrationFields is built, so Firestore validTesterTestCreate() passes.\n'
+              '        if(testerSession){\n'
+              '          m.assignedStaffUids=[creatorUid];\n'
+              '          m.refereeStationAssignments={};\n'
+              '          m.refereeStationNames={};\n'
+              '          m.refereeStationRestrictionEnabled=false;\n'
+              '        }\n'
+          )
+
+          pos = idx + len(marker)
+          text = text[:pos] + insert + text[pos:]
+          p.write_text(text, encoding='utf-8')
+          print('BUG012 patch inserted into createRoom().')
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          grep -n "BUG012: tester sandbox assignment normalization" index.html
+          git diff --check
+          git diff -- index.html | sed -n '1,120p'
+
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix BUG 012 tester tournament creation payload"
+          git push
