@@ -1,4 +1,4 @@
-name: Patch LINE admin login guard
+name: Patch iOS auth reliability
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Patch admin login for LINE in-app browser
+      - name: Patch admin entry and iOS auth persistence
         shell: bash
         run: |
           set -euo pipefail
@@ -23,10 +23,45 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old = '  if(action==="admin-login-submit"){\n    if(loginBusy) return;\n    const remaining = lockoutRemainingSeconds();'
-          new = '  if(action==="admin-login-submit"){\n    if(loginBusy) return;\n    if(isLineInAppBrowser()){\n      loginError="目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成。請點右下角選單，改用 Safari 或 Chrome 開啟 BXH ARENA 後再登入。";\n      authVerifying=false;\n      loginBusy=false;\n      render();\n      return;\n    }\n    const remaining = lockoutRemainingSeconds();'
-          assert old in s, 'admin-login-submit target not found'
-          s = s.replace(old, new, 1)
+
+          # 1) Admin entry must render immediately. Do not block the route on storage.get().
+          old_admin = '''  if(action==="select-role-admin"){
+    guestReadOnlyMode = false;
+    (async ()=>{
+      loginError=""; authFormError="";
+      try{'''
+          new_admin = '''  if(action==="select-role-admin"){
+    guestReadOnlyMode = false;
+    loginError=""; authFormError="";
+    appPhase="admin-login";
+    render();
+    (async ()=>{
+      try{'''
+          if old_admin in s:
+            s = s.replace(old_admin, new_admin, 1)
+
+          # 2) On iPhone/iPad prefer session persistence. Safari/WKWebView can stall on IndexedDB-backed local persistence.
+          old_persist = '''        const persistenceOutcome = await withTimeout(
+          authMod.setPersistence(authHandle, authMod.browserLocalPersistence).then(()=>"local").catch(()=>"failed"),
+          4000, "timeout"
+        );
+        if(persistenceOutcome!=="local"){
+          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
+          catch(e){ /* if even session persistence fails, proceed anyway — Auth still works in-memory for this page load */ }
+        }'''
+          new_persist = '''        const iosLike = /iP(hone|ad|od)/i.test((navigator&&navigator.userAgent)||"");
+        const primaryPersistence = iosLike ? authMod.browserSessionPersistence : authMod.browserLocalPersistence;
+        const persistenceOutcome = await withTimeout(
+          authMod.setPersistence(authHandle, primaryPersistence).then(()=>iosLike?"session":"local").catch(()=>"failed"),
+          4000, "timeout"
+        );
+        if(persistenceOutcome!=="local" && persistenceOutcome!=="session"){
+          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
+          catch(e){ /* proceed in-memory rather than blocking Auth */ }
+        }'''
+          if old_persist in s:
+            s = s.replace(old_persist, new_persist, 1)
+
           p.write_text(s, encoding='utf-8')
           PY
 
@@ -34,7 +69,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成' index.html
+          grep -Fq 'appPhase="admin-login";' index.html
+          grep -Fq 'const iosLike = /iP(hone|ad|od)/i.test' index.html
 
       - name: Commit patch
         shell: bash
@@ -47,5 +83,5 @@ jobs:
             echo "No changes"
             exit 0
           fi
-          git commit -m "Guard admin login in LINE in-app browser"
+          git commit -m "Fix iOS Safari admin entry and auth persistence"
           git push
