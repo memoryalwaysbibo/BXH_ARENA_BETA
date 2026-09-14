@@ -1,0 +1,25 @@
+name: Inspect Experimental Player Hooks
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inspect-experimental-player-hooks.yml']
+  workflow_dispatch:
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate participant and room management hooks
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          terms=['參賽者','participants','participant','報名管理','房主','ownerUid','createdBy','addPlayer','addParticipant','removeParticipant']
+          lines=s.splitlines()
+          for term in terms:
+            hits=[i for i,x in enumerate(lines) if term.lower() in x.lower()]
+            print(f'===== {term}: {len(hits)} hits =====')
+            for i in hits[:12]:
+              a=max(0,i-3); b=min(len(lines),i+4)
+              print(f'--- lines {a+1}-{b} ---')
+              for n in range(a,b): print(f'{n+1}: {lines[n][:700]}')
