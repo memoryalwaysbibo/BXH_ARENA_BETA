@@ -1,0 +1,49 @@
+name: Patch P1-A title condition clarity
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-p1a-title-condition-clarity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch title condition clarity
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='function renderPlayerTitleCenter(p){'
+          assert marker in s, 'renderPlayerTitleCenter not found'
+          helpers='''function titleConditionMeta(t){\n  const type=String((t&&t.conditionType)||'manual');\n  const target=Math.max(1,Number((t&&t.targetValue)||1));\n  const map={\n    completed_tournaments:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽計入；一般交流賽、測試賽與封測賽事不計入。',task:`完成 ${target} 場 BXH 官方積分賽`},\n    championships:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽冠軍紀錄計入；一般交流賽、測試賽與封測賽事不計入。',task:`累積取得 ${target} 次 BXH 官方積分賽冠軍`},\n    best_placement:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽最終名次計入。',task:`BXH 官方積分賽最佳名次達第 ${target} 名或更佳`},\n    hosted_tournaments:{category:'event',label:'主辦成就',scope:'依系統認定且完成結算的 BXH 賽事主辦紀錄計入。',task:`成功完成主辦 ${target} 場 BXH 賽事`},\n    total_checkins:{category:'activity',label:'每日簽到',scope:'由 BXH ARENA 每日簽到紀錄累積；與賽事報到完全分離。',task:`累積完成 ${target} 天每日簽到`},\n    checkin_streak:{category:'activity',label:'每日簽到',scope:'依 BXH ARENA 連續每日簽到紀錄計算；中斷後重新累積。',task:`連續完成 ${target} 天每日簽到`},\n    pioneer_quota:{category:'special',label:'限定任務',scope:'依 BXH ARENA 開拓者資格與限定名額規則判定。',task:'完成開拓者限定資格'},\n    manual:{category:'special',label:'特殊榮譽',scope:'由 BXH 官方依指定資格人工授予，不依一般賽事進度自動取得。',task:'符合 BXH 官方指定授予資格'}\n  };\n  return map[type]||{category:'special',label:'特殊任務',scope:'依此稱號公告的指定條件判定。',task:(t&&t.description)||'完成指定條件'};\n}\nfunction titleConditionBadge(t){const m=titleConditionMeta(t);return `<div class="hint" style="margin-top:7px"><b>【${esc(m.label)}】</b> ${esc(m.task)}</div><div class="hint" style="margin-top:3px">計算範圍：${esc(m.scope)}</div>`;}\n'''
+          if 'function titleConditionMeta(t){' not in s:
+            s=s.replace(marker,helpers+marker,1)
+          old="${!hidden&&t.source?`<div class=\"hint\">來源：${esc(t.source)}</div>`:''}<div class=\"title-progress\">"
+          new="${!hidden?titleConditionBadge(t):''}${!hidden&&t.source?`<div class=\"hint\">來源：${esc(t.source)}</div>`:''}<div class=\"title-progress\">"
+          assert old in s, 'title card source block not found'
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+      - name: Verify P1-A
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'function titleConditionMeta(t)' index.html
+          grep -Fq '僅 BXH 官方積分賽計入' index.html
+          grep -Fq '計算範圍：' index.html
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m "P1-A standardize title condition descriptions"
+          git push
