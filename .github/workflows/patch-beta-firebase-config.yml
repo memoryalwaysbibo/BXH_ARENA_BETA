@@ -15,7 +15,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Patch Firebase web config to Beta project
+      - name: Patch Firebase web config to Beta project and enable FINAL BETA tester mode
         shell: python
         run: |
           from pathlib import Path
@@ -24,6 +24,7 @@ jobs:
           p = Path('index.html')
           text = p.read_text(encoding='utf-8')
 
+          # 1) Keep Beta pointed only at bxh-arena-beta Firebase.
           replacements = {
               'apiKey': 'AIzaSyBYyfPew1Ukf_ECSv5dqcqJbVvKpVLrnnc',
               'authDomain': 'bxh-arena-beta.firebaseapp.com',
@@ -41,17 +42,50 @@ jobs:
                   raise SystemExit(f'Firebase field not found: {key}')
               print(f'{key}: replaced {n} occurrence(s)')
 
-          # Safety: all project IDs in Firebase config-like fields must now be Beta.
+          # 2) FINAL BETA account policy:
+          #    Any NEW account created through the public player application flow
+          #    is promoted to the existing isolated tester role, not real admin.
+          #    We intentionally patch only object literals that clearly belong to
+          #    player-account creation: role:"player" paired with active:true.
+          tester_patterns = [
+              (r'(role\s*:\s*)["\']player["\'](?=\s*,\s*active\s*:\s*true)', r'\1"tester"'),
+              (r'(role\s*:\s*)["\']player["\'](?=\s*,\s*isTestAccount\s*:\s*true)', r'\1"tester"'),
+          ]
+          tester_replacements = 0
+          for pattern, repl in tester_patterns:
+              updated, n = re.subn(pattern, repl, updated)
+              tester_replacements += n
+
+          # The current Beta source may build the creation payload over multiple
+          # lines. If the narrow patterns above did not find it, fail safely
+          # instead of globally replacing every player role in the application.
+          if tester_replacements < 1:
+              raise SystemExit('FINAL BETA tester patch target not found; refusing unsafe global role replacement.')
+
+          # 3) UI wording: tester remains the backend role, but participants see
+          #    the product-facing label "封測管理員".
+          #    Existing roleDisplayLabel currently maps tester to 封測帳號.
+          updated, label_n = re.subn(
+              r'(tester\s*:\s*)["\']封測帳號["\']',
+              r'\1"封測管理員"',
+              updated
+          )
+          if label_n < 1:
+              print('Warning: tester display label target not found; backend tester patch still applied.')
+
+          # Safety checks.
           project_ids = re.findall(r'projectId\s*:\s*["\']([^"\']+)["\']', updated)
           if not project_ids or any(v != 'bxh-arena-beta' for v in project_ids):
               raise SystemExit(f'Unsafe projectId values remain: {project_ids}')
           if 'bxh-arena-beta.firebaseapp.com' not in updated:
               raise SystemExit('Beta authDomain missing after patch')
+          if tester_replacements < 1:
+              raise SystemExit('Tester role patch not applied')
 
           p.write_text(updated, encoding='utf-8')
-          print('Beta Firebase fields patched successfully.')
+          print(f'Beta Firebase fields patched successfully; FINAL BETA tester replacements={tester_replacements}, label replacements={label_n}.')
 
-      - name: Commit Beta config patch
+      - name: Commit Beta config and FINAL BETA tester patch
         shell: bash
         run: |
           if git diff --quiet -- index.html; then
@@ -61,5 +95,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Point Beta frontend to bxh-arena-beta Firebase"
+          git commit -m "Enable FINAL BETA tester account mode"
           git push
