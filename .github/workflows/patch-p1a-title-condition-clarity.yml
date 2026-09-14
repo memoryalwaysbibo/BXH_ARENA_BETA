@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/workflows/patch-p1a-title-condition-clarity.yml'
+      - '.github/scripts/patch_p1b_title_filters.py'
   workflow_dispatch:
 
 permissions:
