@@ -1,0 +1,67 @@
+name: Patch iOS auth persistence
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-ios-auth-persistence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch iOS Firebase Auth persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''        const persistenceOutcome = await withTimeout(
+          authMod.setPersistence(authHandle, authMod.browserLocalPersistence).then(()=>"local").catch(()=>"failed"),
+          4000, "timeout"
+        );
+        if(persistenceOutcome!=="local"){
+          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
+          catch(e){ /* if even session persistence fails, proceed anyway — Auth still works in-memory for this page load */ }
+        }'''
+          new = '''        const iosLike = /iP(hone|ad|od)/i.test((navigator&&navigator.userAgent)||"");
+        const preferredPersistence = iosLike ? authMod.browserSessionPersistence : authMod.browserLocalPersistence;
+        const persistenceOutcome = await withTimeout(
+          authMod.setPersistence(authHandle, preferredPersistence).then(()=>iosLike?"session":"local").catch(()=>"failed"),
+          4000, "timeout"
+        );
+        if(persistenceOutcome!=="local" && persistenceOutcome!=="session"){
+          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
+          catch(e){ /* proceed in-memory rather than block Auth */ }
+        }'''
+          assert old in s, 'persistence target not found'
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'const iosLike = /iP(hone|ad|od)/i.test' index.html
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Prefer session persistence for iOS Firebase Auth"
+          git push
