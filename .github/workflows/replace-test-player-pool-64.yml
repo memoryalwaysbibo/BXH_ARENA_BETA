@@ -1,0 +1,63 @@
+name: Replace test player pool with BXH experimental 64
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/replace-test-player-pool-64.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace existing built-in test player pool only
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          names=['巴哈','莫札特','貝多芬','蕭邦','舒伯特','柴可夫斯基','海頓','布拉姆斯','華格納','維瓦第','德布西','史特拉汶斯基','馬勒','拉赫曼尼諾夫','韓德爾','李斯特','威爾第','普契尼','孟德爾頌','白遼士','舒曼','達文西','米開朗基羅','拉斐爾','梵谷','莫內','畢卡索','林布蘭','達利','馬諦斯','高更','塞尚','克林姆','孟克','維梅爾','安迪·沃荷','卡拉瓦喬','波提切利','康丁斯基','德加','羅丹','葛飾北齋','愛因斯坦','牛頓','伽利略','居禮夫人','達爾文','特斯拉','法拉第','麥克斯韋','門德列夫','哥白尼','波耳','普朗克','巴斯德','海森堡','薛丁格','霍金','費曼','拉塞福','道爾頓','圖靈','林奈','哈伯']
+          assert len(names)==64 and len(set(names))==64
+          # Locate the existing test pool by the UI copy that says it contains 80 players,
+          # then find the nearest preceding JS array with many string names.
+          anchor=s.find('內建 80 位測試玩家')
+          if anchor<0: anchor=s.find('80 位測試玩家')
+          if anchor<0: raise SystemExit('existing 80-player test pool UI anchor not found')
+          prefix=s[:anchor]
+          arrays=list(re.finditer(r'(const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\[(.*?)\]\s*;',prefix,re.S))
+          candidates=[]
+          for m in arrays:
+            vals=re.findall(r'["\']([^"\']+)["\']',m.group(3))
+            if len(vals)>=64:
+              candidates.append((m,vals))
+          if not candidates: raise SystemExit('test player array candidate not found')
+          m,oldvals=candidates[-1]
+          varname=m.group(2)
+          replacement='const '+varname+' = ['+','.join(repr(x) for x in names)+'];'
+          s=s[:m.start()]+replacement+s[m.end():]
+          # Keep existing UI/logic, only correct descriptive pool count where applicable.
+          s=s.replace('內建 80 位測試玩家','內建 64 位實驗玩家')
+          s=s.replace('80 位測試玩家','64 位實驗玩家')
+          p.write_text(s,encoding='utf-8')
+          print('replaced',varname,'old count',len(oldvals),'new count',len(names))
+      - name: Verify requested 64 names and existing random controls
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          names=['巴哈','莫札特','貝多芬','蕭邦','舒伯特','柴可夫斯基','海頓','布拉姆斯','華格納','維瓦第','德布西','史特拉汶斯基','馬勒','拉赫曼尼諾夫','韓德爾','李斯特','威爾第','普契尼','孟德爾頌','白遼士','舒曼','達文西','米開朗基羅','拉斐爾','梵谷','莫內','畢卡索','林布蘭','達利','馬諦斯','高更','塞尚','克林姆','孟克','維梅爾','安迪·沃荷','卡拉瓦喬','波提切利','康丁斯基','德加','羅丹','葛飾北齋','愛因斯坦','牛頓','伽利略','居禮夫人','達爾文','特斯拉','法拉第','麥克斯韋','門德列夫','哥白尼','波耳','普朗克','巴斯德','海森堡','薛丁格','霍金','費曼','拉塞福','道爾頓','圖靈','林奈','哈伯']
+          missing=[x for x in names if x not in s]
+          assert not missing, missing
+          for n in (8,16,32,64): assert f'隨機 {n} 位' in s
+          assert '內建 64 位實驗玩家' in s
+          print('verified 64/64 experimental IDs and random controls')
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Use requested 64 experimental player IDs"
+          git push
