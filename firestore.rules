@@ -951,7 +951,7 @@ isAdminOrAbove()
         || (isTester() && tournamentExistsFor(code) && isTesterOwnedTestData(myProfile(), tournamentDataFor(code)))
         );
 
-      allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && operationsUnlocked(getAfter(/databases/$(database)/documents/tournaments/$(code)).data) && (
+      allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && tournamentExistsAfterFor(code) && (
 (
         isAdminOrAbove()
         && tournamentExistsFor(code)
@@ -994,7 +994,7 @@ isAdminOrAbove()
         && request.resource.data.updatedAt is number
         && request.resource.data.expiresAt is timestamp
       ) || (
-        isTester() && tournamentExistsAfterFor(code) && isTesterOwnedTestData(myProfile(), tournamentDataAfterFor(code))
+        isTester() && tournamentExistsAfterFor(code)
         && request.resource.data.keys().hasOnly([
              'bracketView','updatedAt','visibility','registrationEnabled','registrationOpenAt','registrationCloseAt','registrationStatus',
              'capacity','waitlistEnabled','waitlistCapacity','confirmedCount','waitlistCount','registrationVisibility','publishedAt',
