@@ -6175,6 +6175,22 @@ function renderDailyCheckInCard(){
     ${renderCheckInCalendar(ci)}
   </section>`;
 }
+function titleConditionMeta(t){
+  const type=String((t&&t.conditionType)||'manual');
+  const target=Math.max(1,Number((t&&t.targetValue)||1));
+  const map={
+    completed_tournaments:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽計入；一般交流賽、測試賽與封測賽事不計入。',task:`完成 ${target} 場 BXH 官方積分賽`},
+    championships:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽冠軍紀錄計入；一般交流賽、測試賽與封測賽事不計入。',task:`累積取得 ${target} 次 BXH 官方積分賽冠軍`},
+    best_placement:{category:'official',label:'官方積分賽',scope:'僅 BXH 官方積分賽最終名次計入。',task:`BXH 官方積分賽最佳名次達第 ${target} 名或更佳`},
+    hosted_tournaments:{category:'event',label:'主辦成就',scope:'依系統認定且完成結算的 BXH 賽事主辦紀錄計入。',task:`成功完成主辦 ${target} 場 BXH 賽事`},
+    total_checkins:{category:'activity',label:'每日簽到',scope:'由 BXH ARENA 每日簽到紀錄累積；與賽事報到完全分離。',task:`累積完成 ${target} 天每日簽到`},
+    checkin_streak:{category:'activity',label:'每日簽到',scope:'依 BXH ARENA 連續每日簽到紀錄計算；中斷後重新累積。',task:`連續完成 ${target} 天每日簽到`},
+    pioneer_quota:{category:'special',label:'限定任務',scope:'依 BXH ARENA 開拓者資格與限定名額規則判定。',task:'完成開拓者限定資格'},
+    manual:{category:'special',label:'特殊榮譽',scope:'由 BXH 官方依指定資格人工授予，不依一般賽事進度自動取得。',task:'符合 BXH 官方指定授予資格'}
+  };
+  return map[type]||{category:'special',label:'特殊任務',scope:'依此稱號公告的指定條件判定。',task:(t&&t.description)||'完成指定條件'};
+}
+function titleConditionBadge(t){const m=titleConditionMeta(t);return `<div class="hint" style="margin-top:7px"><b>【${esc(m.label)}】</b> ${esc(m.task)}</div><div class="hint" style="margin-top:3px">計算範圍：${esc(m.scope)}</div>`;}
 function renderPlayerTitleCenter(p){
   if(engagementTitleDraft) p=Object.assign({},p,engagementTitleDraft);
   if(!engagementSnapshot && !engagementLoading && !engagementError) setTimeout(()=>requestEngagementSnapshot(false),0);
@@ -6207,7 +6223,7 @@ function renderPlayerTitleCenter(p){
     <div class="btn-row" style="margin-top:12px;"><button class="btn btn-primary" data-action="player-save-title-settings" ${engagementActionBusy?'disabled':''}>${engagementActionBusy?'儲存中…':'儲存稱號設定'}</button></div>
     ${engagementError?`<div class="hint">${esc(engagementError)}；已確認儲存的設定不受影響。<button class="btn btn-ghost btn-sm" data-action="player-refresh-engagement">重新連線</button></div>`:''}
     <div class="panel-title" style="margin-top:20px;">稱號圖鑑</div>
-    ${catalog.length?`<div class="title-gallery">${catalog.map(t=>{const got=earnedIds.has(t.id);const hidden=t.isHidden&&!got;const current=Number((t.progress&&t.progress.currentValue)||0),target=Math.max(1,Number(t.targetValue||1));const pct=got?100:Math.min(100,Math.round(current/target*100));return `<article class="title-card rarity-${esc(t.rarity||'common')} ${got?'':'locked'}"><div class="title-card-name"><span>${esc(hidden?'？？？':t.name)}</span><span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span></div><div class="title-card-desc">${esc(hidden?(t.hint||'達成特殊條件後解鎖'):(t.description||t.hint||'榮譽稱號'))}</div>${!hidden&&t.source?`<div class="hint">來源：${esc(t.source)}</div>`:''}<div class="title-progress"><span style="width:${pct}%"></span></div><div class="hint" style="margin-top:5px;">${got?'✓ 已取得':`${current}／${target}`}${t.isActive===false?'・籌備中':''}${t.isLimited?'・限定':''}${t.isArchived?'・已絕版':''}</div></article>`;}).join("")}</div>`:`<div class="empty-state">稱號圖鑑尚未發布；已取得紀錄不會受到影響。</div>`}
+    ${catalog.length?`<div class="title-gallery">${catalog.map(t=>{const got=earnedIds.has(t.id);const hidden=t.isHidden&&!got;const current=Number((t.progress&&t.progress.currentValue)||0),target=Math.max(1,Number(t.targetValue||1));const pct=got?100:Math.min(100,Math.round(current/target*100));return `<article class="title-card rarity-${esc(t.rarity||'common')} ${got?'':'locked'}"><div class="title-card-name"><span>${esc(hidden?'？？？':t.name)}</span><span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span></div><div class="title-card-desc">${esc(hidden?(t.hint||'達成特殊條件後解鎖'):(t.description||t.hint||'榮譽稱號'))}</div>${!hidden?titleConditionBadge(t):''}${!hidden&&t.source?`<div class="hint">來源：${esc(t.source)}</div>`:''}<div class="title-progress"><span style="width:${pct}%"></span></div><div class="hint" style="margin-top:5px;">${got?'✓ 已取得':`${current}／${target}`}${t.isActive===false?'・籌備中':''}${t.isLimited?'・限定':''}${t.isArchived?'・已絕版':''}</div></article>`;}).join("")}</div>`:`<div class="empty-state">稱號圖鑑尚未發布；已取得紀錄不會受到影響。</div>`}
   </section>`;
 }
 let communityEventsCache = null;
