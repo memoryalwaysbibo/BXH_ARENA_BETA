@@ -6502,7 +6502,7 @@ function mapRoleToAppRole(role){
   return "guest";
 }
 function roleDisplayLabel(role){
-  return { super_admin:"最高管理員", admin:"管理員", staff:"工作人員", tester:"封測帳號", player:"玩家", viewer:"觀眾" }[role] || role;
+  return { super_admin:"最高管理員", admin:"管理員", staff:"工作人員", tester:"封測管理員", player:"玩家", viewer:"觀眾" }[role] || role;
 }
 function authAvailable(){
   return (typeof window!=="undefined" && window.cloudAuth && typeof window.cloudAuth.isReady==="function" && window.cloudAuth.isReady());
@@ -18189,7 +18189,7 @@ init();
           uid, email, displayName: publicName, realName, nickname: nickname||"", gameId:nickname||"",
           phone: phone||"", phoneVerified:false, birthDate:"", gender:"", region:"", preferredNameMode:"realName",
           realNameVerified:false, realNameVerifiedAt:null, realNameVerifiedBy:null,
-          role: "player", active: true, provider: "password", profileCompleted: true, profileCompletedAt:fx.serverTimestamp(), avatarUrl:null,
+          role: "tester", active: true, provider: "password", profileCompleted: true, profileCompletedAt:fx.serverTimestamp(), avatarUrl:null,
           createdAt: now, updatedAt: now, lastLoginAt: now
         });
         // Public-safe mirror only — never includes email/phone/role/points.
@@ -18216,7 +18216,7 @@ init();
           uid, email, displayName: publicName, realName, nickname: nickname||"", gameId:nickname||"",
           phone: phone||"", phoneVerified:false, birthDate:"", gender:"", region:"", preferredNameMode:"realName",
           realNameVerified:false, realNameVerifiedAt:null, realNameVerifiedBy:null,
-          role: "player", active: true, provider: "google", profileCompleted: true, profileCompletedAt:fx.serverTimestamp(), avatarUrl:null,
+          role: "tester", active: true, provider: "google", profileCompleted: true, profileCompletedAt:fx.serverTimestamp(), avatarUrl:null,
           createdAt: now, updatedAt: now, lastLoginAt: now
         });
         try{
