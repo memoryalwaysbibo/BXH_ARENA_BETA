@@ -17,58 +17,41 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Patch tester account statistics and labels
-        shell: python
+        shell: bash
         run: |
+          set -euo pipefail
+          python3 <<'PY'
           from pathlib import Path
-
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          old_filters = '''const ACCOUNT_ROLE_FILTERS = [
-  ["all","全部"],["management","管理層"],["super_admin","最高管理員"],["admin","管理員"],
-  ["staff","工作人員"],["tester","封測帳號"],["player","玩家"],["viewer","觀眾"]
-];'''
-          new_filters = '''const ACCOUNT_ROLE_FILTERS = [
-  ["all","全部"],["management","管理層"],["super_admin","最高管理員"],["admin","管理員"],
-  ["staff","工作人員"],["tester","封測管理員"],["player","玩家"],["viewer","觀眾"]
-];'''
+          old_filters = 'const ACCOUNT_ROLE_FILTERS = [\n  ["all","全部"],["management","管理層"],["super_admin","最高管理員"],["admin","管理員"],\n  ["staff","工作人員"],["tester","封測帳號"],["player","玩家"],["viewer","觀眾"]\n];'
+          new_filters = 'const ACCOUNT_ROLE_FILTERS = [\n  ["all","全部"],["management","管理層"],["super_admin","最高管理員"],["admin","管理員"],\n  ["staff","工作人員"],["tester","封測管理員"],["player","玩家"],["viewer","觀眾"]\n];'
           assert old_filters in s, 'ACCOUNT_ROLE_FILTERS target not found'
           s = s.replace(old_filters, new_filters, 1)
 
-          old_match = '''function accountRoleMatches(user,filter){
-  if(filter==="all") return true;
-  if(filter==="management") return user.role==="super_admin"||user.role==="admin";
-  return user.role===filter;
-}'''
-          new_match = '''function accountRoleMatches(user,filter){
-  if(filter==="all") return true;
-  if(filter==="management") return user.role==="super_admin"||user.role==="admin";
-  if(filter==="tester") return user.role==="tester"||user.isTestAccount===true;
-  if(filter==="player") return user.role==="player"&&user.isTestAccount!==true;
-  return user.role===filter;
-}'''
+          old_match = 'function accountRoleMatches(user,filter){\n  if(filter==="all") return true;\n  if(filter==="management") return user.role==="super_admin"||user.role==="admin";\n  return user.role===filter;\n}'
+          new_match = 'function accountRoleMatches(user,filter){\n  if(filter==="all") return true;\n  if(filter==="management") return user.role==="super_admin"||user.role==="admin";\n  if(filter==="tester") return user.role==="tester"||user.isTestAccount===true;\n  if(filter==="player") return user.role==="player"&&user.isTestAccount!==true;\n  return user.role===filter;\n}'
           assert old_match in s, 'accountRoleMatches target not found'
           s = s.replace(old_match, new_match, 1)
 
-          old_hint = '''<div class="hint" style="margin-top:8px;">封測帳號：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>'''
-          new_hint = '''<div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>'''
+          old_hint = '<div class="hint" style="margin-top:8px;">封測帳號：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>'
+          new_hint = '<div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>'
           assert old_hint in s, 'tester summary hint target not found'
           s = s.replace(old_hint, new_hint, 1)
 
-          old_referee = '''u.role==='tester'?'封測帳號（測試）':'工作人員' '''
-          if old_referee in s:
-              s = s.replace(old_referee, '''u.role==='tester'?'封測管理員（測試）':'工作人員' ''', 1)
-
+          s = s.replace("u.role==='tester'?'封測帳號（測試）':'工作人員'", "u.role==='tester'?'封測管理員（測試）':'工作人員'", 1)
           p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Verify patch
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '\["tester","封測管理員"\]' index.html
-          grep -q 'if(filter==="tester") return user.role==="tester"||user.isTestAccount===true;' index.html
-          grep -q 'if(filter==="player") return user.role==="player"&&user.isTestAccount!==true;' index.html
-          grep -q '封測管理員：${activity.testers}' index.html
+          grep -Fq '["tester","封測管理員"]' index.html
+          grep -Fq 'if(filter==="tester") return user.role==="tester"||user.isTestAccount===true;' index.html
+          grep -Fq 'if(filter==="player") return user.role==="player"&&user.isTestAccount!==true;' index.html
+          grep -Fq '封測管理員：${activity.testers}' index.html
 
       - name: Commit patch
         shell: bash
