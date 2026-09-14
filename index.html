@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- FINAL BETA title CMS v2: generic configurable title editor -->
+
 <!-- v13.29.11: title editor feedback + rarity-aware player cards -->
 
 <!-- BXH ARENA v13.29.10 完整整合版。
@@ -10835,9 +10837,9 @@ function titleEditorContext(){
 }
 function renderTitleEditor(){
  if(!isSuperAdmin())return '';const c=titleEditorContext(),d=c.draft,defs=engagementAdminOverview?.definitions||[];
- return `<details class="account-tools-card" ${c.busy||c.message?'open':''}><summary><span>新增／編輯稱號與開拓者發放</span></summary><div class="account-tools-body">
- <div class="hint">條件由系統選單與數值執行；說明文字不會當作程式。人工授予型稱號透過下方「人工授予／撤銷」依玩家 UID 指定。</div>
- <div class="btn-row"><button class="btn btn-ghost" data-action="title-editor-load" ${c.busy?'disabled':''}>載入／重新載入稱號</button><button class="btn btn-ghost" data-action="title-editor-preset-creator" ${c.busy?'disabled':''}>載入「創世者」範本</button></div><label>選擇稱號<select id="title-editor-select"><option value="">新增稱號</option>${defs.map(t=>`<option value="${esc(t.id)}" ${d.titleId===t.id?'selected':''}>${esc(t.name||t.id)}</option>`).join('')}</select></label>
+ return `<details class="account-tools-card" ${c.busy||c.message?'open':''}><summary><span>稱號建立／編輯中心</span></summary><div class="account-tools-body">
+ <div class="hint">直接建立或編輯稱號；一般條件、門檻與稀有度都可在這裡設定，不需要修改程式。只有新增全新的判定條件類型時才需要更新後端。</div>
+ <div class="btn-row"><button class="btn btn-primary" data-action="title-editor-new" ${c.busy?'disabled':''}>＋ 新增稱號</button><button class="btn btn-ghost" data-action="title-editor-load" ${c.busy?'disabled':''}>重新載入</button></div><label>選擇既有稱號<select id="title-editor-select"><option value="">— 新稱號草稿 —</option>${defs.map(t=>`<option value="${esc(t.id)}" ${d.titleId===t.id?'selected':''}>${esc(t.name||t.id)}</option>`).join('')}</select></label>
  <div class="field"><label>稱號名稱</label><input id="title-editor-name" maxlength="60" value="${esc(d.name)}"></div>
  <div class="field"><label>稀有度／視覺等級</label><select id="title-editor-rarity">${Object.entries({common:'一般',rare:'稀有',epic:'史詩',legendary:'傳說',limited:'限定',eternal:'永恆'}).map(([k,v])=>`<option value="${k}" ${(d.rarity||'common')===k?'selected':''}>${v}｜${k}</option>`).join('')}</select><div class="hint">稀有度會同步決定玩家端稱號顏色、徽章與圖鑑卡片樣式。</div></div>
  <div class="field"><label>達成條件</label><select id="title-editor-condition">${Object.entries({manual:'指定 UID 人工授予',hosted_tournaments:'成功完成主辦場數',completed_tournaments:'正式賽事完成場數',championships:'正式賽事冠軍次數',best_placement:'正式賽事名次不大於',total_checkins:'正式累積簽到天數',checkin_streak:'正式連續簽到天數',...(d.titleId==='pioneer'?{pioneer_quota:'開拓者累計100人名額'}:{})}).map(([k,v])=>`<option value="${k}" ${d.conditionType===k?'selected':''}>${v}</option>`).join('')}</select></div>
@@ -10863,10 +10865,14 @@ function bindTitleEditor(){
 }
 async function handleTitleEditor(action){
  if(!isSuperAdmin())return;const c=titleEditorContext();if(c.busy)return;const uid=currentAuthUid();
+ if(action==='title-editor-new'){
+  c.draft={titleId:'custom_'+crypto.randomUUID(),create:true,name:'',description:'',conditionType:'manual',targetValue:1,rarity:'common',isActive:true,isHidden:false,isArchived:false};
+  c.preview=null;c.message='已建立新稱號草稿。設定名稱、稀有度、條件與門檻後，直接儲存並發布即可。';render();return;
+ }
  if(action==='title-editor-preset-creator'){
   const existing=(engagementAdminOverview?.definitions||[]).find(t=>t.id==='creator');
   c.draft={...(existing||{}),titleId:'creator',create:!existing,expectedVersion:existing?(existing.version||1):undefined,name:'創世者',description:'BXH ARENA 創建者榮譽稱號。',conditionType:'manual',targetValue:1,rarity:'eternal',isActive:true,isHidden:false,isArchived:false};
-  c.preview=null;c.message=existing?'已載入既有「創世者」並套用「永恆」等級。確認後按「儲存稱號」即可更新。':'已載入「創世者｜永恆」範本。確認內容後按「儲存稱號」，再到下方人工授予給指定玩家 UID。';render();return;
+  c.preview=null;c.message=existing?'已載入既有「創世者」並套用「永恆」等級。確認後按「儲存並發布」即可更新。':'已載入「創世者｜永恆」範本。確認內容後按「儲存並發布」，再到下方人工授予給指定玩家 UID。';render();return;
  }
  if(action==='title-editor-save'){
   for(const [id,key,type] of [['name','name','text'],['rarity','rarity','text'],['description','description','text'],['condition','conditionType','text'],['target','targetValue','number'],['active','isActive','boolean']]){
