@@ -14,25 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect exact tournament create paths
+      - name: Inspect createRoom write and public rule
         shell: python
         run: |
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          lines=s.splitlines()
-          needles=['async createRoom','createRoom(state','createRoom:','createRoom(', 'async function publishRegistrationConfig','function publishRegistrationConfig']
-          for needle in needles:
-            print('\n===== NEEDLE:',needle,'=====')
-            found=0
-            for i,line in enumerate(lines):
-              if needle in line:
-                found+=1
-                a=max(0,i-15); b=min(len(lines),i+90)
-                for j in range(a,b): print(f'{j+1}: {lines[j][:2500]}')
-                if found>=5: break
-            if not found: print('NO HITS')
+          lines=Path('index.html').read_text(encoding='utf-8').splitlines()
+          print('===== createRoom payload/write tail =====')
+          for j in range(19645-1,19745): print(f'{j+1}: {lines[j][:3000]}')
           r=Path('firestore.rules').read_text(encoding='utf-8')
           a=r.index('match /publicTournaments/{code}')
-          b=r.index('match /ladderPlayers/{uid}',a)
-          print('\n===== PUBLIC TOURNAMENT RULE BLOCK =====')
-          print(r[a:b])
+          # print enough chars to include create/update branches
+          print('\n===== publicTournaments rules =====')
+          print(r[a:a+18000])
