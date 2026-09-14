@@ -1,0 +1,72 @@
+name: Fix BUG 012 tester tournament creation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-bug012-tester-create-rules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove fragile cross-document checks from public mirror create
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64
+          p=Path('firestore.rules')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('match /publicTournaments/{code}')
+          create=s.index('allow create:', start)
+          update=s.index('allow update:', create)
+          block=s[create:update]
+          old_outer="operationsUnlocked(getAfter(/databases/$(database)/documents/tournaments/$(code)).data)"
+          if old_outer not in block:
+              raise SystemExit('BUG012 outer create guard target not found')
+          block=block.replace(old_outer, 'tournamentExistsAfterFor(code)', 1)
+          old_tester="isTester() && tournamentExistsAfterFor(code) && isTesterOwnedTestData(myProfile(), tournamentDataAfterFor(code))"
+          if old_tester not in block:
+              raise SystemExit('BUG012 tester create guard target not found')
+          # The private tournaments/{code} write in the same batch is independently
+          # validated by validTesterTestCreate(). The public mirror still requires
+          # an after-state tournament plus immutable test metadata/owner fields below.
+          block=block.replace(old_tester, 'isTester() && tournamentExistsAfterFor(code)', 1)
+          s=s[:create]+block+s[update:]
+          p.write_text(s,encoding='utf-8')
+
+          encoded=base64.b64encode(s.encode('utf-8')).decode('ascii')
+          d=Path('.rules_chunks')
+          for q in d.glob('part*.b64'): q.unlink()
+          for i in range(0,len(encoded),12000):
+              (d/f'part{i//12000+1:02d}.b64').write_text(encoded[i:i+12000],encoding='ascii')
+          print('BUG012 rules patched; bytes=',len(s.encode('utf-8')))
+      - name: Static safety assertions
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('firestore.rules').read_text(encoding='utf-8')
+          assert 'validTesterTestCreate(request.resource.data)' in s
+          assert 'isTester() && tournamentExistsAfterFor(code)' in s
+          assert "request.resource.data.eventAuthority == 'test'" in s
+          assert 'request.resource.data.ownerUid == request.auth.uid' in s
+          assert "request.resource.data.createdByRole == 'tester'" in s
+          print('BUG012 static safety assertions passed')
+      - name: Commit rules fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firestore.rules .rules_chunks
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Fix BUG 012 tester tournament cloud creation"
+          git push
