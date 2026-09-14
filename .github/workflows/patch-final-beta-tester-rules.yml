@@ -1,0 +1,62 @@
+name: Patch FINAL BETA tester signup rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-final-beta-tester-rules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Allow tester role during first profile creation
+        shell: python
+        run: |
+          from pathlib import Path
+          import base64
+
+          rules = Path('firestore.rules')
+          s = rules.read_text(encoding='utf-8')
+          start = s.index('// ==== users/{uid}')
+          end = s.index('match /titleDefinitions/{titleId}', start)
+          block = s[start:end]
+          old = "request.resource.data.role == 'player'"
+          count = block.count(old)
+          if count < 1:
+              raise SystemExit('Tester signup patch target not found')
+          block = block.replace(old, "request.resource.data.role in ['player','tester']")
+          s = s[:start] + block + s[end:]
+          rules.write_text(s, encoding='utf-8')
+
+          # Keep reconstruction source in sync so a future rebuild cannot revert the Beta-only rule.
+          encoded = base64.b64encode(s.encode('utf-8')).decode('ascii')
+          chunks = [encoded[i:i+12000] for i in range(0, len(encoded), 12000)]
+          chunk_dir = Path('.rules_chunks')
+          for p in chunk_dir.glob('part*.b64'):
+              p.unlink()
+          for i, chunk in enumerate(chunks, 1):
+              (chunk_dir / f'part{i:02d}.b64').write_text(chunk, encoding='ascii')
+
+          print(f'Patched {count} tester signup role guard(s); chunks={len(chunks)}')
+
+      - name: Commit Beta-only tester signup rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firestore.rules .rules_chunks
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Allow FINAL BETA tester profile creation"
+          git push
