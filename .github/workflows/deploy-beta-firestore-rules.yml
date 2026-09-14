@@ -1,5 +1,6 @@
 name: Deploy Beta Firestore Rules
 
+# Secret configured; retry trigger
 on:
   push:
     branches: [main]
