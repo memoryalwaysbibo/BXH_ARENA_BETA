@@ -1,0 +1,40 @@
+name: Diagnose BUG 012 tournament cloud disconnect
+
+on:
+  push:
+    paths:
+      - '.github/workflows/diagnose-bug012.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect tournament creation and cloud state paths
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          patterns=[
+            r'LINK ERROR', r'雲端連線失敗', r'本機模式', r'cloudConnected', r'cloudOnline',
+            r'createTournament', r'addTournament', r'建立賽事', r'確認發布', r'onSnapshot',
+            r'setCloud', r'cloudStatus', r'listenTournament', r'subscribe'
+          ]
+          lines=s.splitlines()
+          for pat in patterns:
+            print('\n===== PATTERN:',pat,'=====')
+            rx=re.compile(pat,re.I)
+            hits=0
+            for i,line in enumerate(lines):
+              if rx.search(line):
+                hits+=1
+                a=max(0,i-4); b=min(len(lines),i+5)
+                print(f'--- hit line {i+1} ---')
+                for j in range(a,b): print(f'{j+1}: {lines[j][:1500]}')
+                if hits>=12: break
+            if not hits: print('NO HITS')
