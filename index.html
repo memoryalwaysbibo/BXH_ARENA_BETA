@@ -14545,8 +14545,10 @@ function handleAction(action, target){
   }
   if(action==="select-role-admin"){
     guestReadOnlyMode = false;
+    loginError=""; authFormError="";
+    appPhase="admin-login";
+    render();
     (async ()=>{
-      loginError=""; authFormError="";
       try{
         const res = await window.storage.get(REMEMBER_EMAIL_KEY);
         rememberedUsername = (res && res.value) ? res.value : "";
