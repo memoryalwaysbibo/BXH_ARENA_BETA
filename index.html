@@ -19594,6 +19594,16 @@ init();
           data.ladderPointsAwarded=false;
         }
         const m = (data && data.meta) || {};
+        // BUG012: tester sandbox assignment normalization
+        // A tester may only create a test tournament assigned to self (or none).
+        // Clear stale admin/staff referee assignments carried by the draft before
+        // registrationFields is built, so Firestore validTesterTestCreate() passes.
+        if(testerSession){
+          m.assignedStaffUids=[creatorUid];
+          m.refereeStationAssignments={};
+          m.refereeStationNames={};
+          m.refereeStationRestrictionEnabled=false;
+        }
         if(data && !data.createdBy) data.createdBy=creatorUid;
         if(data && data.meta && data.meta.eventAuthority==="community" && !data.ownerUid) data.ownerUid=creatorUid;
         const registrationFields = {
