@@ -1,4 +1,5 @@
 // BXH ARENA Firestore Rules v13.29.8
+// 2026-09-15: tester tournament permissions are admin-equivalent; tester delete remains owner-only.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
 // 2026-09-11: Blaze deployment stabilization release. Permission scope is
 // unchanged from v13.29.0; trusted title/check-in writes remain server-only.
@@ -104,7 +105,7 @@ service cloud.firestore {
          || request.auth.uid in tournamentData.assignedStaffUids);
     }
     function canManageTournamentData(actorData, tournamentData) {
-      return isAdminData(actorData) || isAssignedStaffData(actorData, tournamentData) || isTesterOwnedTestData(actorData, tournamentData);
+      return isAdminData(actorData) || isTesterData(actorData) || isAssignedStaffData(actorData, tournamentData);
     }
     function isCommunityOwnerData(tournamentData) {
       return request.auth != null
@@ -155,6 +156,7 @@ service cloud.firestore {
     function myProfile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function isSuperAdmin() { return isSignedIn() && myProfile().active == true && !hasTestIdentity(myProfile()) && myProfile().role == 'super_admin'; }
     function isTester() { return isSignedIn() && isTesterData(myProfile()); }
+    function isTournamentAdminEquivalent() { return isAdminOrAbove() || isTester(); }
     function isAdminOrAbove() {
       return isSignedIn() && myProfile().active == true && !hasTestIdentity(myProfile()) &&
         (myProfile().role == 'super_admin' || myProfile().role == 'admin');
@@ -169,7 +171,7 @@ service cloud.firestore {
          || request.auth.uid in tdata.assignedStaffUids);
     }
     function canManageTournament(tdata) {
-      return isAdminOrAbove() || isAssignedStaff(tdata) || (isTester() && isTesterOwnedTestData(myProfile(), tdata));
+      return isTournamentAdminEquivalent() || isAssignedStaff(tdata);
     }
     function tournamentExistsFor(code) { return exists(tourPath(code)); }
     function tournamentDataFor(code) { return get(tourPath(code)).data; }
@@ -194,11 +196,11 @@ service cloud.firestore {
     // ==== 每個 READ 路徑各自專用的授權 helper ====
     function canReadTournamentPrivate() {
       let actorData = get(userPath(request.auth.uid)).data;
-      return isStaffOrAboveData(actorData);
+      return isStaffOrAboveData(actorData) || isTesterData(actorData);
     }
     function canReadPublicAsStaff() {
       let actorData = get(userPath(request.auth.uid)).data;
-      return isStaffOrAboveData(actorData);
+      return isStaffOrAboveData(actorData) || isTesterData(actorData);
     }
     function canManageRegistrationRead(code) {
       let actorData = get(userPath(request.auth.uid)).data;
@@ -649,7 +651,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && (canReadTournamentPrivate() || isCommunityOwnerData(resource.data) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data)));
       allow list: if isSignedIn() && (canReadTournamentPrivate() || isCommunityOwnerData(resource.data) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data)));
       allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && (
-isAdminOrAbove() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data) || (isSignedIn() && myProfile().active == true && validCommunityInvariant(request.resource.data))
+isTournamentAdminEquivalent() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data) || (isSignedIn() && myProfile().active == true && validCommunityInvariant(request.resource.data))
         );
       allow delete: if operationsUnlocked(resource.data) && (
 isAdminOrAbove() || (isSignedIn() && isCommunityOwnerData(resource.data)) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data))
@@ -658,7 +660,7 @@ isAdminOrAbove() || (isSignedIn() && isCommunityOwnerData(resource.data)) || (is
       allow update: if
         lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && entrySelectionWriteValid() && (
 (
-          isAdminOrAbove()
+          isTournamentAdminEquivalent()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
                ['confirmedCount','waitlistCount','lastRegistrationMutationUid','lastRegistrationMutationType']
              )
@@ -746,7 +748,7 @@ isAdminOrAbove() || (isSignedIn() && isCommunityOwnerData(resource.data)) || (is
       match /raffleControl/{id} { allow read, write: if false; }
       match /operationLog/{id} { allow read, write: if false; }
       match /participants/{playerId} {
-        allow read: if isStaffOrAbove() || isCommunityOwnerData(get(/databases/$(database)/documents/tournaments/$(code)).data) || (isTester() && isTesterOwnedTestData(myProfile(), tournamentDataFor(code)));
+        allow read: if isStaffOrAbove() || isTester() || isCommunityOwnerData(get(/databases/$(database)/documents/tournaments/$(code)).data);
         allow write: if tournamentOperationsUnlocked(code) && (
 canManageTournament(get(/databases/$(database)/documents/tournaments/$(code)).data) || isCommunityOwnerData(get(/databases/$(database)/documents/tournaments/$(code)).data)
         );
@@ -953,7 +955,7 @@ isAdminOrAbove()
 
       allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && tournamentExistsAfterFor(code) && (
 (
-        isAdminOrAbove()
+        isTournamentAdminEquivalent()
         && tournamentExistsFor(code)
         && request.resource.data.keys().hasOnly([
              'bracketView','updatedAt','visibility',
@@ -1018,7 +1020,7 @@ isAdminOrAbove()
       allow update: if
         lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && tournamentOperationsUnlocked(code) && (
 (
-          isAdminOrAbove()
+          isTournamentAdminEquivalent()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['confirmedCount','waitlistCount'])
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'bracketView','updatedAt','visibility',
