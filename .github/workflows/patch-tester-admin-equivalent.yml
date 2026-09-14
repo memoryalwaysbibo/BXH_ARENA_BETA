@@ -1,0 +1,116 @@
+name: Patch Tester Admin-Equivalent Permissions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-tester-admin-equivalent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch Firestore rules
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('firestore.rules')
+          s = p.read_text(encoding='utf-8')
+
+          def replace_once(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, got {n}')
+              s = s.replace(old, new, 1)
+
+          # 1) Tester is admin-equivalent for tournament operations only.
+          marker = "    function isTester() { return isSignedIn() && isTesterData(myProfile()); }\n"
+          insert = marker + "    function isTournamentAdminEquivalent() { return isAdminOrAbove() || isTester(); }\n"
+          replace_once(marker, insert, 'helper insert')
+
+          # 2) Any tester may manage tournament operational data, like admin.
+          replace_once(
+              "    function canManageTournamentData(actorData, tournamentData) {\n      return isAdminData(actorData) || isAssignedStaffData(actorData, tournamentData) || isTesterOwnedTestData(actorData, tournamentData);\n    }",
+              "    function canManageTournamentData(actorData, tournamentData) {\n      return isAdminData(actorData) || isTesterData(actorData) || isAssignedStaffData(actorData, tournamentData);\n    }",
+              'canManageTournamentData')
+
+          replace_once(
+              "    function canManageTournament(tdata) {\n      return isAdminOrAbove() || isAssignedStaff(tdata) || (isTester() && isTesterOwnedTestData(myProfile(), tdata));\n    }",
+              "    function canManageTournament(tdata) {\n      return isTournamentAdminEquivalent() || isAssignedStaff(tdata);\n    }",
+              'canManageTournament')
+
+          # 3) Tester can read private tournament/public mirror data like admin/staff.
+          old = "      return isStaffOrAboveData(actorData);"
+          if s.count(old) != 2:
+              raise SystemExit(f'private/public read helper: expected 2 matches, got {s.count(old)}')
+          s = s.replace(old, "      return isStaffOrAboveData(actorData) || isTesterData(actorData);")
+
+          # 4) Tournament creation: tester follows the admin branch.
+          replace_once(
+              "isAdminOrAbove() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data)",
+              "isTournamentAdminEquivalent() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data)",
+              'tournament create')
+
+          # 5) Tournament + public mirror normal update admin branches also accept tester.
+          old = "          isAdminOrAbove()\n          && !request.resource.data.diff(resource.data).affectedKeys().hasAny("
+          n = s.count(old)
+          if n != 2:
+              raise SystemExit(f'admin update branches: expected 2 matches, got {n}')
+          s = s.replace(old, "          isTournamentAdminEquivalent()\n          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(")
+
+          # 6) Public mirror creation: tester follows the admin branch.
+          replace_once(
+              "        isAdminOrAbove()\n        && tournamentExistsFor(code)",
+              "        isTournamentAdminEquivalent()\n        && tournamentExistsFor(code)",
+              'public create')
+
+          # 7) Participants in any tournament are readable by tester, like admin/staff.
+          replace_once(
+              "        allow read: if isStaffOrAbove() || isCommunityOwnerData(get(/databases/$(database)/documents/tournaments/$(code)).data) || (isTester() && isTesterOwnedTestData(myProfile(), tournamentDataFor(code)));",
+              "        allow read: if isStaffOrAbove() || isTester() || isCommunityOwnerData(get(/databases/$(database)/documents/tournaments/$(code)).data);",
+              'participant read')
+
+          # IMPORTANT: tournament/publicTournaments delete rules are intentionally untouched.
+          # Tester therefore still only matches the existing owner-only test-room delete branch.
+
+          header = "// 2026-09-15: tester tournament permissions are admin-equivalent; tester delete remains owner-only.\n"
+          if header not in s:
+              s = s.replace("// BXH ARENA Firestore Rules v13.29.8\n", "// BXH ARENA Firestore Rules v13.29.8\n" + header, 1)
+
+          p.write_text(s, encoding='utf-8')
+          print('Patched tester tournament permissions; delete guards unchanged.')
+
+      - name: Verify intended guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "function isTournamentAdminEquivalent()" firestore.rules
+          grep -q "return isAdminData(actorData) || isTesterData(actorData)" firestore.rules
+          grep -q "isTournamentAdminEquivalent() || isStaffOfficialCreatorData" firestore.rules
+          grep -q "isTester() && isTesterOwnedTestData(myProfile(), resource.data)" firestore.rules
+          echo "Tester admin-equivalent tournament permissions patched; owner-only tester delete guard retained."
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- firestore.rules; then
+            echo "No changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firestore.rules
+          git commit -m "Make tester tournament permissions admin-equivalent"
+          git push origin HEAD:main
