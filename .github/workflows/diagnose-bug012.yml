@@ -14,27 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect tournament creation and cloud state paths
+      - name: Inspect exact tournament create paths
         shell: python
         run: |
           from pathlib import Path
-          import re
           s=Path('index.html').read_text(encoding='utf-8')
-          patterns=[
-            r'LINK ERROR', r'雲端連線失敗', r'本機模式', r'cloudConnected', r'cloudOnline',
-            r'createTournament', r'addTournament', r'建立賽事', r'確認發布', r'onSnapshot',
-            r'setCloud', r'cloudStatus', r'listenTournament', r'subscribe'
-          ]
           lines=s.splitlines()
-          for pat in patterns:
-            print('\n===== PATTERN:',pat,'=====')
-            rx=re.compile(pat,re.I)
-            hits=0
+          needles=['async createRoom','createRoom(state','createRoom:','createRoom(', 'async function publishRegistrationConfig','function publishRegistrationConfig']
+          for needle in needles:
+            print('\n===== NEEDLE:',needle,'=====')
+            found=0
             for i,line in enumerate(lines):
-              if rx.search(line):
-                hits+=1
-                a=max(0,i-4); b=min(len(lines),i+5)
-                print(f'--- hit line {i+1} ---')
-                for j in range(a,b): print(f'{j+1}: {lines[j][:1500]}')
-                if hits>=12: break
-            if not hits: print('NO HITS')
+              if needle in line:
+                found+=1
+                a=max(0,i-15); b=min(len(lines),i+90)
+                for j in range(a,b): print(f'{j+1}: {lines[j][:2500]}')
+                if found>=5: break
+            if not found: print('NO HITS')
+          r=Path('firestore.rules').read_text(encoding='utf-8')
+          a=r.index('match /publicTournaments/{code}')
+          b=r.index('match /ladderPlayers/{uid}',a)
+          print('\n===== PUBLIC TOURNAMENT RULE BLOCK =====')
+          print(r[a:b])
