@@ -1,6 +1,6 @@
 name: Deploy Beta Firestore Rules
 
-# Secret configured; retry trigger
+# Secret configured; firebase.json generated at runtime
 on:
   push:
     branches: [main]
@@ -57,6 +57,18 @@ jobs:
             echo "No Firebase credential found. Configure either FIREBASE_SERVICE_ACCOUNT_BXH_ARENA_BETA or FIREBASE_TOKEN in GitHub Actions secrets." >&2
             exit 1
           fi
+
+      - name: Create Firebase config
+        shell: bash
+        run: |
+          cat > firebase.json <<'JSON'
+          {
+            "firestore": {
+              "rules": "firestore.rules"
+            }
+          }
+          JSON
+          cat firebase.json
 
       - name: Deploy Firestore rules to Beta
         shell: bash
