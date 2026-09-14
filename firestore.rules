@@ -500,7 +500,7 @@ service cloud.firestore {
           && request.resource.data.realNameVerifiedAt == null
           && request.resource.data.realNameVerifiedBy == null
           && request.resource.data.provider is string
-          && request.resource.data.role == 'player'
+          && request.resource.data.role in ['player','tester']
           && request.resource.data.active == true
           && request.resource.data.phoneVerified == false
           && request.resource.data.profileCompleted == true
