@@ -15420,6 +15420,13 @@ function handleAction(action, target){
   if(action==="cancel-verifying"){ cancelVerifyingAndRetry(); return; }
   if(action==="admin-login-submit"){
     if(loginBusy) return;
+    if(isLineInAppBrowser()){
+      loginError="目前使用 LINE 內建瀏覽器，Firebase 登入驗證可能無法正常完成。請點右下角選單，改用 Safari 或 Chrome 開啟 BXH ARENA 後再登入。";
+      authVerifying=false;
+      loginBusy=false;
+      render();
+      return;
+    }
     const remaining = lockoutRemainingSeconds();
     if(remaining>0){ return; }
     if(!authAvailable()){ loginError="雲端服務尚未連線，請確認網路連線或稍後再試"; render(); return; }
