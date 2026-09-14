@@ -1,0 +1,52 @@
+name: Patch title CMS v2
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-title-cms-v2.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch title management UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''<div class=\"btn-row\"><button class=\"btn btn-ghost\" data-action=\"title-editor-load\" ${c.busy?'disabled':''}>載入／重新載入稱號</button><button class=\"btn btn-ghost\" data-action=\"title-editor-preset-creator\" ${c.busy?'disabled':''}>載入「創世者」範本</button></div><label>選擇稱號<select id=\"title-editor-select\"><option value=\"\">新增稱號</option>'''
+          new='''<div class=\"btn-row\"><button class=\"btn btn-primary\" data-action=\"title-editor-new\" ${c.busy?'disabled':''}>＋ 新增稱號</button><button class=\"btn btn-ghost\" data-action=\"title-editor-load\" ${c.busy?'disabled':''}>重新載入</button></div><label>選擇既有稱號<select id=\"title-editor-select\"><option value=\"\">— 新稱號草稿 —</option>'''
+          if old not in s:
+              raise SystemExit('title editor toolbar anchor not found')
+          s=s.replace(old,new,1)
+          s=s.replace('新增／編輯稱號與開拓者發放','稱號建立／編輯中心',1)
+          s=s.replace('條件由系統選單與數值執行；說明文字不會當作程式。人工授予型稱號透過下方「人工授予／撤銷」依玩家 UID 指定。','直接建立或編輯稱號；一般條件、門檻與稀有度都可在這裡設定，不需要修改程式。只有新增全新的判定條件類型時才需要更新後端。',1)
+          anchor="if(action==='title-editor-preset-creator'){"
+          insert="""if(action==='title-editor-new'){\n  c.draft={titleId:'custom_'+crypto.randomUUID(),create:true,name:'',description:'',conditionType:'manual',targetValue:1,rarity:'common',isActive:true,isHidden:false,isArchived:false};\n  c.preview=null;c.message='已建立新稱號草稿。設定名稱、稀有度、條件與門檻後，直接儲存並發布即可。';render();return;\n }\n """
+          if anchor not in s:
+              raise SystemExit('title editor handler anchor not found')
+          s=s.replace(anchor,insert+anchor,1)
+          s=s.replace("'儲存稱號'","'儲存並發布'",1)
+          s=s.replace('確認後按「儲存稱號」即可更新。','確認後按「儲存並發布」即可更新。')
+          s=s.replace('確認內容後按「儲存稱號」，再到下方人工授予給指定玩家 UID。','確認內容後按「儲存並發布」，再到下方人工授予給指定玩家 UID。')
+          marker='<!-- FINAL BETA title CMS v2: generic configurable title editor -->\n'
+          if marker not in s:
+              s=s.replace('<!DOCTYPE html>','<!DOCTYPE html>\n'+marker,1)
+          p.write_text(s,encoding='utf-8')
+      - name: Verify patch
+        shell: bash
+        run: |
+          grep -q 'FINAL BETA title CMS v2' index.html
+          grep -q 'title-editor-new' index.html
+          grep -q '稱號建立／編輯中心' index.html
+          grep -q '＋ 新增稱號' index.html
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Upgrade title management to generic CMS' || exit 0
+          git push
