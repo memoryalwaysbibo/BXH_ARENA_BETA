@@ -1,5 +1,5 @@
 // BXH ARENA Firestore Rules v13.29.8
-// 2026-09-15: tester tournament permissions are admin-equivalent; tester delete remains owner-only.
+// 2026-09-15: tester management is restricted to the actor's own TEST tournament.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
 // 2026-09-11: Blaze deployment stabilization release. Permission scope is
 // unchanged from v13.29.0; trusted title/check-in writes remain server-only.
@@ -105,16 +105,18 @@ service cloud.firestore {
          || request.auth.uid in tournamentData.assignedStaffUids);
     }
     function canManageTournamentData(actorData, tournamentData) {
-      return isAdminData(actorData) || isTesterData(actorData) || isAssignedStaffData(actorData, tournamentData);
+      return isAdminData(actorData) || isTesterOwnedTestData(actorData, tournamentData) || isAssignedStaffData(actorData, tournamentData);
     }
     function isCommunityOwnerData(tournamentData) {
       return request.auth != null
         && tournamentData.eventAuthority == 'community'
+        && !isTester()
         && tournamentData.createdBy == request.auth.uid
         && tournamentData.ownerUid == request.auth.uid;
     }
     function validCommunityInvariant(d) {
       return d.eventAuthority == 'community'
+        && !isTester()
         && d.createdBy == request.auth.uid
         && d.ownerUid == request.auth.uid
         && d.createdByRole == 'player'
@@ -156,7 +158,8 @@ service cloud.firestore {
     function myProfile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
     function isSuperAdmin() { return isSignedIn() && myProfile().active == true && !hasTestIdentity(myProfile()) && myProfile().role == 'super_admin'; }
     function isTester() { return isSignedIn() && isTesterData(myProfile()); }
-    function isTournamentAdminEquivalent() { return isAdminOrAbove() || isTester(); }
+    // Tester writes must use the explicit owned-TEST branch, never the admin branch.
+    function isTournamentAdminEquivalent() { return isAdminOrAbove(); }
     function isAdminOrAbove() {
       return isSignedIn() && myProfile().active == true && !hasTestIdentity(myProfile()) &&
         (myProfile().role == 'super_admin' || myProfile().role == 'admin');
@@ -171,7 +174,8 @@ service cloud.firestore {
          || request.auth.uid in tdata.assignedStaffUids);
     }
     function canManageTournament(tdata) {
-      return isTournamentAdminEquivalent() || isAssignedStaff(tdata);
+      return isTournamentAdminEquivalent() || isAssignedStaff(tdata)
+        || (isTester() && isTesterOwnedTestData(myProfile(), tdata));
     }
     function tournamentExistsFor(code) { return exists(tourPath(code)); }
     function tournamentDataFor(code) { return get(tourPath(code)).data; }
@@ -1023,6 +1027,7 @@ isAdminOrAbove()
         && request.resource.data.expiresAt is timestamp
       ) || (
         isTester() && tournamentExistsAfterFor(code)
+        && isTesterOwnedTestData(myProfile(), tournamentDataAfterFor(code))
         && request.resource.data.keys().hasOnly([
              'bracketView','updatedAt','visibility','registrationEnabled','registrationOpenAt','registrationCloseAt','registrationStatus',
              'capacity','waitlistEnabled','waitlistCapacity','confirmedCount','waitlistCount','registrationVisibility','publishedAt',
