@@ -10890,14 +10890,57 @@ function renderTitleManagementPanel(){
     </div></details>`:""}
     <details class="account-tools-card" style="margin-top:12px;"><summary><span>人工授予／撤銷</span><span class="hint">所有操作留下紀錄⌄</span></summary><div class="account-tools-body">
       <div class="grid grid-2 account-management-form-grid">
-        <div class="field"><label>玩家 UID</label><input id="engagement-target-uid" placeholder="Firebase UID"></div>
-        <div class="field"><label>稱號</label><select id="engagement-title-id"><option value="">請選擇</option>${grantCatalog.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}｜${esc(titleRarityLabel(t.rarity))}｜${esc(t.id)}</option>`).join("")}</select></div>
-        <div class="field" style="grid-column:1/-1"><label>操作原因</label><input id="engagement-title-reason" maxlength="120" placeholder="必填，例如：封測人工授予"></div>
+        ${renderTitleRecipientPicker()}
+        <div class="field"><label>稱號</label><select id="engagement-title-id"><option value="">請選擇</option>${grantCatalog.map(t=>`<option value="${esc(t.id)}" ${titleRecipientContext().titleId===t.id?"selected":""}>${esc(t.name)}｜${esc(titleRarityLabel(t.rarity))}｜${esc(t.id)}</option>`).join("")}</select></div>
+        <div class="field" style="grid-column:1/-1"><label>操作原因</label><input id="engagement-title-reason" value="${esc(titleRecipientContext().reason)}" maxlength="120" placeholder="必填，例如：封測人工授予"></div>
       </div>
       <div class="btn-row"><button class="btn btn-primary" data-action="admin-grant-title" ${engagementActionBusy?'disabled':''}>人工授予</button><button class="btn btn-danger-solid" data-action="admin-revoke-title" ${engagementActionBusy?'disabled':''}>撤銷稱號</button></div>
     </div></details>
   </section>`;
 }
+
+let titleRecipientState=null;
+function titleRecipientContext(){
+  const key=currentAuthUid()+':'+engagementSessionEpoch;
+  if(!titleRecipientState||titleRecipientState.key!==key)titleRecipientState={key,query:'',results:[],selected:null,busy:false,error:'',titleId:'',reason:''};
+  return titleRecipientState;
+}
+function titleRecipientMatches(users,query){
+  const q=query.normalize('NFKC').trim().toLocaleLowerCase();
+  if(!q)return [];
+  return users.filter(u=>!u.deleted&&u.accountStatus!=='deleted'&&[u.realName,u.displayName,u.nickname,u.gameId,u.playerId,u.email,u.uid].some(v=>String(v||'').normalize('NFKC').toLocaleLowerCase().includes(q))).slice(0,30);
+}
+function titleRecipientLabel(u){return [u.realName||u.displayName||u.nickname||'未命名',u.gameId,u.playerId,u.email].filter(Boolean).join('｜');}
+function renderTitleRecipientPicker(){
+  const c=titleRecipientContext();
+  return `<div class="field" style="grid-column:1/-1"><label for="title-recipient-query">搜尋授予／撤銷對象</label><input id="title-recipient-query" value="${esc(c.query)}" placeholder="姓名、玩家 ID、Email 或 UID" ${c.busy||engagementActionBusy?'disabled':''}><button type="button" class="btn btn-ghost" data-action="title-recipient-search" ${c.busy||engagementActionBusy?'disabled':''}>${c.busy?'搜尋中…':'搜尋帳號'}</button><div role="status">${esc(c.error)}</div>${c.results.map(u=>`<button type="button" class="btn btn-ghost" style="display:block;width:100%;text-align:left;margin-top:8px;white-space:normal" data-action="title-recipient-select" data-uid="${esc(u.uid)}" ${engagementActionBusy?'disabled':''}>${esc(titleRecipientLabel(u))}${u.active===false?'｜停用中':''}<small style="display:block;overflow-wrap:anywhere">UID：${esc(u.uid)}</small></button>`).join('')}${c.selected?`<p role="status">已選擇：${esc(titleRecipientLabel(c.selected))}</p><label>系統識別碼（自動帶入）<input id="engagement-target-uid" readonly value="${esc(c.selected.uid)}"></label>`:'<p class="hint">搜尋後請點選正確帳號；同名玩家以玩家 ID、Email 與 UID 區分。</p>'}</div>`;
+}
+async function handleTitleRecipient(action,target){
+  if(!isSuperAdmin()||engagementActionBusy)return;
+  const c=titleRecipientContext();if(c.busy)return;
+  if(action==='title-recipient-select'){
+    c.selected=c.results.find(u=>u.uid===target.getAttribute('data-uid'))||null;c.results=[];render();return;
+  }
+  c.query=(document.getElementById('title-recipient-query')?.value||c.query).trim();c.selected=null;c.results=[];c.error='';
+  if(!c.query){c.error='請輸入姓名、玩家 ID、Email 或 UID';render();return;}
+  c.busy=true;render();
+  try{
+    const users=await window.cloudAuth.listUsers();
+    if(c!==titleRecipientContext()||!isSuperAdmin())return;
+    c.results=titleRecipientMatches(users,c.query);
+    c.error=c.results.length===30?'最多顯示 30 人，請縮小搜尋範圍':c.results.length?'':'找不到符合帳號，或帳號清單未能載入，請重試';
+  }catch(e){if(c===titleRecipientContext())c.error='搜尋失敗，請確認連線後重試';}
+  finally{if(c===titleRecipientContext()){c.busy=false;render();}}
+}
+document.addEventListener('input',e=>{
+  if(!isSuperAdmin())return;
+  if(e.target.id==='engagement-title-reason')titleRecipientContext().reason=e.target.value;
+  if(e.target.id==='title-recipient-query'){
+    const c=titleRecipientContext();c.query=e.target.value;c.selected=null;c.results=[];
+    const uid=document.getElementById('engagement-target-uid');if(uid)uid.value='';
+  }
+});
+document.addEventListener('change',e=>{if(isSuperAdmin()&&e.target.id==='engagement-title-id')titleRecipientContext().titleId=e.target.value;});
 
 let accountBatch={key:'',selected:new Set(),busy:false,result:null,error:''};
 function accountBatchContext(){
@@ -14581,6 +14624,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
 
 /* ==== actions ==== */
 function handleAction(action, target){
+  if(action.startsWith("title-recipient-")){handleTitleRecipient(action,target);return;}
   if(action.startsWith('entry-')){handleEntrySelection(action);return;}
   if(state.entrySelection?.status==='drawn'&&['import-roster-from-registrations','update-players','quick-add-players','load-test','random-test-roster','load-online-roster'].includes(action)){showToast('名額已抽定，請使用依序遞補；不能覆寫正式名單',true);return;}
   if(action.startsWith('card-')){handlePlayerCard(action,target);return;}
@@ -15819,13 +15863,18 @@ function handleAction(action, target){
   }
   if(action==="admin-grant-title" || action==="admin-revoke-title"){
     if(engagementActionBusy || !window.engagementService) return;
-    const targetUid=(document.getElementById("engagement-target-uid")?.value||"").trim();
+    if(!isSuperAdmin())return;
+    const recipient=titleRecipientContext().selected;
+    const targetUid=recipient?.uid||"";
     const titleId=(document.getElementById("engagement-title-id")?.value||"").trim();
     const reason=(document.getElementById("engagement-title-reason")?.value||"").trim();
-    if(!targetUid||!titleId||reason.length<2){showToast("請完整填寫玩家 UID、稱號與操作原因",true);return;}
+    if(!targetUid||!titleId||reason.length<2){showToast("請先搜尋並選取帳號，再選擇稱號及填寫操作原因",true);return;}
     const actionEpoch=engagementSessionEpoch;
+    const chosenTitle=document.getElementById("engagement-title-id")?.selectedOptions[0]?.textContent||titleId;
+    openModal({type:"generic",title:action==="admin-grant-title"?"確認授予稱號":"確認撤銷稱號",message:titleRecipientLabel(recipient)+"\nUID："+targetUid+"\n稱號："+chosenTitle+"\n原因："+reason,confirmLabel:"確認送出",onConfirm:()=>{
+    if(actionEpoch!==engagementSessionEpoch||!isSuperAdmin()||engagementActionBusy)return;
     engagementActionBusy=true; render();
-    Promise.resolve().then(async()=>{if(actionEpoch!==engagementSessionEpoch) return;try{const payload={targetUid,titleId,reason,operationId:`manual_${Date.now()}`};const result=action==="admin-grant-title"?await window.engagementService.grantTitle(payload):await window.engagementService.revokeTitle(payload);if(!result||result.ok!==true) throw new Error("manual-title-failed");showToast(action==="admin-grant-title"?(result.awarded===false?"玩家已擁有此稱號":"稱號已授予"):result.revoked===false?"玩家目前沒有可撤銷的此稱號":"稱號已撤銷");}catch(err){if(actionEpoch!==engagementSessionEpoch) return;console.warn("[BXH manual title]",err);showToast("稱號人工操作失敗",true);}finally{if(actionEpoch!==engagementSessionEpoch) return;engagementActionBusy=false;engagementSnapshot=null;requestEngagementSnapshot(true);render();}}); return;
+    Promise.resolve().then(async()=>{if(actionEpoch!==engagementSessionEpoch) return;try{const payload={targetUid,titleId,reason,operationId:`manual_${Date.now()}`};const result=action==="admin-grant-title"?await window.engagementService.grantTitle(payload):await window.engagementService.revokeTitle(payload);if(!result||result.ok!==true) throw new Error("manual-title-failed");showToast(action==="admin-grant-title"?(result.awarded===false?"玩家已擁有此稱號":"稱號已授予"):result.revoked===false?"玩家目前沒有可撤銷的此稱號":"稱號已撤銷");}catch(err){if(actionEpoch!==engagementSessionEpoch) return;console.warn("[BXH manual title]",err);showToast("稱號人工操作失敗",true);}finally{if(actionEpoch!==engagementSessionEpoch) return;engagementActionBusy=false;engagementSnapshot=null;requestEngagementSnapshot(true);render();}}); }}); return;
   }
   if(action==="open-account-management"){
     accountMenuOpen=false; authFormError="";
