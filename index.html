@@ -10888,7 +10888,7 @@ function renderTitleManagementPanel(){
     ${titleDefinitions.length?`<details class="account-tools-card" style="margin-top:12px;"><summary><span>稱號公開狀態管理</span><span class="hint">${titleDefinitions.length} 個定義⌄</span></summary><div class="account-tools-body">
       ${titleDefinitions.map(t=>`<div class="community-event-card"><div><b>${esc(t.name||t.id)}</b> <span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span><div class="hint">${esc(t.id)}${t.isLimited?`｜限定 ${Number(t.maxRecipients||0)||'未設定'} 名`:''}｜${t.isHidden?'隱藏':'公開'}｜${t.isArchived?'已絕版':t.isActive?'啟用中':'停用中'}</div></div><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="admin-update-title-definition" data-title-id="${esc(t.id)}" data-field="isActive" data-active="${t.isActive?'1':'0'}" data-hidden="${t.isHidden?'1':'0'}" data-archived="${t.isArchived?'1':'0'}" ${engagementActionBusy||t.isArchived?'disabled':''}>${t.isActive?'停用':'啟用'}</button><button class="btn btn-ghost btn-sm" data-action="admin-update-title-definition" data-title-id="${esc(t.id)}" data-field="isHidden" data-active="${t.isActive?'1':'0'}" data-hidden="${t.isHidden?'1':'0'}" data-archived="${t.isArchived?'1':'0'}" ${engagementActionBusy?'disabled':''}>${t.isHidden?'改為公開':'設為隱藏'}</button><button class="btn btn-danger btn-sm" data-action="admin-update-title-definition" data-title-id="${esc(t.id)}" data-field="isArchived" data-active="${t.isActive?'1':'0'}" data-hidden="${t.isHidden?'1':'0'}" data-archived="${t.isArchived?'1':'0'}" ${engagementActionBusy?'disabled':''}>${t.isArchived?'取消絕版':'標記絕版'}</button></div></div>`).join('')}
     </div></details>`:""}
-    <details class="account-tools-card" style="margin-top:12px;"><summary><span>人工授予／撤銷</span><span class="hint">所有操作留下紀錄⌄</span></summary><div class="account-tools-body">
+    <details id="title-recipient-panel" class="account-tools-card" style="margin-top:12px;"><summary><span>人工授予／撤銷</span><span class="hint">所有操作留下紀錄⌄</span></summary><div class="account-tools-body">
       <div class="grid grid-2 account-management-form-grid">
         ${renderTitleRecipientPicker()}
         <div class="field"><label>稱號</label><select id="engagement-title-id"><option value="">請選擇</option>${grantCatalog.map(t=>`<option value="${esc(t.id)}" ${titleRecipientContext().titleId===t.id?"selected":""}>${esc(t.name)}｜${esc(titleRarityLabel(t.rarity))}｜${esc(t.id)}</option>`).join("")}</select></div>
@@ -10904,6 +10904,11 @@ function titleRecipientContext(){
   const key=currentAuthUid()+':'+engagementSessionEpoch;
   if(!titleRecipientState||titleRecipientState.key!==key)titleRecipientState={key,query:'',results:[],selected:null,busy:false,error:'',titleId:'',reason:''};
   return titleRecipientState;
+}
+function resetTitleRecipientForm(){
+  titleRecipientState=null;
+  const panel=document.getElementById('title-recipient-panel');
+  if(panel)panel.open=false;
 }
 function titleRecipientPlayerId(u){return u.playerId||(u.uid?('P'+String(u.uid).slice(-6).toUpperCase()):'未提供');}
 function titleRecipientMatches(users,query){
@@ -15779,7 +15784,7 @@ function handleAction(action, target){
     return;
   }
   if(action==="toggle-account-menu"){ accountMenuOpen=!accountMenuOpen; render(); return; }
-  if(action==="super-admin-page"){ const page=target.getAttribute("data-page"); if(["accounts","checkin","titles"].includes(page)){ superAdminManagementPage=page; accountMenuOpen=false; render(); } return; }
+  if(action==="super-admin-page"){ const page=target.getAttribute("data-page"); if(["accounts","checkin","titles"].includes(page)){ if(page==="titles"&&!engagementActionBusy){resetTitleRecipientForm();engagementAdminOverview=null;requestEngagementSnapshot(true);} superAdminManagementPage=page; accountMenuOpen=false; render(); } return; }
   if(action==="account-goto-home"){ accountMenuOpen=false; appPhase="app"; activeTab="live"; render(); return; }
   if(action==="account-change-password"){ accountMenuOpen=false; authFormError=""; appPhase="admin-change-password"; render(); return; }
   if(action==="account-role-filter"){
@@ -15875,7 +15880,7 @@ function handleAction(action, target){
     openModal({type:"generic",title:action==="admin-grant-title"?"確認授予稱號":"確認撤銷稱號",message:titleRecipientLabel(recipient)+"\nUID："+targetUid+"\n稱號："+chosenTitle+"\n原因："+reason,confirmLabel:"確認送出",onConfirm:()=>{
     if(actionEpoch!==engagementSessionEpoch||!isSuperAdmin()||engagementActionBusy)return;
     engagementActionBusy=true; render();
-    Promise.resolve().then(async()=>{if(actionEpoch!==engagementSessionEpoch) return;try{const payload={targetUid,titleId,reason,operationId:`manual_${Date.now()}`};const result=action==="admin-grant-title"?await window.engagementService.grantTitle(payload):await window.engagementService.revokeTitle(payload);if(!result||result.ok!==true) throw new Error("manual-title-failed");showToast(action==="admin-grant-title"?(result.awarded===false?"玩家已擁有此稱號":"稱號已授予"):result.revoked===false?"玩家目前沒有可撤銷的此稱號":"稱號已撤銷");}catch(err){if(actionEpoch!==engagementSessionEpoch) return;console.warn("[BXH manual title]",err);showToast("稱號人工操作失敗",true);}finally{if(actionEpoch!==engagementSessionEpoch) return;engagementActionBusy=false;engagementSnapshot=null;requestEngagementSnapshot(true);render();}}); }}); return;
+    Promise.resolve().then(async()=>{if(actionEpoch!==engagementSessionEpoch) return;try{const payload={targetUid,titleId,reason,operationId:`manual_${Date.now()}`};const result=action==="admin-grant-title"?await window.engagementService.grantTitle(payload):await window.engagementService.revokeTitle(payload);if(!result||result.ok!==true) throw new Error("manual-title-failed");if(actionEpoch!==engagementSessionEpoch)return;resetTitleRecipientForm();engagementAdminOverview=null;engagementRequestGeneration++;engagementLoading=false;engagementRequestUid="";showToast(action==="admin-grant-title"?(result.awarded===false?"玩家已擁有此稱號":"稱號已授予"):result.revoked===false?"玩家目前沒有可撤銷的此稱號":"稱號已撤銷");}catch(err){if(actionEpoch!==engagementSessionEpoch) return;console.warn("[BXH manual title]",err);showToast("稱號人工操作失敗",true);}finally{if(actionEpoch!==engagementSessionEpoch) return;engagementActionBusy=false;engagementSnapshot=null;requestEngagementSnapshot(true);render();}}); }}); return;
   }
   if(action==="open-account-management"){
     accountMenuOpen=false; authFormError="";
