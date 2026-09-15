@@ -1399,6 +1399,8 @@ table.rank-table tr:last-child td{border-bottom:none;}
 .mailbox-item-title{font-weight:700;color:var(--ivory);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .mailbox-item-meta{margin-top:5px;font-size:11px;color:var(--metal);display:flex;justify-content:space-between;gap:8px;}
 .mailbox-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;color:var(--ivory);}
+.inventory-card{display:flex;gap:14px;align-items:flex-start;min-width:0}.inventory-card>div{min-width:0;overflow-wrap:anywhere}.inventory-card h3{margin-top:0;color:var(--ivory)}.inventory-image{width:76px;height:76px;object-fit:contain;border-radius:12px;flex-shrink:0;background:rgba(217,185,92,.08)}.inventory-placeholder{display:grid;place-items:center;font-size:36px}.inventory-recipient{display:block;width:100%;white-space:normal;text-align:left;margin-top:8px}
+@media(max-width:720px){.inventory-grid{grid-template-columns:1fr!important}.inventory-image{width:56px;height:56px}}
 @media(max-width:720px){.mailbox-layout{grid-template-columns:1fr}.mailbox-trigger .mailbox-label{display:none}.mailbox-trigger{padding:7px 9px}.mailbox-compose-grid{grid-template-columns:1fr!important}}
 .role-indicator{
   background:var(--panel-2);border-bottom:1px solid var(--border);
@@ -2475,6 +2477,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <div id="app"></div>
 <div id="toast-root" class="toast-wrap"></div>
 
+<script src="inventory-ui.js?v=13.31.0"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
 // Preserve an existing provider; propagate storage failures to existing callers.
@@ -2641,9 +2644,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.30.0";
+const APP_VERSION = "v13.31.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.31.0",date:"2026/09/16",timezone:"Asia/Taipei",title:"我的道具基礎系統",updateLevel:"feature",added:["玩家中心新增我的道具分頁、道具資料與分頁歷程","最高管理員搜尋玩家並發放道具，同步寄送站內信","發放請求保留至確認成功，斷線與刷新可重試同一筆"],changed:["道具按發放批次分開保存來源與期限，綁定帳號不可轉讓"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署與測試證據請見 RELEASE_v13.31.0.md；手機及登入實測另列",firebaseImpact:"新增 userItems/{uid}/lots 與 events、inventoryOperations；原子寫入既有站內信",securityRulesImpact:"沿用預設拒絕，新增資料僅後端存取",permissionImpact:"玩家只能查看自己的道具；發放僅限最高管理員，Tester 無發放權限",publicSummary:"新增我的道具、發放通知與歷程；抽獎扣票將於抽獎系統串接。"},
   {version:"v13.30.0",date:"2026/09/16",time:"",timezone:"Asia/Taipei",title:"站內信基礎系統",updateLevel:"feature",updateLevelLabel:"獨立收件匣與未讀通知",added:["玩家頂部獨立站內信入口與未讀數量","站內信收件匣、信件詳情、已讀／未讀切換","最高管理員可依玩家 UID 發送測試信"],changed:["站內信經 Callable Function 存取，不由前端直接寫入信件資料"],fixed:[],environment:"HTML + Firebase",deployStatus:"需更新前端並部署 mailboxService；完成後仍需登入帳號端到端驗證",firebaseImpact:"新增 userMail/{uid}/messages、mailboxStats、mailOperations",securityRulesImpact:"信件與未讀統計只透過後端處理",permissionImpact:"玩家只能讀取與切換自己的信件狀態；測試信僅最高管理員可發送",publicSummary:"新增獨立站內信入口、未讀提醒與收件匣，作為活動及中獎通知基礎。"},
   {"version": "v13.29.10 R1", "date": "2026/09/12", "title": "QR 相機與封存按鈕修復", "updateLevel": "fix", "added": ["相機重新啟動與返回入口"], "fixed": ["避免重複啟動及過期相機請求干擾", "重繪時重新連接預覽、無效 QR 繼續掃描", "封存賽事修改按鈕原生停用及灰化"], "changed": ["累積保留 13.29.8 功能"], "deployStatus": "已部署 .8 者只需替換 HTML；尚待 iPhone 實測", "permissionImpact": "保留既有授權，不擴充帳號權限"},
   {version:"v13.29.10",date:"2026/09/12",title:"呆滯賽事管理／獎品抽獎",updateLevel:"feature",added:["後端呆滯巡查與最高管理員恢復","一般及單淘汰一輪遊獎品抽獎、領獎、棄領與補抽"],changed:["保留 .7 R3 紀錄卡住、模式收合與頂部排版修復"],fixed:[],environment:"HTML + Firebase",deployStatus:"需更新前端、Functions 及 .8 Rules；呆滯偵測預設關閉",firebaseImpact:"新增伺服器操作紀錄與抽獎資料",securityRulesImpact:"系統關閉旗標及抽獎資料僅後端可寫",permissionImpact:"系統關閉僅最高管理員可恢復；未包含測試身分權限擴充",publicSummary:"增加呆滯賽事關閉與恢復，以及報到玩家獎品抽獎。"},
@@ -6119,7 +6123,7 @@ let findEventsFilters = { keyword:"", date:"", region:"", format:"all" };
 // 預設收合"). Each category's expand/collapse is fully independent.
 let findEventsExpanded = { ongoing:false, open:false, upcoming:false };
 let findEventsFiltersOpen = false;
-const PLAYER_TABS = [["home","賽事大廳"],["checkin","每日簽到"],["registered","我的賽程"],["host","我的房間"],["stats","戰績"],["ladder","天梯排行"],["profile","會員資料"]];
+const PLAYER_TABS = [["home","賽事大廳"],["checkin","每日簽到"],["registered","我的賽程"],["host","我的房間"],["items","我的道具"],["stats","戰績"],["ladder","天梯排行"],["profile","會員資料"]];
 let engagementSnapshot=null;
 let engagementSnapshotUid="";
 let engagementLoading=false;
@@ -11891,7 +11895,7 @@ function renderMailboxPage(){
 }
 async function handleMailbox(action,target){
   const c=mailboxContext();if(!firebaseUser?.uid||c.busy)return;
-  if(action==='mailbox-open'){c.open=true;accountMenuOpen=false;render();loadMailbox(false);return;}
+  if(action==='mailbox-open'){c.open=true;accountMenuOpen=false;render();loadMailbox(true);return;}
   if(action==='mailbox-close'){c.open=false;c.selectedId='';render();return;}
   if(action==='mailbox-refresh'){c.messages=null;c.selectedId='';loadMailbox(true);return;}
   if(action==='mailbox-select'){
@@ -11924,6 +11928,7 @@ function renderPlayerCenterLoggedIn(){
   if(playerActiveTab==="find") playerActiveTab="home";
   let content;
   if(mailboxContext().open) content = renderMailboxPage();
+  else if(playerActiveTab==="items") content = renderInventoryPage();
   else if(playerActiveTab==="registered") content = renderPlayerRegisteredTab();
   else if(playerActiveTab==="checkin") content = renderDailyCheckInPage();
   else if(playerActiveTab==="host") content = renderPlayerCommunityHostTab();
@@ -15016,6 +15021,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
 /* ==== actions ==== */
 function handleAction(action, target){
   if(action.startsWith("mailbox-")){handleMailbox(action,target);return;}
+  if(action.startsWith("inventory-")){handleInventory(action,target);return;}
   if(action.startsWith("mood-")){handleMood(action,target);return;}
   if(action.startsWith("title-recipient-")){handleTitleRecipient(action,target);return;}
   if(action.startsWith('entry-')){handleEntrySelection(action);return;}
@@ -19130,6 +19136,7 @@ init();
     async presence(payload){return callEngagementFunction("onlinePresence",payload,15000);},
     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async mailbox(payload){return callEngagementFunction("mailboxService",payload,30000);},
+    async inventory(payload){return callEngagementFunction("inventoryService",payload,30000);},
     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
     async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
     async setTitlePreferences(payload){ return callEngagementFunction("setTitlePreferences",payload); },
