@@ -6843,13 +6843,16 @@ async function performAutoArchive(){
     try{
       await flushCloudStateWrites();
       const settled=await window.cloudSync.settleTestLadderTournament(state.cloudCode,payload);
-      if(!settled||!settled.ok){ showToast((settled&&settled.message)||"測試天梯積分寫入失敗",true); return false; }
-      state.testLadderPointsAwarded=true;
+      if(!settled||!settled.ok){ state.settlementError=(settled&&settled.message)||"測試天梯積分寫入失敗";await saveRecord(state);showToast(state.settlementError,true); return false; }
+      state.testLadderPointsAwarded=settled.skipped!==true;
+      state.testLadderSettlementStatus=settled.skipped?"skipped":"awarded";
+      state.testLadderSettlementNote=settled.message||"";
+      state.testLadderSkippedPlayers=settled.skippedPlayers||[];
       state.testLadderSeasonId="TEST-S1";
       state.testLadderAwardedAt=settled.awardedAt||Date.now();
       state.testLadderResults=settled.results||[];
-      showToast(settled.alreadyAwarded?"本場測試天梯先前已完成結算，不會重複加分":"測試天梯積分結算完成");
-    }catch(e){ console.error("[test ladder settlement]",e); showToast("測試天梯結算失敗；賽事尚未封存",true); return false; }
+      showToast(settled.skipped?settled.message:settled.alreadyAwarded?"本場測試天梯先前已完成結算，不會重複加分":"測試天梯積分結算完成");
+    }catch(e){ console.error("[test ladder settlement]",e); state.settlementError="測試天梯結算失敗；賽事尚未封存，請確認連線後重試";await saveRecord(state);showToast(state.settlementError,true); return false; }
   }
 
   // Ranked events are not considered completed until the database-backed
@@ -7465,6 +7468,10 @@ function rebuildCourtAssignments(){
           current.startedAt = null;
         }
       }
+    }
+    // Preassigned first matches must become live when the tournament starts.
+    if(current && state.startedAt && ["pending","ready"].includes(current.status)){
+      current.status="in_progress";current.startedAt=current.startedAt||Date.now();current.updatedAt=Date.now();
     }
     const remaining = queue.filter(m=>m.id!==court.currentMatchId);
     const nextM = remaining[0] || null;
@@ -8471,7 +8478,10 @@ function computeStatsSingle(){
   }
   Object.values(map).forEach(p=> p.diff = p.scoreFor - p.scoreAgainst );
   const list = Object.values(map);
-  list.sort((a,b)=> b.wins-a.wins || b.diff-a.diff || b.scoreFor-a.scoreFor );
+  const places=[state.championId,state.runnerUpId,state.thirdId,state.fourthId];
+  const labels=["冠軍","亞軍","季軍","殿軍"];
+  places.forEach((id,i)=>{if(id&&map[id]){map[id].placement=i+1;map[id].status=labels[i];}});
+  list.sort((a,b)=> (a.placement||99)-(b.placement||99) || b.wins-a.wins || b.diff-a.diff || b.scoreFor-a.scoreFor );
   return list;
 }
 
@@ -8767,11 +8777,12 @@ function renderArchiveControls(){
   const hasData = state.players.length>0 || state.matches.length>0;
   if(!hasData) return "";
   if(state.archiveStatus==="completed"){
-    return `<div class="banner" style="margin-top:14px;"><span>此賽事已封存為唯讀歷史紀錄（完成於 ${state.completedAt?new Date(state.completedAt).toLocaleString():""}）。</span>
+    return `<div class="banner" style="margin-top:14px;"><span>${state.testLadderSettlementNote?esc(state.testLadderSettlementNote)+"。":""}此賽事已封存為唯讀歷史紀錄（完成於 ${state.completedAt?new Date(state.completedAt).toLocaleString():""}）。</span>
       <button class="btn btn-ghost btn-sm" data-action="unarchive-current">解除封存並編輯</button></div>`;
   }
   const canArchive = tournamentStatus()==="settling";
   return `<div class="btn-row" style="margin-top:14px;">
+    ${state.settlementError?`<p role="alert">${esc(state.settlementError)}</p>`:""}
     ${canArchive ? `<button class="btn btn-primary" data-action="archive-complete">${state.meta.ladderMode==="ranked"?"重新執行結算並完成賽事":"重新執行封存並完成賽事"}</button>` : ""}
     <button class="btn btn-ghost" data-action="save-pause">儲存並暫停</button>
     <button class="btn btn-ghost" data-action="goto-history">前往賽事紀錄</button>
@@ -13290,6 +13301,7 @@ function renderHistoryDetail(rec){
   <div class="panel postmatch-hero">
     <div class="panel-title"><span>賽後中心｜${esc(rec.meta.name||"未命名賽事")}</span><button class="btn btn-ghost btn-sm" data-action="back-to-history-list">← 返回賽事紀錄</button></div>
     ${renderSystemClosureNotice(rec)}
+    ${rec.testLadderSettlementNote?`<p role="status">${esc(rec.testLadderSettlementNote)}</p>`:""}
     <div class="hint">已完成賽事的結果、對戰表、逐場判決與參賽資料集中於此查閱。</div>
     <div class="grid grid-4" style="margin-top:14px;"><div class="stat-box"><div class="label">日期</div><div class="value small">${esc(rec.meta.date||"—")}</div></div><div class="stat-box"><div class="label">地點</div><div class="value small">${esc(rec.meta.location||"—")}</div></div><div class="stat-box"><div class="label">賽制</div><div class="value small">${esc(FORMAT_LABELS[fmt]||"")}</div></div><div class="stat-box"><div class="label">狀態</div><div class="value small">${esc(ARCHIVE_LABELS[rec.archiveStatus]||rec.archiveStatus)}</div></div></div>
     <div class="grid grid-4" style="margin-top:12px;"><div class="stat-box"><div class="label">參賽人數</div><div class="value">${(rec.players||[]).length}</div></div><div class="stat-box"><div class="label">完成場次</div><div class="value">${doneCount} / ${realMatches.length}</div></div><div class="stat-box"><div class="label">賽事耗時</div><div class="value small">${durationMin==null?"—":durationMin+" 分鐘"}</div></div><div class="stat-box"><div class="label">平均每場</div><div class="value small">${fmtDuration(avgMatchSec)}</div></div></div>
@@ -13866,7 +13878,7 @@ function renderTournamentManagementTab(){
       return `<div class="panel tournament-management-card" style="margin:0;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
           <div style="min-width:0;flex:1;">
-            <div style="font-family:var(--font-d);font-weight:700;font-size:17px;">${esc(t.name||"未命名賽事")} ${isCurrent?'<span class="badge badge-neon">目前賽事</span>':''} ${isTest?'<span class="badge badge-danger">測試｜7天</span>':''} <span class="badge ${t.ladderMode==='ranked'?'badge-neon':'badge-metal'}">${t.ladderMode==='ranked'?'積分賽事':'一般賽事'}</span> <span class="badge badge-metal">${mine?'我建立':'他人建立'}</span>${t.ladderMode==='ranked'&&t.ladderPointsAwarded?'<span class="badge badge-ok">天梯已結算</span>':''}</div>
+            <div style="font-family:var(--font-d);font-weight:700;font-size:17px;">${esc(t.name||"未命名賽事")} ${isCurrent?'<span class="badge badge-neon">目前賽事</span>':''} ${isTest?'<span class="badge badge-danger">測試｜7天</span>':''} <span class="badge ${t.ladderMode==='ranked'?'badge-neon':'badge-metal'}">${t.testLadderEnabled?'🧪 測試積分賽事':t.ladderMode==='ranked'?'積分賽事':'一般賽事'}</span> <span class="badge badge-metal">${mine?'我建立':'他人建立'}</span>${t.ladderMode==='ranked'&&t.ladderPointsAwarded?'<span class="badge badge-ok">天梯已結算</span>':''}</div>
             <div class="hint" style="margin-top:5px;">${esc(t.eventDate||"日期未設定")}　${esc(t.location||"")}　代碼 ${esc(t.code)}</div>
             <div class="hint" style="margin-top:4px;">建立者：${esc(t.createdByName || t.createdBy || "舊版未記錄")}</div>
           </div>
@@ -13913,7 +13925,7 @@ function renderAdminTournamentListModal(){
       return `<div class="panel" style="padding:14px;margin:0;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
           <div style="min-width:0;flex:1;">
-            <div style="font-family:var(--font-d);font-weight:700;font-size:17px;">${esc(t.name||"未命名賽事")} ${isCurrent?'<span class="badge badge-neon">目前賽事</span>':''} <span class="badge ${t.ladderMode==='ranked'?'badge-neon':'badge-metal'}">${t.ladderMode==='ranked'?'積分賽事':'一般賽事'}</span></div>
+            <div style="font-family:var(--font-d);font-weight:700;font-size:17px;">${esc(t.name||"未命名賽事")} ${isCurrent?'<span class="badge badge-neon">目前賽事</span>':''} <span class="badge ${t.ladderMode==='ranked'?'badge-neon':'badge-metal'}">${t.testLadderEnabled?'🧪 測試積分賽事':t.ladderMode==='ranked'?'積分賽事':'一般賽事'}</span></div>
             <div class="hint" style="margin-top:5px;">${esc(t.eventDate||"日期未設定")}　${esc(t.location||"")}　代碼 ${esc(t.code)}</div>
             <div class="hint" style="margin-top:4px;">建立者：${esc(t.createdByName || t.createdBy || "舊版未記錄")}</div>
           </div>
@@ -17415,6 +17427,7 @@ function handleAction(action, target){
     const actuallyStart=()=>{
       (async ()=>{
         state.startedAt=Date.now();
+        rebuildCourtAssignments();
         state.rosterLocked=true;
         state.meta.registrationStatus="started";
         if(state.meta.registrationEnabled && state.meta.checkinRequired && !state.meta.checkinClosedEarly){
@@ -19186,7 +19199,7 @@ init();
       const tournament=tournamentSnap.data()||{};
       if(tournament.testMode!==true||tournament.eventAuthority!=="test"||tournament.ownerUid!==actorUid) return {ok:false,reason:"not-own-test-event",message:"只能結算自己建立的測試賽事"};
       const items=(payload&&payload.participants||[]).filter(x=>x&&x.source==="test"&&/^T\d{3}$/.test(String(x.testPlayerKey||"")));
-      if(!items.length) return {ok:false,reason:"no-test-players",message:"本場沒有可寫入測試天梯的實驗玩家"};
+      if(!items.length) return {ok:true,skipped:true,reason:"no-test-players",message:"本場皆為現場新增選手，未計入 TEST-S1；僅 T001～T064 實驗玩家可累積測試積分",results:[],skippedPlayers:(payload?.participants||[]).map(p=>p.playerName)};
       const results=[]; let newWrites=0;
       for(const item of items){
         const key=String(item.testPlayerKey);
@@ -19481,6 +19494,8 @@ init();
       const items = [];
       snap.forEach(docSnap=>{
         const d = docSnap.data() || {};
+        let savedState=null;
+        try{savedState=typeof d.data==="string"?JSON.parse(d.data):d.data;}catch(e){}
         items.push({
           code: docSnap.id,
           name: d.name || "",
@@ -19489,12 +19504,13 @@ init();
           location: d.location || "",
           formatType: d.formatType || "",
           ladderMode: d.ladderMode === "ranked" ? "ranked" : "general",
+          testLadderEnabled: d.testLadderEnabled===true || savedState?.testLadderEnabled===true,
           ladderPointsAwarded: d.ladderPointsAwarded === true,
           ladderSeasonId: d.ladderSeasonId || null,
           ladderSkippedPlayers: Array.isArray(d.ladderSkippedPlayers) ? d.ladderSkippedPlayers : [],
           systemClosed:d.systemClosed===true,
           systemClosure:d.systemClosure||null,
-          tournamentPhase: d.tournamentPhase || "waiting",
+          tournamentPhase: savedState?computeTournamentPhase(savedState):(d.tournamentPhase || "waiting"),
           archiveStatus: d.archiveStatus || "ongoing",
           registrationSelection:d.registrationSelection||null,registeredCount:Number(d.registeredCount||0),
           registrationEnabled: !!d.registrationEnabled,

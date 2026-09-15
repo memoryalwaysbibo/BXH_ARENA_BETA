@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
+const s=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
+const state={players:['甲','乙','丙','丁'].map(id=>({id,name:id})),bracketSize:4,championId:'乙',runnerUpId:'丁',thirdId:'丙',fourthId:'甲',meta:{stations:1},matches:[['乙','丙'],['丁','甲'],['乙','丁'],['丙','甲']].map(([a,b],i)=>({id:'m'+i,completed:true,a:{playerId:a},b:{playerId:b},winnerId:a,scoreA:4,scoreB:0}))};
+const box={state,Date,getMatch:id=>state.matches.find(m=>m.id===id),courtKey:i=>'c'+i,stationExecutionQueue:()=>state.matches.filter(m=>!m.completed),ensureMatchStatusFields:()=>{}};vm.createContext(box);
+vm.runInContext(s.slice(s.indexOf('function computeStatsSingle(){'),s.indexOf('function computeStatsDouble(){')),box);
+assert.equal(box.computeStatsSingle().map(p=>p.id).join(','),'乙,丁,丙,甲');
+vm.runInContext(s.slice(s.indexOf('function rebuildCourtAssignments(){'),s.indexOf('// Redistributes the `station`')),box);
+state.matches=[{id:'first',station:1,status:'ready'},{id:'second',station:1,status:'ready'}];state.courtAssignments={c1:{currentMatchId:'first'}};
+box.rebuildCourtAssignments();assert.equal(state.matches[0].status,'ready');state.startedAt=1;box.rebuildCourtAssignments();assert.equal(state.matches[0].status,'in_progress');assert.equal(state.matches[1].status,'ready');
+state.matches[0].status='paused';box.rebuildCourtAssignments();assert.equal(state.matches[0].status,'paused');
+console.log('PASS final placement order, first-match activation and pause preservation');

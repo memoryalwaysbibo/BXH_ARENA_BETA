@@ -17,7 +17,7 @@ If dependencies are installed outside this repository, set
 `BXH_TEST_DEPENDENCIES` to that directory (containing `package.json` and
 `node_modules`). The test requires `FIRESTORE_EMULATOR_HOST`, supplied by the CLI.
 
-The suite loads `firestore.rules` into the emulator, then checks 36 cases/groups:
+The suite loads `firestore.rules` into the emulator, then checks 37 cases/groups:
 owner-only room/participant/registration writes; official and other-owner denial;
 `isTestAccount` restrictions; admin/staff compatibility; atomic room creation;
 and the actual `index.html` createRoom/settleTestLadderTournament methods against
