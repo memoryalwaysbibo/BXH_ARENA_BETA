@@ -10905,12 +10905,13 @@ function titleRecipientContext(){
   if(!titleRecipientState||titleRecipientState.key!==key)titleRecipientState={key,query:'',results:[],selected:null,busy:false,error:'',titleId:'',reason:''};
   return titleRecipientState;
 }
+function titleRecipientPlayerId(u){return u.playerId||(u.uid?('P'+String(u.uid).slice(-6).toUpperCase()):'未提供');}
 function titleRecipientMatches(users,query){
   const q=query.normalize('NFKC').trim().toLocaleLowerCase();
   if(!q)return [];
-  return users.filter(u=>!u.deleted&&u.accountStatus!=='deleted'&&[u.realName,u.displayName,u.nickname,u.gameId,u.playerId,u.email,u.uid].some(v=>String(v||'').normalize('NFKC').toLocaleLowerCase().includes(q))).slice(0,30);
+  return users.filter(u=>!u.deleted&&u.accountStatus!=='deleted'&&[u.realName,u.displayName,u.nickname,u.gameId,titleRecipientPlayerId(u),u.email,u.uid].some(v=>String(v||'').normalize('NFKC').toLocaleLowerCase().includes(q))).slice(0,30);
 }
-function titleRecipientLabel(u){return [u.realName||u.displayName||u.nickname||'未命名',u.gameId,u.playerId,u.email].filter(Boolean).join('｜');}
+function titleRecipientLabel(u){return [u.realName||u.displayName||u.nickname||'未命名',u.gameId,'玩家編號：'+titleRecipientPlayerId(u),u.email].filter(Boolean).join('｜');}
 function renderTitleRecipientPicker(){
   const c=titleRecipientContext();
   return `<div class="field" style="grid-column:1/-1"><label for="title-recipient-query">搜尋授予／撤銷對象</label><input id="title-recipient-query" value="${esc(c.query)}" placeholder="姓名、玩家 ID、Email 或 UID" ${c.busy||engagementActionBusy?'disabled':''}><button type="button" class="btn btn-ghost" data-action="title-recipient-search" ${c.busy||engagementActionBusy?'disabled':''}>${c.busy?'搜尋中…':'搜尋帳號'}</button><div role="status">${esc(c.error)}</div>${c.results.map(u=>`<button type="button" class="btn btn-ghost" style="display:block;width:100%;text-align:left;margin-top:8px;white-space:normal" data-action="title-recipient-select" data-uid="${esc(u.uid)}" ${engagementActionBusy?'disabled':''}>${esc(titleRecipientLabel(u))}${u.active===false?'｜停用中':''}<small style="display:block;overflow-wrap:anywhere">UID：${esc(u.uid)}</small></button>`).join('')}${c.selected?`<p role="status">已選擇：${esc(titleRecipientLabel(c.selected))}</p><label>系統識別碼（自動帶入）<input id="engagement-target-uid" readonly value="${esc(c.selected.uid)}"></label>`:'<p class="hint">搜尋後請點選正確帳號；同名玩家以玩家 ID、Email 與 UID 區分。</p>'}</div>`;
