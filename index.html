@@ -2365,6 +2365,31 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
   .super-admin-page-head .btn{width:100%;}
 }
 
+
+/* Referee UX v2: fixed left / swap / right layout, including phones. */
+.referee-workstation .ref-vs-arena{grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr)}
+.ref-vs-arena> :first-child{grid-column:1;grid-row:1}
+.ref-vs-arena>.ref-vs-mark{grid-column:2;grid-row:1}
+.ref-vs-arena> :last-child{grid-column:3;grid-row:1}
+.ref-vs-arena.swapped> :first-child{grid-column:3}
+.ref-vs-arena.swapped> :last-child{grid-column:1}
+.ref-swap{padding:6px!important;width:40px;min-height:44px;font-size:24px!important}
+.result-confirm-actions{display:flex;flex-direction:column;gap:10px}
+.result-confirm-actions #modal-confirm-btn{order:0}
+.result-confirm-actions #modal-cancel-btn{order:1}
+@media(max-width:720px){
+ .referee-workstation .ref-vs-arena{padding:10px;gap:5px;grid-template-columns:minmax(0,1fr) 40px minmax(0,1fr)}
+ .ref-vs-arena.standard .side-panel{padding:8px 4px}
+ .ref-vs-arena.standard .side-name{font-size:16px;overflow-wrap:anywhere}
+ .ref-vs-arena.standard .side-score{font-size:42px}
+ .ref-vs-arena.standard .score-btns{display:grid;grid-template-columns:1fr;gap:8px}
+ .ref-vs-arena.standard .score-btns button{font-size:12px;padding:10px 2px;min-height:44px}
+ .ref-player-side strong{font-size:18px;overflow-wrap:anywhere}
+}
+
+
+.title-card-details summary{cursor:pointer;font-size:12px;color:var(--metal);padding:10px 0}
+.title-card-details[open]{margin-bottom:10px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -6226,7 +6251,7 @@ function renderPlayerTitleCenter(p){
     <div class="btn-row" style="margin-top:12px;"><button class="btn btn-primary" data-action="player-save-title-settings" ${engagementActionBusy?'disabled':''}>${engagementActionBusy?'儲存中…':'儲存稱號設定'}</button></div>
     ${engagementError?`<div class="hint">${esc(engagementError)}；已確認儲存的設定不受影響。<button class="btn btn-ghost btn-sm" data-action="player-refresh-engagement">重新連線</button></div>`:''}
     <div class="panel-title" style="margin-top:20px;">稱號圖鑑</div>
-    ${catalog.length?(()=>{const filters=[['all','全部'],['earned','已取得'],['official','官方積分賽'],['event','主辦成就'],['activity','每日簽到'],['special','限定／特殊']];const shown=catalog.filter(t=>{if(titleGalleryFilter==='all')return true;if(titleGalleryFilter==='earned')return earnedIds.has(t.id);return titleConditionMeta(t).category===titleGalleryFilter;});return `<div class="btn-row" style="margin:10px 0 12px;gap:6px;flex-wrap:wrap;">${filters.map(([k,v])=>`<button type="button" class="btn ${titleGalleryFilter===k?'btn-primary':'btn-ghost'} btn-sm" onclick="titleGalleryFilter='${k}';render();">${v}</button>`).join('')}</div>${shown.length?`<div class="title-gallery">${shown.map(t=>{const got=earnedIds.has(t.id);const hidden=t.isHidden&&!got;const current=Number((t.progress&&t.progress.currentValue)||0),target=Math.max(1,Number(t.targetValue||1));const pct=got?100:Math.min(100,Math.round(current/target*100));return `<article class="title-card rarity-${esc(t.rarity||'common')} ${got?'':'locked'}"><div class="title-card-name"><span>${esc(hidden?'？？？':t.name)}</span><span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span></div><div class="title-card-desc">${esc(hidden?(t.hint||'達成特殊條件後解鎖'):(t.description||t.hint||'榮譽稱號'))}</div>${!hidden?titleConditionBadge(t):''}${!hidden&&t.source?`<div class="hint">來源：${esc(t.source)}</div>`:''}<div class="title-progress"><span style="width:${pct}%"></span></div><div class="hint" style="margin-top:5px;">${got?'✓ 已取得':`${current}／${target}`}${t.isActive===false?'・籌備中':''}${t.isLimited?'・限定':''}${t.isArchived?'・已絕版':''}</div></article>`;}).join('')}</div>`:`<div class="empty-state">此分類目前沒有稱號。</div>`}`;})():`<div class="empty-state">稱號圖鑑尚未發布；已取得紀錄不會受到影響。</div>`}
+    ${catalog.length?(()=>{const filters=[['all','全部'],['earned','已取得'],['official','官方積分賽'],['event','主辦成就'],['activity','每日簽到'],['special','限定／特殊']];const shown=catalog.filter(t=>{if(titleGalleryFilter==='all')return true;if(titleGalleryFilter==='earned')return earnedIds.has(t.id);return titleConditionMeta(t).category===titleGalleryFilter;});return `<div class="btn-row" style="margin:10px 0 12px;gap:6px;flex-wrap:wrap;">${filters.map(([k,v])=>`<button type="button" class="btn ${titleGalleryFilter===k?'btn-primary':'btn-ghost'} btn-sm" onclick="titleGalleryFilter='${k}';render();">${v}</button>`).join('')}</div>${shown.length?`<div class="title-gallery">${shown.map(t=>{const got=earnedIds.has(t.id);const hidden=t.isHidden&&!got;const current=Number((t.progress&&t.progress.currentValue)||0),target=Math.max(1,Number(t.targetValue||1));const pct=got?100:Math.min(100,Math.round(current/target*100));return `<article class="title-card rarity-${esc(t.rarity||'common')} ${got?'':'locked'}"><div class="title-card-name"><span>${esc(hidden?'？？？':t.name)}</span><span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span></div><details class="title-card-details"><summary>稱號說明與取得條件</summary><div class="title-card-desc">${esc(hidden?(t.hint||'達成特殊條件後解鎖'):(t.description||t.hint||'榮譽稱號'))}</div>${!hidden?titleConditionBadge(t):''}${!hidden&&t.source?`<div class="hint">來源：${esc(t.source)}</div>`:''}</details><div class="title-progress"><span style="width:${pct}%"></span></div><div class="hint" style="margin-top:5px;">${got?'✓ 已取得':`${current}／${target}`}${t.isActive===false?'・籌備中':''}${t.isLimited?'・限定':''}${t.isArchived?'・已絕版':''}</div></article>`;}).join('')}</div>`:`<div class="empty-state">此分類目前沒有稱號。</div>`}`;})():`<div class="empty-state">稱號圖鑑尚未發布；已取得紀錄不會受到影響。</div>`}
   </section>`;
 }
 let communityEventsCache = null;
@@ -9411,6 +9436,10 @@ function wrapPrintWatermark(innerHtml){
 }
 
 /* ==== tab: referee ==== */
+const refereeSwappedViews = new Set();
+function refereeViewKey(m){ return String(state.id)+":"+String(m.id); }
+function refereeViewClass(m){ return refereeSwappedViews.has(refereeViewKey(m))?" swapped":""; }
+function refereeSwapControl(m){ return `<div class="ref-vs-mark"><button class="btn btn-ghost ref-swap" data-action="referee-swap-view" data-id="${esc(m.id)}" aria-label="交換玩家位置" title="交換左右顯示位置">⇄</button></div>`; }
 const QD_PLAYER_ICON_SVG = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="20" r="10"/><path d="M12 54 C12 40 20 34 32 34 C44 34 52 40 52 54"/></svg>';
 
 function nextMatchPreviewHtml(court, stationNum){
@@ -9462,9 +9491,9 @@ function renderQuickDecisionPanel(m, court, stationNum){
   return `<div class="panel court-card referee-workstation" id="court-card-${stationNum}" style="${courtAtmosphereStyle(stationNum)}">
     ${refereeWorkstationHeader(m,stationNum)}${warnBanner}
     <div class="ref-match-toolbar"><span>${matchStatusBarHtml(m, true)}</span><div class="msc-btns">${state.startedAt&&m.status==="in_progress"?`<button class="btn btn-ghost btn-sm" data-action="pause-match-status" data-id="${m.id}">暫停</button>`:""}${state.startedAt&&m.status==="paused"?`<button class="btn btn-ghost btn-sm" data-action="resume-match-status" data-id="${m.id}">恢復</button>`:""}${state.startedAt&&m.status!=="completed"?`<button class="btn btn-ghost btn-sm" data-action="skip-match" data-id="${m.id}">跳過</button>`:""}</div></div>
-    <div class="ref-vs-arena quick">
+    <div class="ref-vs-arena quick${refereeViewClass(m)}">
       <button class="ref-player-side side-a" data-action="open-quick-confirm" data-id="${m.id}" data-winner="${esc(m.a.playerId)}" ${m.completed||busy||preStartLocked?'disabled':''}><span class="ref-player-label">選手 A</span><strong>${esc(aName)}</strong><span class="ref-win-call">判定獲勝</span></button>
-      <div class="ref-vs-mark">VS</div>
+      ${refereeSwapControl(m)}
       <button class="ref-player-side side-b" data-action="open-quick-confirm" data-id="${m.id}" data-winner="${esc(m.b.playerId)}" ${m.completed||busy||preStartLocked?'disabled':''}><span class="ref-player-label">選手 B</span><strong>${esc(bName)}</strong><span class="ref-win-call">判定獲勝</span></button>
     </div>
     <div class="ref-next-box"><span>下一場</span>${nextMatchPreviewHtml(court, stationNum)}</div>
@@ -9535,7 +9564,7 @@ function renderCourtCard(stationNum){
         ${state.startedAt&&m.status!=="completed" ? `<button class="btn btn-ghost btn-sm" data-action="skip-match" data-id="${m.id}" ${stationLocked?'disabled':''}>跳過</button>` : ""}
       </div>
     </div>
-    <div class="ref-vs-arena standard">
+    <div class="ref-vs-arena standard${refereeViewClass(m)}">
       <div class="side-panel ${winSide==='A'?'leading':''}">
         <div class="side-name">${esc(aName)}</div>
         <div class="side-score">${m.scoreA}</div>
@@ -9543,7 +9572,7 @@ function renderCourtCard(stationNum){
           ${scoreBtn('A','spin')}${scoreBtn('A','knockout')}${scoreBtn('A','burst')}${scoreBtn('A','extreme')}
         </div>
       </div>
-      <div class="ref-vs-mark" aria-hidden="true">VS</div>
+      ${refereeSwapControl(m)}
       <div class="side-panel ${winSide==='B'?'leading':''}">
         <div class="side-name">${esc(bName)}</div>
         <div class="side-score">${m.scoreB}</div>
@@ -9567,7 +9596,6 @@ function renderCourtCard(stationNum){
 
 function renderRefereeScoringControls(){
   const current=state.meta.scoringMode==="quick"?"quick":"standard";
-  const groups=state.bracketSize>0?roundGroupsForScoringConfig():[];
   return `<div class="panel referee-scoring-settings">
     <div class="panel-title">判定模式</div>
     <p class="hint" style="margin-bottom:10px;">設定尚未開始場次的預設判定方式。已開始或已完成場次不受影響。</p>
@@ -9581,21 +9609,7 @@ function renderRefereeScoringControls(){
         <div class="smc-desc">不記比分，由裁判直接選擇勝方。</div>
       </button>
     </div>
-    ${groups.length?`<div class="settings-mini-title" style="margin-top:16px;">各輪判定模式</div>
-      <div class="round-scoring-list">
-        ${groups.map(g=>{
-          const locked=roundGroupLocked(g);
-          const mode=g.matches[0].scoringMode||current;
-          return `<div class="round-scoring-row">
-            <span class="rsr-label">${esc(g.label)}</span>
-            <div class="btn-row" style="margin:0;">
-              <button class="btn btn-sm ${mode==="standard"?"btn-primary":"btn-ghost"}" data-action="set-round-scoring-mode" data-bracket="${g.bracket}" data-round="${g.round}" data-mode="standard" ${locked||!canConfigureCurrentTournament()?'disabled':''}>標準計分</button>
-              <button class="btn btn-sm ${mode==="quick"?"btn-primary":"btn-ghost"}" data-action="set-round-scoring-mode" data-bracket="${g.bracket}" data-round="${g.round}" data-mode="quick" ${locked||!canConfigureCurrentTournament()?'disabled':''}>簡易判定</button>
-            </div>
-            ${locked?'<span class="hint">此輪已開始或已有結果，無法切換</span>':''}
-          </div>`;
-        }).join("")}
-      </div>`:""}
+
   </div>`;
 }
 
@@ -12742,8 +12756,16 @@ function renderPlayerProfileEditModal(){
   </div>`;
 }
 
+let playerProfileSection="basic", playerProfileSectionUid=null;
 function renderPlayerProfileTab(p){
-  return `
+  const profileUid=currentAuthUid();
+  if(playerProfileSectionUid!==profileUid){playerProfileSectionUid=profileUid;playerProfileSection="basic";}
+  const sectionNav=`<div class="btn-row" role="tablist" aria-label="會員資料分類" style="margin-bottom:16px">
+    <button class="btn ${playerProfileSection==='basic'?'btn-primary':'btn-ghost'}" role="tab" aria-selected="${playerProfileSection==='basic'}" data-action="profile-section" data-section="basic">基本資料</button>
+    <button class="btn ${playerProfileSection==='titles'?'btn-primary':'btn-ghost'}" role="tab" aria-selected="${playerProfileSection==='titles'}" data-action="profile-section" data-section="titles">我的稱號</button>
+  </div>`;
+  if(playerProfileSection==="titles") return sectionNav+safeEngagementRender(()=>renderPlayerTitleCenter(p));
+  return `${sectionNav}
     <div class="panel" style="text-align:center;">
       <div class="player-id-badge player-avatar-large" style="margin:0 auto;">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="玩家頭像">` : ROLE_ICON_PLAYER}</div>
       <div class="btn-row" style="justify-content:center;margin-top:12px;">
@@ -12774,7 +12796,6 @@ function renderPlayerProfileTab(p){
       </div>
     </div>
     ${playerPrivacyPanel()}
-    ${safeEngagementRender(()=>renderPlayerTitleCenter(p))}
     ${(()=>{
       if(!myLadderProfileCache && !myLadderProfileLoading) setTimeout(()=>loadMyLadderProfile(false),0);
       const l=myLadderProfileCache || defaultLadderProfile((firebaseUser&&firebaseUser.uid)||"",p.displayName||p.realName||"",(ladderPublicData.control&&ladderPublicData.control.currentSeason)||"S1");
@@ -13031,10 +13052,6 @@ function renderModal(){
             ${esc(winName)}<br><span style="font-size:12px;">${winScore} 分</span><br>
             <span class="result-tag result-tag-win">系統判定獲勝</span>
           </div>
-          <div class="radio-opt result-loser" tabindex="-1" aria-disabled="true">
-            ${esc(loseName)}<br><span style="font-size:12px;color:var(--metal)">${loseScore} 分</span><br>
-            <span class="result-tag result-tag-lose">未達獲勝條件</span>
-          </div>
         </div>`;
         mm.confirmDisabled = false;
       }
@@ -13062,10 +13079,6 @@ function renderModal(){
           ${esc(winName)}<br>
           <span class="result-tag result-tag-win">本場獲勝</span>
         </div>
-        <div class="radio-opt result-loser" tabindex="-1" aria-disabled="true">
-          ${esc(loseName)}<br>
-          <span class="result-tag result-tag-lose">本場落敗</span>
-        </div>
       </div>
       <p class="hint" style="margin-top:10px;">簡易判定模式不記錄比分。確認後，獲勝選手將直接晉級下一輪。</p>`;
       mm.confirmDisabled = false;
@@ -13082,7 +13095,7 @@ function renderModal(){
     <div class="modal-box">
       <h3>${esc(mm.title)}</h3>
       ${body}
-      <div class="btn-row">
+      <div class="btn-row ${(mm.type==="confirm-result"||mm.type==="confirm-quick")?"result-confirm-actions":""}">
         <button id="modal-cancel-btn" class="btn btn-ghost btn-block" data-action="modal-cancel" type="button">${esc(mm.cancelLabel||"取消")}</button>
         <button id="modal-confirm-btn" class="btn ${mm.danger?'btn-danger-solid':'btn-primary'} btn-block" data-action="modal-confirm" type="button" ${(mm.confirmDisabled||mm.confirmBusy)?'disabled':''}>${mm.confirmBusy?'處理中……':esc(mm.confirmLabel||"確認")}</button>
       </div>
@@ -14863,6 +14876,12 @@ function handleAction(action, target){
       showToast(isExistingAccount ? "玩家資料已補齊" : "玩家資料設定完成");
     })();
     return;
+  }
+  if(action==="profile-section"){
+    const section=target.getAttribute("data-section");
+    if(section!=="basic"&&section!=="titles") return;
+    playerProfileSection=section;
+    renderPreservingScroll(); return;
   }
   if(action==="test-ladder-refresh"){
     if(canReadTestLadder()) loadTestLadder(true);
@@ -16748,6 +16767,13 @@ function handleAction(action, target){
     setTimeout(()=>{ pb.style.display="none"; }, 500);
     return;
   }
+  if(action==="referee-swap-view"){
+    const m=getMatch(target.getAttribute("data-id"));
+    if(!m || !m.a || !m.b) return;
+    const key=refereeViewKey(m);
+    if(refereeSwappedViews.has(key)) refereeSwappedViews.delete(key); else refereeSwappedViews.add(key);
+    renderPreservingScroll(); return;
+  }
   if(action==="referee-set-scoring-mode"){
     if(!canConfigureCurrentTournament()){ showToast("目前身分沒有修改判定模式的權限",true); return; }
     const newMode=target.getAttribute("data-mode");
@@ -16755,12 +16781,12 @@ function handleAction(action, target){
     if(newMode===state.meta.scoringMode) return;
     openModal({type:"generic",title:"切換判定模式",message:"確定要切換尚未開始場次的預設判定模式嗎？已開始或已完成場次不受影響。",confirmLabel:"確定切換",onConfirm:()=>{
       state.meta.scoringMode=newMode;
+      state.meta.roundScoringModes={};
+      resetSettingsFormDraft();
       state.matches.forEach(mt=>{
         if(mt.isBye) return;
-        const key=mt.bracket+":"+mt.round;
-        const hasOverride=state.meta.roundScoringModes&&state.meta.roundScoringModes[key];
         const locked=mt.completed||mt.status==="completed"||mt.status==="in_progress"||(mt.log&&mt.log.length>0)||mt.scoreA>0||mt.scoreB>0;
-        if(!hasOverride&&!locked) mt.scoringMode=newMode;
+        if(!locked) mt.scoringMode=newMode;
       });
       saveState(); render();
       showToast("已更新裁判台預設判定模式");
@@ -16776,25 +16802,6 @@ function handleAction(action, target){
     settingsFormDraft.scoringMode=newMode;
     settingsFormDraftDirty=true;
     render();
-    return;
-  }
-  if(action==="set-round-scoring-mode"){
-    syncSettingsDraftFromDom();
-    const bracket = target.getAttribute("data-bracket");
-    const round = Number(target.getAttribute("data-round"));
-    const newMode = target.getAttribute("data-mode");
-    if(newMode!=="standard" && newMode!=="quick") return;
-    const group = roundGroupsForScoringConfig().find(g=>g.bracket===bracket && g.round===round);
-    if(!group){ showToast("找不到此輪次", true); return; }
-    if(roundGroupLocked(group)){ showToast("此輪已開始或已有結果，無法切換", true); return; }
-    const doSwitch = ()=>{
-      if(!state.meta.roundScoringModes) state.meta.roundScoringModes = {};
-      state.meta.roundScoringModes[bracket+":"+round] = newMode;
-      group.matches.forEach(m=>{ m.scoringMode = newMode; });
-      saveState(); render();
-      showToast("已更新該輪判定模式");
-    };
-    openModal({ type:"generic", title:"切換判定模式", message:"確定要切換比賽判定模式嗎？已開始或已完成的場次不會受到影響。", confirmLabel:"確定切換", onConfirm:doSwitch });
     return;
   }
   if(action==="set-checkin-required"){
@@ -17413,7 +17420,7 @@ function handleAction(action, target){
         publicTournamentsCache=null;
         myRegistrationsCache=null;
         resetAdminRegistrationsCache();
-        activeTab="live";
+        activeTab="referee";
         render();
         showToast(synced===false
           ? "賽事已於本機開始，但雲端同步尚未完成；請確認網路後再操作報名資料"
