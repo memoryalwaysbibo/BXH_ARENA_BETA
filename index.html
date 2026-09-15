@@ -2426,6 +2426,14 @@ header.topbar .header-account-controls .account-menu-wrap{width:auto!important;m
 .online-presence span{font-size:11px;line-height:1.4;}.online-presence strong{font-size:15px;line-height:1.4;color:#f5e4a2;font-variant-numeric:tabular-nums;}
 @media(max-width:899px){header.topbar .header-account-controls{grid-column:1/-1;justify-self:stretch;width:100%;gap:8px;}.stickytop.mode-shell>header.topbar{row-gap:10px!important;}}
 
+/* Keep the count beside the LIVE LINK caption, within the connection block. */
+header.topbar .brandtext .t-conn-heading{grid-area:kicker;display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0;}
+header.topbar .brandtext .t-conn-heading .t-conn-kicker{white-space:nowrap;flex:0 0 auto;}
+header.topbar .brandtext .top-connection-state:has(.online-presence){max-width:100%!important;width:100%!important;}
+header.topbar .brandtext .t-conn-heading .online-presence{min-height:20px;padding:3px 6px;gap:4px;line-height:1;}
+header.topbar .brandtext .t-conn-heading .online-presence span{font-size:8px;line-height:1.2;letter-spacing:0;}
+header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;line-height:1.2;letter-spacing:0;}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -11210,7 +11218,7 @@ function renderAccountManagementScreen(){
       <div class="logo-wrap"><div class="logo-glow"></div><img class="logo" src="${LOGO_SRC}" alt="BXH"></div>
       <div class="brandtext"><span class="t1"><span class="w-bxh">BXH</span><span class="w-arena">ARENA</span></span><span class="t2">戰鬥陀螺賽事系統 <small style="opacity:.55;font-size:9px;">${APP_VERSION}</small></span>${topbarConnectionRailHtml()}</div>
       <div class="spacer"></div>
-      <div class="header-account-controls">${renderOnlinePresence()}${accountMenuHtml()}</div>
+      <div class="header-account-controls">${accountMenuHtml()}</div>
     </header>${renderSuperAdminManagementTabs(page)}</div>
     ${accountMenuOverlayHtml()}
     <main class="account-management-main">
@@ -11802,7 +11810,7 @@ function renderPlayerCenterLoggedIn(){
       <div class="logo-wrap"><div class="logo-glow"></div><img class="logo" src="${LOGO_SRC}" alt="BXH"></div>
       <div class="brandtext"><span class="t1"><span class="w-bxh">BXH</span><span class="w-arena">ARENA</span></span><span class="t2">戰鬥陀螺賽事系統</span>${topbarConnectionRailHtml()}</div>
       <div class="spacer"></div>
-      <div class="header-account-controls">${renderOnlinePresence()}${accountMenuHtml()}</div>
+      <div class="header-account-controls">${accountMenuHtml()}</div>
     </header>
     ${renderPlayerNavHtml()}
     </div>
@@ -13911,8 +13919,8 @@ function refreshPresenceBadge(){
  const allowed=userProfile?.role==='super_admin';
  document.querySelectorAll('.online-presence').forEach(el=>{if(!allowed)el.remove();});
  if(!allowed)return;
- document.querySelectorAll('header.topbar .header-account-controls').forEach(host=>{
-  if(!host.querySelector('.online-presence'))host.insertAdjacentHTML('afterbegin',renderOnlinePresence());
+ document.querySelectorAll('header.topbar .t-conn-heading').forEach(host=>{
+  if(!host.querySelector('.online-presence'))host.insertAdjacentHTML('beforeend',renderOnlinePresence());
  });
  document.querySelectorAll('.online-presence [data-presence-count]').forEach(el=>{el.textContent=presenceLabel();});
 }
@@ -13930,7 +13938,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 function topbarConnectionRailHtml(){
   const s = topbarCloudIndicatorDescriptor();
   return `<div class="top-connection-state" aria-label="BXH LIVE LINK：${esc(s.label)}">
-    <div class="t-conn-kicker">BXH LIVE LINK</div>
+    <div class="t-conn-heading"><div class="t-conn-kicker">BXH LIVE LINK</div>${renderOnlinePresence()}</div>
     <div class="t-rule ${esc(s.key)}"></div>
     <div class="t-conn-status"><span class="t-conn-dot ${esc(s.key)}"></span><strong>${esc(s.en)}</strong><span>｜${esc(s.label)}</span></div>
   </div>`;
@@ -14328,7 +14336,7 @@ function renderApp(){
           ${topbarConnectionRailHtml()}
         </div>
         <div class="spacer"></div>
-        <div class="header-account-controls">${renderOnlinePresence()}${accountMenuHtml()}</div>
+        <div class="header-account-controls">${accountMenuHtml()}</div>
       </header>
       ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← 返回賽事大廳</button><span>目前為公開觀賽模式</span></div>`:""}
       <nav class="tabs">
