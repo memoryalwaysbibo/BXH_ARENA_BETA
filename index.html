@@ -2410,7 +2410,9 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
 .mood-window{overflow:hidden;border-radius:8px;background:#0d1010;padding:12px;color:#e7e6df;outline-offset:3px}
 .mood-track{display:flex;width:max-content;max-width:none}.mood-track:has(.mood-group){animation:mood-scroll 45s linear infinite}
 .mood-group{display:flex;gap:32px;padding-right:32px}.mood-item{white-space:nowrap}.mood-item b{color:#d7c179}
-.mood-track.paused,.mood-window:hover .mood-track,.mood-window:focus .mood-track{animation-play-state:paused}
+.mood-track.paused{animation-play-state:paused}
+.mood-window{cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.mood-window:focus-visible{outline:2px solid #d7c179}
 .mood-compose{margin-top:16px}.mood-compose label{display:block;margin-bottom:8px}
 .mood-compose input{appearance:none;-webkit-appearance:none;width:100%;box-sizing:border-box;background:#202124!important;color:#eee!important;border:1px solid #70613c;border-radius:12px;padding:12px;font:inherit;font-size:16px;min-height:48px;color-scheme:dark}
 .mood-manage{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #37372c;padding:12px 0;margin-top:8px}.mood-manage span{overflow-wrap:anywhere}.mood-manage button{flex-shrink:0}
@@ -11842,8 +11844,8 @@ function renderMoodStation(){
  const items=c.messages||[];
  const group=items.map(m=>`<span class="mood-item"><b>${esc(m.name)}</b>：${esc(m.text)}</span>`).join('');
  return `<section class="panel mood-station" aria-label="心情小棧">
- <div class="mood-head"><b>☕ 心情小棧</b><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="mood-pause" aria-pressed="${c.paused}">${c.paused?'播放':'暫停'}</button><button class="btn btn-primary btn-sm" data-action="mood-open" ${c.busy?'disabled':''}>${c.open?'收合':'我有話要說'}</button></div></div>
- <div class="mood-window" tabindex="0" aria-label="玩家留言，聚焦可暫停"><div class="mood-track ${c.paused?'paused':''}">${items.length?`<div class="mood-group">${group}</div><div class="mood-group" aria-hidden="true">${group}</div>`:`<span>${c.loading?'正在載入心情…':'今天想說什麼？分享你的陀螺心情。'}</span>`}</div></div>
+ <div class="mood-head"><b>☕ 心情小棧</b><div class="btn-row"><button class="btn btn-primary btn-sm" data-action="mood-open" ${c.busy?'disabled':''}>${c.open?'收合':'我有話要說'}</button></div></div>
+ <div class="mood-window" role="button" tabindex="0" aria-pressed="${c.paused}" aria-label="按住暫停玩家留言，放開繼續"><div class="mood-track ${c.paused?'paused':''}">${items.length?`<div class="mood-group">${group}</div><div class="mood-group" aria-hidden="true">${group}</div>`:`<span>${c.loading?'正在載入心情…':'今天想說什麼？分享你的陀螺心情。'}</span>`}</div></div>
  ${c.error?`<p class="hint" role="status">${esc(c.error)} <button class="btn btn-ghost btn-sm" data-action="mood-refresh" ${c.loading||c.busy?'disabled':''}>重試</button></p>`:''}
  ${c.open?`<div class="mood-compose"><label for="mood-text">我有話要說</label><input id="mood-text" maxlength="300" value="${esc(c.text)}" placeholder="寫下 1～30 字的小心情" ${c.busy?'disabled':''}><div class="hint"><span id="mood-count">${moodLength(c.text)}</span>／30 字｜每人一則，60 秒可更新，展示 24 小時。</div><div class="btn-row"><button class="btn btn-primary" data-action="mood-post" ${c.busy?'disabled':''}>${c.busy?'處理中…':'發布留言'}</button><button class="btn btn-ghost" data-action="mood-cancel" ${c.busy?'disabled':''}>取消</button></div>
  ${items.filter(m=>m.isOwn||c.canModerate).map(m=>`<div class="mood-manage"><span><b>${esc(m.name)}</b>：${esc(m.text)}</span><button class="btn btn-ghost btn-sm" data-action="mood-remove" data-message-id="${esc(m.id)}" ${c.busy?'disabled':''}>${m.isOwn?'刪除我的留言':'下架'}</button></div>`).join('')}</div>`:''}</section>`;
@@ -11852,7 +11854,6 @@ async function handleMood(action,target){
  const c=moodContext();if(!firebaseUser?.uid||guestReadOnlyMode||c.busy)return;
  if(action==='mood-open'){c.open=!c.open;render();return;}
  if(action==='mood-cancel'){c.open=false;c.text='';c.operationId=null;c.error='';render();return;}
- if(action==='mood-pause'){c.paused=!c.paused;render();return;}
  if(action==='mood-refresh'){if(!c.loading)loadMood();return;}
  let payload;
  if(action==='mood-post'){
@@ -11869,6 +11870,25 @@ async function handleMood(action,target){
  }catch(e){if(c===moodContext())c.error=moodError(e);}
  finally{if(c===moodContext()){c.busy=false;render();}}
 }
+let moodHeldPointer=null;
+function setMoodHeld(held){
+ const c=moodContext();c.paused=held;
+ const viewport=document.querySelector('.mood-window');
+ viewport?.querySelector('.mood-track')?.classList.toggle('paused',held);
+ viewport?.setAttribute('aria-pressed',String(held));
+}
+function releaseMoodHold(){moodHeldPointer=null;setMoodHeld(false);}
+document.addEventListener('pointerdown',e=>{
+ if(e.button!==0||!e.target?.closest?.('.mood-window'))return;
+ moodHeldPointer=e.pointerId;setMoodHeld(true);
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])document.addEventListener(type,e=>{if(e.pointerId===moodHeldPointer)releaseMoodHold();});
+document.addEventListener('pointerout',e=>{const viewport=e.target?.closest?.('.mood-window');if(viewport&&e.pointerId===moodHeldPointer&&!viewport.contains(e.relatedTarget))releaseMoodHold();});
+document.addEventListener('keydown',e=>{if(e.target?.matches('.mood-window')&&['Enter',' '].includes(e.key)){e.preventDefault();setMoodHeld(true);}});
+document.addEventListener('keyup',e=>{if(['Enter',' '].includes(e.key)&&moodState?.paused)releaseMoodHold();});
+document.addEventListener('focusout',e=>{if(e.target?.matches('.mood-window'))releaseMoodHold();});
+window.addEventListener('blur',releaseMoodHold);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseMoodHold();});
 document.addEventListener('input',e=>{if(e.target?.id==='mood-text'){const c=moodContext();c.text=e.target.value;c.operationId=null;const count=document.getElementById('mood-count');if(count)count.textContent=moodLength(c.text);}});
 setInterval(()=>{if(appPhase==='player-center'&&playerActiveTab==='home'&&firebaseUser?.uid&&!guestReadOnlyMode){const c=moodContext();if(!c.loading&&!c.busy)loadMood();}},60000);
 
