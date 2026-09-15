@@ -14701,7 +14701,12 @@ function handleAction(action, target){
       const c=titleEditorContext();if(c.busy)return;
       const t=engagementAdminOverview?.definitions?.find(t=>t.id===target.getAttribute('data-title-id'));if(!t)return;
       c.draft={...t,titleId:t.id,create:false,expectedVersion:t.version||1};c.message='已選擇「'+(t.name||t.id)+'」';render();
-      document.getElementById('title-editor-panel')?.scrollIntoView({block:'start',behavior:'smooth'});return;
+      // Explicit navigation supersedes the delayed viewport restoration from render().
+      ++__viewportRestoreToken;
+      const panel=document.getElementById('title-editor-panel');
+      if(panel){panel.open=true;panel.style.scrollMarginTop='160px';panel.scrollIntoView({block:'start',behavior:'instant'});}
+      document.getElementById('title-editor-name')?.focus({preventScroll:true});
+      return;
     }
   }
   if(action.startsWith('title-editor-')||action.startsWith('title-pioneer-')){handleTitleEditor(action);return;}
