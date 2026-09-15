@@ -13907,7 +13907,15 @@ function renderOnlinePresence(){
  if(!presenceAllowed())return '';
  return `<div class="online-presence" title="最近 2 分鐘內使用本站的已登入帳號；同帳號多開只算一人，不含遊客。"><span>● 線上人數</span><strong data-presence-count>${presenceLabel()}</strong></div>`;
 }
-function refreshPresenceBadge(){document.querySelectorAll('.online-presence').forEach(el=>{if(!presenceAllowed()){el.remove();return;}const n=el.querySelector('[data-presence-count]');if(n)n.textContent=presenceLabel();});}
+function refreshPresenceBadge(){
+ const allowed=presenceAllowed();
+ document.querySelectorAll('.online-presence').forEach(el=>{if(!allowed)el.remove();});
+ if(!allowed)return;
+ document.querySelectorAll('header.topbar .header-account-controls').forEach(host=>{
+  if(!host.querySelector('.online-presence'))host.insertAdjacentHTML('afterbegin',renderOnlinePresence());
+ });
+ document.querySelectorAll('.online-presence [data-presence-count]').forEach(el=>{el.textContent=presenceLabel();});
+}
 async function tickPresence(){
  const c=presenceContext();refreshPresenceBadge();
  if(document.visibilityState!=='visible'||!firebaseUser?.uid||userProfile?.active!==true||!window.engagementService?.presence||c.busy||Date.now()-c.lastAttempt<45000)return;
