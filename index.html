@@ -6223,6 +6223,7 @@ function titleConditionMeta(t){
     total_checkins:{category:'activity',label:'每日簽到',scope:'由 BXH ARENA 每日簽到紀錄累積；與賽事報到完全分離。',task:`累積完成 ${target} 天每日簽到`},
     checkin_streak:{category:'activity',label:'每日簽到',scope:'依 BXH ARENA 連續每日簽到紀錄計算；中斷後重新累積。',task:`連續完成 ${target} 天每日簽到`},
     pioneer_quota:{category:'special',label:'限定任務',scope:'依 BXH ARENA 開拓者資格與限定名額規則判定。',task:'完成開拓者限定資格'},
+    profile_completion:{category:'activity',label:'玩家資料',scope:'依會員資料的八項完整度計算；首次達到 100% 自動授予。',task:'個人資料完成度達到 100%'},
     manual:{category:'special',label:'特殊榮譽',scope:'由 BXH 官方依指定資格人工授予，不依一般賽事進度自動取得。',task:'符合 BXH 官方指定授予資格'}
   };
   return map[type]||{category:'special',label:'特殊任務',scope:'依此稱號公告的指定條件判定。',task:(t&&t.description)||'完成指定條件'};
@@ -10878,6 +10879,7 @@ function renderTitleManagementPanel(){
       <div class="btn-row"><button class="btn btn-ghost" data-action="admin-seed-initial-titles" ${engagementActionBusy?'disabled':''}>建立／同步第一批稱號</button><button class="btn btn-primary" data-action="admin-save-engagement-settings" ${engagementActionBusy?'disabled':''}>儲存稱號設定</button></div>
     </div>
 
+    ${renderAdminTitleList()}
     <details class="account-tools-card" style="margin-top:14px;"><summary><span>歷史賽事稱號補算</span><span class="hint">先預覽、再逐批執行⌄</span></summary><div class="account-tools-body">
       <div class="banner warn"><span>只讀取既有天梯交易並核對正式積分賽；不改寫 tournaments。每批最多25筆，且只判定已開啟 retroactiveEnabled 的稱號。</span></div>
       <div class="hint">目前游標：${engagementBackfillCursor?esc(engagementBackfillCursor):'從第一筆開始'}</div>
@@ -11013,6 +11015,63 @@ function managedFeatureError(e){
  if(text.includes('名單尚未同步'))return text;
  return '操作未完成：'+String(e?.code||'client-error')+'｜'+text.slice(0,180)+'。請截圖此訊息以便確認原因。';
 }
+let adminTitleListState=null;
+function adminTitleListContext(){
+ const key=currentAuthUid()+':'+engagementSessionEpoch;
+ if(!adminTitleListState||adminTitleListState.key!==key)adminTitleListState={key,filter:'all',sort:'date-desc',busy:false,error:''};
+ return adminTitleListState;
+}
+function titleIssuedCount(t){return Number.isFinite(Number(t.issuedCount))&&t.issuedCount!=null?Number(t.issuedCount):null;}
+function titleIssueDate(t){
+ const v=t.publishedAt||t.createdAt;
+ const ms=typeof v==='number'?v:v&&typeof v==='object'?Number(v.seconds||v._seconds||0)*1000:Date.parse(v||'');
+ return Number.isFinite(ms)&&ms>0?ms:0;
+}
+function visibleAdminTitles(defs,c){
+ const rank={common:0,rare:1,epic:2,legendary:3,limited:4,eternal:5};
+ const collator=new Intl.Collator('zh-Hant-u-co-stroke',{numeric:true,sensitivity:'base'});
+ const byName=(a,b)=>collator.compare(a.name||a.id,b.name||b.id)||String(a.id).localeCompare(String(b.id));
+ return defs.filter(t=>c.filter==='issued'?titleIssuedCount(t)>0:c.filter==='disabled'?t.isActive!==true: true).slice().sort((a,b)=>{
+  if(c.sort==='name')return byName(a,b);
+  if(c.sort.startsWith('rarity'))return ((rank[a.rarity]??-1)-(rank[b.rarity]??-1))*(c.sort==='rarity-desc'?-1:1)||byName(a,b);
+  const ad=titleIssueDate(a),bd=titleIssueDate(b);
+  if(!ad||!bd)return ad?-1:bd?1:byName(a,b);
+  return (ad-bd)*(c.sort==='date-asc'?1:-1)||byName(a,b);
+ });
+}
+async function reloadAdminTitleList(){
+ const c=adminTitleListContext();if(c.busy||!isSuperAdmin())return;
+ c.busy=true;c.error='';
+ try{
+  const result=await window.engagementService.getAdminOverview();
+  if(c!==adminTitleListContext()||!isSuperAdmin())return;
+  if(!result?.ok||!Array.isArray(result.definitions))throw Error('title-overview-invalid');
+  engagementAdminOverview=result;
+ }catch(e){if(c===adminTitleListContext())c.error=managedFeatureError(e);}
+ finally{if(c===adminTitleListContext()){c.busy=false;render();}}
+}
+function renderAdminTitleList(){
+ const c=adminTitleListContext(),defs=engagementAdminOverview?.definitions;
+ if(!defs&&!c.busy&&!c.error){c.busy=true;setTimeout(()=>{c.busy=false;if(c===adminTitleListContext())reloadAdminTitleList();},0);}
+ const items=visibleAdminTitles(defs||[],c);
+ const counts={all:defs?.length,issued:defs?.filter(t=>titleIssuedCount(t)>0).length,disabled:defs?.filter(t=>t.isActive!==true).length};
+ return `<section class="super-admin-section"><div class="panel-title">稱號清單</div>
+ <div class="btn-row">${Object.entries({all:'全部',issued:'已發放',disabled:'停用'}).map(([key,label])=>`<button class="btn ${c.filter===key?'btn-primary':'btn-ghost'}" data-action="title-list-filter" data-filter="${key}" aria-pressed="${c.filter===key}">${label}（${counts[key]??'—'}）</button>`).join('')}</div>
+ <label>瀏覽排序<select id="admin-title-list-sort">${Object.entries({'date-desc':'發行日期：新到舊','date-asc':'發行日期：舊到新','rarity-desc':'品級：高到低','rarity-asc':'品級：低到高',name:'名稱：筆畫順序'}).map(([key,label])=>`<option value="${key}" ${c.sort===key?'selected':''}>${label}</option>`).join('')}</select></label>
+ <div class="btn-row"><button class="btn btn-ghost" data-action="title-list-refresh" ${c.busy?'disabled':''}>${c.busy?'載入中…':'重新整理清單'}</button></div>
+ <p class="hint">發行日期優先使用發布時間，未記錄時使用建立時間。已發放包含曾授予後撤銷的紀錄；測試發放另行標示。</p>
+ ${c.error?`<p role="alert">${esc(c.error)}</p>`:''}
+ ${items.map(t=>`<div class="community-event-card"><b>${esc(t.name||t.id)}</b> <span class="rarity-badge rarity-${esc(t.rarity||'common')}">${esc(titleRarityLabel(t.rarity))}</span>
+ <div class="hint">${t.isActive?'啟用中':'停用'}${t.isArchived?'｜已絕版':''}｜發行：${titleIssueDate(t)?new Date(titleIssueDate(t)).toLocaleDateString('zh-TW',{timeZone:'Asia/Taipei'}):'未記錄'}</div>
+ <div class="hint">累計授予：${titleIssuedCount(t)??'尚未取得'}${Number(t.testIssuedCount)>0?'（含測試 '+Number(t.testIssuedCount)+'）':''}</div>
+ <details><summary>查看說明與條件</summary><p>${esc(t.description||'尚無說明')}</p>${titleConditionBadge(t)}</details>
+ <button class="btn btn-ghost" data-action="title-list-edit" data-title-id="${esc(t.id)}" ${titleEditorContext().busy?'disabled':''}>選擇並編輯</button></div>`).join('')}
+ ${defs&&!items.length?'<p class="hint">此分類目前沒有稱號。</p>':''}</section>`;
+}
+document.addEventListener('change',ev=>{
+ if(ev.target?.id==='admin-title-list-sort'&&isSuperAdmin()){adminTitleListContext().sort=ev.target.value;render();}
+});
+
 let titleEditorState={uid:'',draft:null,preview:null,busy:false,message:''};
 function titleEditorContext(){
  const uid=currentAuthUid();if(titleEditorState.uid!==uid)titleEditorState={uid,draft:null,preview:null,busy:false,message:''};
@@ -11020,13 +11079,13 @@ function titleEditorContext(){
 }
 function renderTitleEditor(){
  if(!isSuperAdmin())return '';const c=titleEditorContext(),d=c.draft,defs=engagementAdminOverview?.definitions||[];
- return `<details class="account-tools-card" ${c.busy||c.message?'open':''}><summary><span>稱號建立／編輯中心</span></summary><div class="account-tools-body">
+ return `<details id="title-editor-panel" class="account-tools-card" ${c.busy||c.message?'open':''}><summary><span>稱號建立／編輯中心</span></summary><div class="account-tools-body">
  <div class="hint">直接建立或編輯稱號；一般條件、門檻與稀有度都可在這裡設定，不需要修改程式。只有新增全新的判定條件類型時才需要更新後端。</div>
  <div class="btn-row"><button class="btn btn-primary" data-action="title-editor-new" ${c.busy?'disabled':''}>＋ 新增稱號</button><button class="btn btn-ghost" data-action="title-editor-load" ${c.busy?'disabled':''}>重新載入</button></div><label>選擇既有稱號<select id="title-editor-select"><option value="">— 新稱號草稿 —</option>${defs.map(t=>`<option value="${esc(t.id)}" ${d.titleId===t.id?'selected':''}>${esc(t.name||t.id)}</option>`).join('')}</select></label>
  <div class="field"><label>稱號名稱</label><input id="title-editor-name" maxlength="60" value="${esc(d.name)}"></div>
  <div class="field"><label>稀有度／視覺等級</label><select id="title-editor-rarity">${Object.entries({common:'一般',rare:'稀有',epic:'史詩',legendary:'傳說',limited:'限定',eternal:'永恆'}).map(([k,v])=>`<option value="${k}" ${(d.rarity||'common')===k?'selected':''}>${v}｜${k}</option>`).join('')}</select><div class="hint">稀有度會同步決定玩家端稱號顏色、徽章與圖鑑卡片樣式。</div></div>
- <div class="field"><label>達成條件</label><select id="title-editor-condition">${Object.entries({manual:'指定 UID 人工授予',hosted_tournaments:'成功完成主辦場數',completed_tournaments:'正式賽事完成場數',championships:'正式賽事冠軍次數',best_placement:'正式賽事名次不大於',total_checkins:'正式累積簽到天數',checkin_streak:'正式連續簽到天數',...(d.titleId==='pioneer'?{pioneer_quota:'開拓者累計100人名額'}:{})}).map(([k,v])=>`<option value="${k}" ${d.conditionType===k?'selected':''}>${v}</option>`).join('')}</select></div>
- <div class="field"><label>門檻數值（人工授予填1）</label><input id="title-editor-target" type="number" min="1" max="100000" value="${Number(d.targetValue)||1}"></div>
+ <div class="field"><label>達成條件</label><select id="title-editor-condition">${Object.entries({manual:'指定 UID 人工授予',profile_completion:'個人資料完成度達100%',hosted_tournaments:'成功完成主辦場數',completed_tournaments:'正式賽事完成場數',championships:'正式賽事冠軍次數',best_placement:'正式賽事名次不大於',total_checkins:'正式累積簽到天數',checkin_streak:'正式連續簽到天數',...(d.titleId==='pioneer'?{pioneer_quota:'開拓者累計100人名額'}:{})}).map(([k,v])=>`<option value="${k}" ${d.conditionType===k?'selected':''}>${v}</option>`).join('')}</select></div>
+ <div class="field"><label>門檻數值（人工授予填1，資料完成度填100）</label><input id="title-editor-target" type="number" min="1" max="100000" value="${Number(d.targetValue)||1}"></div>
  <div class="field"><label>說明</label><textarea id="title-editor-description" maxlength="500">${esc(d.description||'')}</textarea></div>
  <label><input id="title-editor-active" type="checkbox" ${d.isActive?'checked':''}>啟用</label>
  <div class="btn-row"><button class="btn btn-primary" data-action="title-editor-save" ${c.busy?'disabled':''}>儲存稱號</button>${!d.create?`<button class="btn btn-danger" data-action="title-editor-delete" ${c.busy?'disabled':''}>刪除稱號</button>`:''}</div>
@@ -11043,7 +11102,7 @@ function bindTitleEditor(){
   c.draft=t?{...t,titleId:t.id,create:false,expectedVersion:t.version||1}:null;render();
  });
  for(const [id,key,type] of [['name','name','text'],['rarity','rarity','text'],['description','description','text'],['condition','conditionType','text'],['target','targetValue','number'],['active','isActive','boolean']]){
-  document.getElementById('title-editor-'+id)?.addEventListener('input',e=>{c.draft[key]=type==='boolean'?e.target.checked:type==='number'?Number(e.target.value):e.target.value;});
+  document.getElementById('title-editor-'+id)?.addEventListener('input',e=>{c.draft[key]=type==='boolean'?e.target.checked:type==='number'?Number(e.target.value):e.target.value;if(key==='conditionType'&&e.target.value==='profile_completion'){c.draft.targetValue=100;render();}});
  }
 }
 async function handleTitleEditor(action){
@@ -11078,7 +11137,7 @@ async function handleTitleEditor(action){
    if(uid!==currentAuthUid())return;
    if(!saved||saved.ok!==true)throw new Error('title-save-unconfirmed');
    c.draft={...payload,create:false,expectedVersion:Number(payload.expectedVersion||0)+1};
-   c.message='稱號已儲存。人工授予型稱號請至下方指定 UID 發放。';
+   c.message=payload.conditionType==='manual'?'稱號已儲存，請至人工授予區選擇玩家。':'稱號已儲存，系統將依條件自動判定。';
    showToast(`稱號「${payload.name||saved.titleId||'未命名稱號'}」已儲存`);
    try{
     const overview=await window.engagementService.getAdminOverview();if(uid!==currentAuthUid())return;
@@ -14634,6 +14693,17 @@ function handleAction(action, target){
   if(action.startsWith('entry-')){handleEntrySelection(action);return;}
   if(state.entrySelection?.status==='drawn'&&['import-roster-from-registrations','update-players','quick-add-players','load-test','random-test-roster','load-online-roster'].includes(action)){showToast('名額已抽定，請使用依序遞補；不能覆寫正式名單',true);return;}
   if(action.startsWith('card-')){handlePlayerCard(action,target);return;}
+  if(action.startsWith('title-list-')){
+    if(!isSuperAdmin())return;
+    if(action==='title-list-refresh'){reloadAdminTitleList();return;}
+    if(action==='title-list-filter'){adminTitleListContext().filter=target.getAttribute('data-filter');render();return;}
+    if(action==='title-list-edit'){
+      const c=titleEditorContext();if(c.busy)return;
+      const t=engagementAdminOverview?.definitions?.find(t=>t.id===target.getAttribute('data-title-id'));if(!t)return;
+      c.draft={...t,titleId:t.id,create:false,expectedVersion:t.version||1};c.message='已選擇「'+(t.name||t.id)+'」';render();
+      document.getElementById('title-editor-panel')?.scrollIntoView({block:'start',behavior:'smooth'});return;
+    }
+  }
   if(action.startsWith('title-editor-')||action.startsWith('title-pioneer-')){handleTitleEditor(action);return;}
 
   if(action.startsWith("account-batch-")){handleAccountBatch(action,target);return;}
@@ -15529,6 +15599,7 @@ function handleAction(action, target){
       userProfile=Object.assign({},userProfile,result.profile||{});
       playerProfileEditOpen=false;
       publicTournamentsCache=null; myRegistrationsCache=null;
+      engagementRequestGeneration++;engagementLoading=false;engagementSnapshot=null;requestEngagementSnapshot(true);
       showToast(oldRealName!==realName?"資料已更新；本名修改後需重新由後台確認":"會員資料已更新");
       render();
     })();
