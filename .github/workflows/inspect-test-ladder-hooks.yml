@@ -1,31 +1,51 @@
-name: Inspect isolated tester ladder hooks
+name: Implement isolated test ladder foundation
 on:
   push:
     branches: [main]
     paths: ['.github/workflows/inspect-test-ladder-hooks.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate test ladder implementation hooks
+      - name: Patch isolated test ladder foundation
         shell: python
         run: |
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          lines=s.splitlines()
-          keys=['settleLadderTournament(', 'buildLadderSettlementPayload(', 'performAutoArchive', '測試玩家', 'source:"test"', "source:'test'", 'test-player', 'random-test', 'ladderMode===', 'ladderMode==']
-          hits=[]
-          for i,line in enumerate(lines):
-            if any(k.lower() in line.lower() for k in keys): hits.append(i)
-          windows=[]
-          for i in hits:
-            a=max(0,i-18); b=min(len(lines),i+45)
-            if windows and a<=windows[-1][1]: windows[-1][1]=max(windows[-1][1],b)
-            else: windows.append([a,b])
-          for a,b in windows:
-            print(f'===== lines {a+1}-{b} =====')
-            for n in range(a,b): print(f'{n+1}: {lines[n][:2400]}')
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          def one(a,b,label):
+            global s
+            if a not in s: raise SystemExit('missing '+label)
+            s=s.replace(a,b,1)
+          one('ladderMode:m.ladderMode==="ranked"?"ranked":"general",','ladderMode:(isTester()&&state.testLadderEnabled===true)?"ranked":(m.ladderMode==="ranked"?"ranked":"general"),','draft')
+          one('st.meta.ladderMode="general";\n  st.meta.name=ensureTestName(st.meta.name);','st.meta.ladderMode="general";\n  if(typeof st.testLadderEnabled!=="boolean") st.testLadderEnabled=false;\n  st.meta.name=ensureTestName(st.meta.name);','sandbox')
+          one("${ladderModeLocked||isTester()?'disabled':''}>\n          <div class=\"smc-title\">積分賽事</div><div class=\"smc-desc\">納入 BXH 天梯，完賽後自動結算積分。</div>","${ladderModeLocked?'disabled':''}>\n          <div class=\"smc-title\">${isTester()?'測試積分賽事':'積分賽事'}</div><div class=\"smc-desc\">${isTester()?'寫入獨立測試天梯，不影響正式 BXH 天梯。':'納入 BXH 天梯，完賽後自動結算積分。'}</div>",'ui')
+          one('if(isTester() && action==="set-ladder-mode" && target.getAttribute("data-mode")==="ranked"){\n    showToast("封測賽事僅提供天梯預覽，不會寫入正式積分。", true);\n    return;\n  }','if(isTester() && action==="set-ladder-mode" && target.getAttribute("data-mode")==="ranked" && !isOwnTestTournament()){\n    showToast("封測帳號只能在自己的測試賽事啟用測試天梯。", true);\n    return;\n  }','guard')
+          one('state.meta.ladderMode=isTester()?"general":(d.ladderMode==="ranked"?"ranked":"general");\n    state.meta.scoringMode=','state.testLadderEnabled=isTester()?(d.ladderMode==="ranked"):false;\n    state.meta.ladderMode=isTester()?"general":(d.ladderMode==="ranked"?"ranked":"general");\n    state.meta.scoringMode=','publish')
+          one('state.meta.ladderMode=isTester()?"general":(d.ladderMode==="ranked"?"ranked":"general");\n      if(isTester()) markTesterSandboxState(state);','state.testLadderEnabled=isTester()?(d.ladderMode==="ranked"):false;\n      state.meta.ladderMode=isTester()?"general":(d.ladderMode==="ranked"?"ranked":"general");\n      if(isTester()) markTesterSandboxState(state);','save')
+          one('id:uid("p"),\n      name,\n      checkedIn:true,\n      source:"test"','id:uid("p"),\n      name,\n      testPlayerKey:"T"+String(BXH_TEST_PLAYER_POOL.indexOf(name)+1).padStart(3,"0"),\n      checkedIn:true,\n      source:"test"','stable-key')
+          one('return { localPlayerId:p.id, playerUid:p.registrationUid||p.accountUid||p.uid||null, playerName:p.name, source:p.source||"onsite", placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };','return { localPlayerId:p.id, testPlayerKey:p.testPlayerKey||null, playerUid:p.registrationUid||p.accountUid||p.uid||null, playerName:p.name, source:p.source||"onsite", placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };','payload')
+          p.write_text(s,encoding='utf-8')
+          r=Path('firestore.rules'); q=r.read_text(encoding='utf-8')
+          marker='    // ==== publicPlayers/{uid} 公開玩家資料 ===='
+          block='''    // ==== 隔離式測試天梯：永不與正式 ladder* 集合共用 ====\n    match /testLadderPlayers/{testPlayerKey} {\n      allow read: if isTester() || isAdminOrAbove();\n      allow create, update: if isTester()\n        && testPlayerKey.matches('^T[0-9]{3}$')\n        && request.resource.data.testPlayerKey == testPlayerKey\n        && request.resource.data.playerName is string\n        && request.resource.data.seasonId == 'TEST-S1'\n        && request.resource.data.seasonPoints is number && request.resource.data.seasonPoints >= 0\n        && request.resource.data.careerPoints is number && request.resource.data.careerPoints >= 0\n        && request.resource.data.totalEvents is number && request.resource.data.totalEvents >= 0;\n      allow delete: if isSuperAdmin();\n    }\n\n    match /testLadderTransactions/{logId} {\n      allow get, list: if isTester() || isAdminOrAbove();\n      allow create: if isTester()\n        && request.resource.data.type == 'event'\n        && request.resource.data.eventAuthority == 'test'\n        && request.resource.data.actorUid == request.auth.uid\n        && request.resource.data.testPlayerKey.matches('^T[0-9]{3}$')\n        && request.resource.data.seasonId == 'TEST-S1'\n        && request.resource.data.delta is number && request.resource.data.delta >= 0;\n      allow update, delete: if false;\n    }\n\n'''
+          if marker not in q: raise SystemExit('missing rules marker')
+          r.write_text(q.replace(marker,block+marker,1),encoding='utf-8')
+      - name: Verify isolation
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8'); r=Path('firestore.rules').read_text(encoding='utf-8')
+          for k in ['testLadderEnabled','testPlayerKey','testLadderPlayers','testLadderTransactions','TEST-S1']: assert k in s+r,k
+          assert 'testLadderPlayers' not in s[s.find('async settleLadderTournament'):s.find('async settleLadderTournament')+12000]
+          print('test ladder foundation isolated from official ladder')
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html firestore.rules
+          git commit -m "Add isolated test ladder foundation"
+          git push
