@@ -1,0 +1,41 @@
+name: Apply v13.30.0 mailbox frontend
+on:
+  push:
+    paths:
+      - '.github/patches/v13.30.0-mailbox.patch'
+      - '.github/workflows/apply-v13.30.0-mailbox.yml'
+permissions:
+  contents: write
+concurrency:
+  group: bxh-beta-frontend-patches
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply v13.30.0 patch safely
+        run: |
+          git apply --check .github/patches/v13.30.0-mailbox.patch
+          git apply .github/patches/v13.30.0-mailbox.patch
+      - name: Run available frontend regression tests
+        run: |
+          node tests/mailbox-ui.cjs
+          node tests/player-card.cjs
+          node tests/referee-view.cjs
+          node tests/settings-draft.cjs
+          node tests/storage-adapter.cjs
+          node tests/title-recipient.cjs
+          node tests/tournament-regression.cjs
+      - name: Commit traceable release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html RELEASE_v13.30.0.md tests/mailbox-ui.cjs
+          git commit -m "v13.30.0 Add mailbox foundation"
+          git push origin HEAD:main
