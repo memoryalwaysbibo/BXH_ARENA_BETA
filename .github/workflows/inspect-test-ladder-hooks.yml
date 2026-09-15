@@ -11,21 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate exact ladder functions
+      - name: Locate test ladder implementation hooks
         shell: python
         run: |
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           lines=s.splitlines()
-          keys=['awardLadderPointsForTournament','ladderPlayers','ladderTransactions','renderLadder','loadLadder','queryLadder','ladderRanking','isTesterRole','eventAuthority']
+          keys=['settleLadderTournament(', 'buildLadderSettlementPayload(', 'performAutoArchive', '測試玩家', 'source:"test"', "source:'test'", 'test-player', 'random-test', 'ladderMode===', 'ladderMode==']
           hits=[]
           for i,line in enumerate(lines):
             if any(k.lower() in line.lower() for k in keys): hits.append(i)
           windows=[]
           for i in hits:
-            a=max(0,i-8); b=min(len(lines),i+30)
+            a=max(0,i-18); b=min(len(lines),i+45)
             if windows and a<=windows[-1][1]: windows[-1][1]=max(windows[-1][1],b)
             else: windows.append([a,b])
           for a,b in windows:
             print(f'===== lines {a+1}-{b} =====')
-            for n in range(a,b): print(f'{n+1}: {lines[n][:2200]}')
+            for n in range(a,b): print(f'{n+1}: {lines[n][:2400]}')
