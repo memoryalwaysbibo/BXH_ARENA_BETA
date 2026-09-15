@@ -17076,7 +17076,8 @@ function handleAction(action, target){
 
     if(isTester()){
       d.name=ensureTestName(d.name);
-      d.ladderMode="general";
+      // Preserve the tester's ranked choice in the draft. Official meta.ladderMode
+      // remains general; testLadderEnabled is the isolated test-ladder switch.
       markTesterSandboxState(state);
     }
 
@@ -17156,7 +17157,7 @@ function handleAction(action, target){
     return;
   }
   if(action==="set-ladder-mode"){
-    if(!hasAdminAccess()){ showToast("目前身分沒有修改賽事類型的權限", true); return; }
+    if(!hasAdminAccess() && !isOwnTestTournament()){ showToast("目前身分沒有修改賽事類型的權限", true); return; }
     syncSettingsDraftFromDom();
     ensureSettingsFormDraft();
     const mode = target.getAttribute("data-mode")==="ranked" ? "ranked" : "general";
