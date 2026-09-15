@@ -1,0 +1,215 @@
+diff --git a/RELEASE_v13.30.0.md b/RELEASE_v13.30.0.md
+new file mode 100644
+index 0000000..62bf3f9
+--- /dev/null
++++ b/RELEASE_v13.30.0.md
+@@ -0,0 +1,40 @@
++# BXH ARENA Beta v13.30.0｜站內信基礎系統
++
++日期：2026-09-16（Asia/Taipei）
++
++## 本版目標
++
++建立獨立站內信入口與可靠的個人收件匣，作為日後抽獎中獎、活動異動與道具發放通知的共用基礎。
++
++## 新增內容
++
++- 玩家中心頂部新增獨立「站內信」按鈕與未讀數量。
++- 收件匣顯示最近 50 封信、寄件來源、時間及已讀狀態。
++- 點開未讀信件時自動標記已讀，也可手動改回未讀。
++- 最高管理員可透過玩家 Firebase UID 發送測試信。
++- 站內信呼叫 `mailboxService`，前端不直接寫入信件與未讀統計。
++
++## 後端資料
++
++- `userMail/{uid}/messages/{messageId}`：個人信件。
++- `mailboxStats/{uid}`：未讀數量。
++- `mailOperations/{operationId}`：寄送冪等紀錄，避免重試重複寄信。
++
++## 權限與限制
++
++- 有效登入帳號只能透過後端查看及切換自己的信件狀態。
++- 測試寄信僅非測試的最高管理員可執行。
++- 收件人必須是存在且有效的帳號。
++- 第一階段尚未包含玩家互寄、附件、刪除、封存與外部 Email。
++- 抽獎中獎與道具通知尚未串接。
++
++## 部署方式
++
++- 前端：更新 `index.html`，由 GitHub Pages 部署。
++- 後端：`BXH_ARENA_Functions_Deploy` 的 `deploy-beta-mailbox.yml` 合併既有 Beta 補丁後，只部署 `mailboxService` 到 `bxh-arena-beta`。
++
++## 驗證要求
++
++- 前端腳本語法及既有測試。
++- 後端 mailbox core 測試與組裝後 Functions check。
++- 部署後以最高管理員寄信給測試玩家，驗證未讀數字、讀信、改回未讀與重新登入後狀態。
+diff --git a/index.html b/index.html
+index 9824b7a..ebb7ca1 100644
+--- a/index.html
++++ b/index.html
+@@ -1388,6 +1388,18 @@ table.rank-table tr:last-child td{border-bottom:none;}
+ .account-menu button:last-child{border-bottom:none;}
+ .account-menu button:hover{background:var(--panel-2);}
+ .account-menu button.danger{color:var(--danger);}
++.mailbox-trigger{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:7px 11px;border:1px solid var(--gold-dim);border-radius:18px;background:rgba(217,185,92,.08);color:var(--ivory);font-family:var(--font-d);font-size:12px;white-space:nowrap;}
++.mailbox-trigger.active{border-color:var(--gold);color:var(--gold);background:rgba(217,185,92,.15);}
++.mailbox-unread{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#b72235;color:#fff;font-size:11px;font-weight:800;box-shadow:0 0 10px rgba(183,34,53,.45);}
++.mailbox-layout{display:grid;grid-template-columns:minmax(250px,360px) minmax(0,1fr);gap:14px;align-items:start;}
++.mailbox-list{display:flex;flex-direction:column;gap:8px;}
++.mailbox-item{width:100%;text-align:left;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);color:var(--white);}
++.mailbox-item.unread{border-color:var(--gold-dim);background:linear-gradient(135deg,rgba(217,185,92,.12),var(--panel-2));}
++.mailbox-item.active{border-color:var(--gold);}
++.mailbox-item-title{font-weight:700;color:var(--ivory);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
++.mailbox-item-meta{margin-top:5px;font-size:11px;color:var(--metal);display:flex;justify-content:space-between;gap:8px;}
++.mailbox-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;color:var(--ivory);}
++@media(max-width:720px){.mailbox-layout{grid-template-columns:1fr}.mailbox-trigger .mailbox-label{display:none}.mailbox-trigger{padding:7px 9px}.mailbox-compose-grid{grid-template-columns:1fr!important}}
+ .role-indicator{
+   background:var(--panel-2);border-bottom:1px solid var(--border);
+   padding:8px 16px;font-size:12.5px;color:var(--metal);text-align:center;
+@@ -2629,9 +2641,10 @@ let cloudTestBusy = false;
+ let cloudTestResult = null;
+ 
+ /* ==== version tracking system ==== */
+-const APP_VERSION = "v13.29.10";
++const APP_VERSION = "v13.30.0";
+ const APP_VERSION_DISPLAY = "V13";
+ const VERSION_HISTORY = [
++  {version:"v13.30.0",date:"2026/09/16",time:"",timezone:"Asia/Taipei",title:"站內信基礎系統",updateLevel:"feature",updateLevelLabel:"獨立收件匣與未讀通知",added:["玩家頂部獨立站內信入口與未讀數量","站內信收件匣、信件詳情、已讀／未讀切換","最高管理員可依玩家 UID 發送測試信"],changed:["站內信經 Callable Function 存取，不由前端直接寫入信件資料"],fixed:[],environment:"HTML + Firebase",deployStatus:"需更新前端並部署 mailboxService；完成後仍需登入帳號端到端驗證",firebaseImpact:"新增 userMail/{uid}/messages、mailboxStats、mailOperations",securityRulesImpact:"信件與未讀統計只透過後端處理",permissionImpact:"玩家只能讀取與切換自己的信件狀態；測試信僅最高管理員可發送",publicSummary:"新增獨立站內信入口、未讀提醒與收件匣，作為活動及中獎通知基礎。"},
+   {"version": "v13.29.10 R1", "date": "2026/09/12", "title": "QR 相機與封存按鈕修復", "updateLevel": "fix", "added": ["相機重新啟動與返回入口"], "fixed": ["避免重複啟動及過期相機請求干擾", "重繪時重新連接預覽、無效 QR 繼續掃描", "封存賽事修改按鈕原生停用及灰化"], "changed": ["累積保留 13.29.8 功能"], "deployStatus": "已部署 .8 者只需替換 HTML；尚待 iPhone 實測", "permissionImpact": "保留既有授權，不擴充帳號權限"},
+   {version:"v13.29.10",date:"2026/09/12",title:"呆滯賽事管理／獎品抽獎",updateLevel:"feature",added:["後端呆滯巡查與最高管理員恢復","一般及單淘汰一輪遊獎品抽獎、領獎、棄領與補抽"],changed:["保留 .7 R3 紀錄卡住、模式收合與頂部排版修復"],fixed:[],environment:"HTML + Firebase",deployStatus:"需更新前端、Functions 及 .8 Rules；呆滯偵測預設關閉",firebaseImpact:"新增伺服器操作紀錄與抽獎資料",securityRulesImpact:"系統關閉旗標及抽獎資料僅後端可寫",permissionImpact:"系統關閉僅最高管理員可恢復；未包含測試身分權限擴充",publicSummary:"增加呆滯賽事關閉與恢復，以及報到玩家獎品抽獎。"},
+   {version:"v13.29.7",date:"2026/09/12",time:"",timezone:"Asia/Taipei",title:"紀錄／選單修復＋雙模式頂部介面統一 R3",updateLevel:"patch",updateLevelLabel:"歷史紀錄讀取穩定性",
+@@ -11832,12 +11845,86 @@ function renderPlayerNavHtml(){
+   </nav>`;
+ }
+ 
++let mailboxState=null;
++function mailboxContext(){
++  const key=currentAuthUid()+':'+engagementSessionEpoch;
++  if(!mailboxState||mailboxState.key!==key)mailboxState={key,open:false,loading:false,busy:false,messages:null,unreadCount:0,selectedId:'',error:''};
++  return mailboxState;
++}
++function mailboxDate(value){
++  if(!value)return '—';
++  try{return new Date(value).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(e){return '—';}
++}
++function mailboxError(error){
++  const raw=String(error?.message||error||'');
++  const map={'mail-not-found':'找不到這封信，可能已被移除。','recipient-not-found':'找不到指定玩家帳號。','recipient-inactive':'指定玩家帳號目前不可使用。','super-admin-required':'只有最高管理員可以發送系統信。','invalid-subject':'信件標題請輸入 1～80 字。','invalid-body':'信件內容請輸入 1～2000 字。','operation-conflict':'這次寄送識別碼與先前內容不一致，請重新操作。','auth-required':'請重新登入後再查看站內信。','service-unavailable':'站內信服務尚未部署。'};
++  for(const [key,value] of Object.entries(map))if(raw.includes(key))return value;
++  return '站內信暫時無法連線，請稍後重試。';
++}
++async function loadMailbox(force=false){
++  const c=mailboxContext();
++  if(!firebaseUser?.uid||c.loading||c.busy||(!force&&Array.isArray(c.messages)))return;
++  c.loading=true;c.error='';render();
++  try{
++    if(!window.engagementService?.mailbox)throw Error('service-unavailable');
++    const result=await window.engagementService.mailbox({action:'list'});
++    if(c!==mailboxContext())return;
++    if(!result?.ok)throw Error('load-failed');
++    c.messages=Array.isArray(result.messages)?result.messages:[];
++    c.unreadCount=Math.max(0,Number(result.unreadCount)||0);
++    if(c.selectedId&&!c.messages.some(m=>m.id===c.selectedId))c.selectedId='';
++  }catch(error){if(c===mailboxContext())c.error=mailboxError(error);}
++  finally{if(c===mailboxContext()){c.loading=false;render();}}
++}
++function mailboxButtonHtml(){
++  const c=mailboxContext();
++  return `<button class="mailbox-trigger ${c.open?'active':''}" data-action="mailbox-open" aria-label="站內信${c.unreadCount?'，'+c.unreadCount+'封未讀':''}"><span aria-hidden="true">✉️</span><span class="mailbox-label">站內信</span>${c.unreadCount?`<span class="mailbox-unread">${c.unreadCount>99?'99+':c.unreadCount}</span>`:''}</button>`;
++}
++function renderMailboxPage(){
++  const c=mailboxContext(),messages=c.messages||[],selected=messages.find(m=>m.id===c.selectedId)||null;
++  return `<section class="panel"><div class="panel-title"><span>✉️ 站內信</span><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="mailbox-refresh" ${c.loading||c.busy?'disabled':''}>重新整理</button><button class="btn btn-ghost btn-sm" data-action="mailbox-close">返回賽事大廳</button></div></div>
++    <p class="hint">未讀 ${c.unreadCount} 封｜系統通知、活動及中獎訊息會集中在這裡。</p>
++    ${c.error?`<div class="auth-error" role="alert">${esc(c.error)}</div>`:''}
++    ${c.loading&&!c.messages?'<div class="empty-state">正在載入站內信……</div>':`<div class="mailbox-layout"><div class="mailbox-list">${messages.length?messages.map(m=>`<button class="mailbox-item ${m.readAt?'':'unread'} ${selected?.id===m.id?'active':''}" data-action="mailbox-select" data-message-id="${esc(m.id)}"><div class="mailbox-item-title">${m.readAt?'':'● '}${esc(m.subject||'系統通知')}</div><div class="mailbox-item-meta"><span>${esc(m.senderName||'BXH ARENA')}</span><span>${esc(mailboxDate(m.createdAt))}</span></div></button>`).join(''):'<div class="empty-state">目前沒有站內信。</div>'}</div><div>${selected?`<article class="panel"><div class="panel-title">${esc(selected.subject||'系統通知')}</div><p class="hint">${esc(selected.senderName||'BXH ARENA')}｜${esc(mailboxDate(selected.createdAt))}</p><div class="mailbox-body">${esc(selected.body||'')}</div><div class="btn-row" style="margin-top:16px"><button class="btn btn-ghost" data-action="mailbox-toggle-read" data-message-id="${esc(selected.id)}" data-read="${selected.readAt?'1':'0'}" ${c.busy?'disabled':''}>標記為${selected.readAt?'未讀':'已讀'}</button></div></article>`:'<div class="panel empty-state">請選擇一封信件查看內容。</div>'}</div></div>`}
++    ${isSuperAdmin()?`<details class="panel" style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">最高管理員｜發送測試信</summary><div class="grid grid-2 mailbox-compose-grid" style="margin-top:14px"><div class="field"><label>玩家 UID</label><input id="mailbox-recipient" maxlength="128" placeholder="貼上 Firebase UID"></div><div class="field"><label>信件標題</label><input id="mailbox-subject" maxlength="80" placeholder="例如：站內信測試"></div><div class="field" style="grid-column:1/-1"><label>信件內容</label><textarea id="mailbox-body" maxlength="2000" placeholder="輸入通知內容"></textarea></div></div><button class="btn btn-primary" data-action="mailbox-send-test" ${c.busy?'disabled':''}>發送測試信</button><p class="hint">本階段以 UID 測試寄送；活動中獎通知會在抽獎模組串接。</p></details>`:''}
++  </section>`;
++}
++async function handleMailbox(action,target){
++  const c=mailboxContext();if(!firebaseUser?.uid||c.busy)return;
++  if(action==='mailbox-open'){c.open=true;accountMenuOpen=false;render();loadMailbox(false);return;}
++  if(action==='mailbox-close'){c.open=false;c.selectedId='';render();return;}
++  if(action==='mailbox-refresh'){c.messages=null;c.selectedId='';loadMailbox(true);return;}
++  if(action==='mailbox-select'){
++    c.selectedId=target.getAttribute('data-message-id')||'';const message=(c.messages||[]).find(m=>m.id===c.selectedId);
++    render();if(message&&!message.readAt)handleMailbox('mailbox-toggle-read',target);return;
++  }
++  let payload;
++  if(action==='mailbox-toggle-read')payload={action:target.getAttribute('data-read')==='1'?'markUnread':'markRead',messageId:target.getAttribute('data-message-id'),operationId:crypto.randomUUID()};
++  else if(action==='mailbox-send-test'){
++    const targetUid=(document.getElementById('mailbox-recipient')?.value||'').trim(),subject=(document.getElementById('mailbox-subject')?.value||'').trim(),body=(document.getElementById('mailbox-body')?.value||'').trim();
++    if(!targetUid||!subject||!body){showToast('請完整填寫玩家 UID、標題與內容',true);return;}
++    if(!confirm(`確認發送「${subject}」給指定玩家？`))return;
++    payload={action:'send',targetUid,subject,body,type:'test',operationId:crypto.randomUUID()};
++  }else return;
++  c.busy=true;c.error='';render();
++  try{
++    if(!window.engagementService?.mailbox)throw Error('service-unavailable');
++    const result=await window.engagementService.mailbox(payload);if(c!==mailboxContext())return;if(!result?.ok)throw Error('operation-failed');
++    if(action==='mailbox-send-test')showToast(result.replayed?'這封測試信先前已送出':'測試信已送出');
++    c.busy=false;c.messages=null;await loadMailbox(true);
++  }catch(error){if(c===mailboxContext())c.error=mailboxError(error);}
++  finally{if(c===mailboxContext()){c.busy=false;render();}}
++}
++
+ function renderPlayerCenterLoggedIn(){
+   const p = userProfile;
++  const mail=mailboxContext();
++  if(mail.messages===null&&!mail.loading&&!mail.busy&&!mail.error)setTimeout(()=>loadMailbox(false),0);
+   // v13.24.0: legacy cached "find" tab now resolves into the unified lobby.
+   if(playerActiveTab==="find") playerActiveTab="home";
+   let content;
+-  if(playerActiveTab==="registered") content = renderPlayerRegisteredTab();
++  if(mailboxContext().open) content = renderMailboxPage();
++  else if(playerActiveTab==="registered") content = renderPlayerRegisteredTab();
+   else if(playerActiveTab==="checkin") content = renderDailyCheckInPage();
+   else if(playerActiveTab==="host") content = renderPlayerCommunityHostTab();
+   else if(playerActiveTab==="stats") content = renderPlayerStatsTab(p);
+@@ -11849,7 +11936,7 @@ function renderPlayerCenterLoggedIn(){
+       <div class="logo-wrap"><div class="logo-glow"></div><img class="logo" src="${LOGO_SRC}" alt="BXH"></div>
+       <div class="brandtext"><span class="t1"><span class="w-bxh">BXH</span><span class="w-arena">ARENA</span></span><span class="t2">戰鬥陀螺賽事系統</span>${topbarConnectionRailHtml()}</div>
+       <div class="spacer"></div>
+-      <div class="header-account-controls">${accountMenuHtml()}</div>
++      <div class="header-account-controls">${mailboxButtonHtml()}${accountMenuHtml()}</div>
+     </header>
+     ${renderPlayerNavHtml()}
+     </div>
+@@ -14928,6 +15015,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
+ 
+ /* ==== actions ==== */
+ function handleAction(action, target){
++  if(action.startsWith("mailbox-")){handleMailbox(action,target);return;}
+   if(action.startsWith("mood-")){handleMood(action,target);return;}
+   if(action.startsWith("title-recipient-")){handleTitleRecipient(action,target);return;}
+   if(action.startsWith('entry-')){handleEntrySelection(action);return;}
+@@ -15471,6 +15559,7 @@ function handleAction(action, target){
+   }
+   if(action==="player-switch-tab"){
+     accountMenuOpen=false;
++    mailboxContext().open=false;
+     let newTab = target.getAttribute("data-tab");
+     if(newTab==="find") newTab="home"; // legacy v13.23.x cached/action compatibility
+     if(newTab==="stats" && playerActiveTab!=="stats") playerStatsSubTab="general";
+@@ -19040,6 +19129,7 @@ init();
+     async health(){return callEngagementFunction('getEngagementHealth',{});},
+     async presence(payload){return callEngagementFunction("onlinePresence",payload,15000);},
+     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
++    async mailbox(payload){return callEngagementFunction("mailboxService",payload,30000);},
+     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
+     async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
+     async setTitlePreferences(payload){ return callEngagementFunction("setTitlePreferences",payload); },
+diff --git a/tests/mailbox-ui.cjs b/tests/mailbox-ui.cjs
+new file mode 100644
+index 0000000..0b58792
+--- /dev/null
++++ b/tests/mailbox-ui.cjs
+@@ -0,0 +1,7 @@
++'use strict';
++const fs=require('node:fs'),assert=require('node:assert/strict');
++const source=fs.readFileSync('index.html','utf8');
++for(const token of ['const APP_VERSION = "v13.30.0"','function mailboxContext()','function renderMailboxPage()','async function handleMailbox(','data-action="mailbox-open"','callEngagementFunction("mailboxService"'])assert.ok(source.includes(token),`missing ${token}`);
++assert.ok(source.indexOf('if(action.startsWith("mailbox-"))')<source.indexOf('if(action.startsWith("mood-"))'),'mailbox actions must route before general actions');
++assert.ok(source.includes("if(mailboxContext().open) content = renderMailboxPage();"),'mailbox must render as independent player view');
++console.log('PASS v13.30.0 mailbox UI integration checks');
