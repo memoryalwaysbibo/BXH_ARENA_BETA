@@ -6793,6 +6793,28 @@ async function performAutoArchive(){
   state.updatedAt=Date.now();
   try{ await saveRecord(state); }catch(e){}
 
+  // Tester ranked rooms use a completely isolated test ladder. Official ladderMode stays general.
+  if(isOwnTestTournament() && state.testLadderEnabled===true){
+    if(!state.cloudCode || !cloudAvailable() || !window.cloudSync || !window.cloudSync.settleTestLadderTournament){
+      showToast("測試積分賽必須連上 Firebase 才能完成測試天梯結算", true);
+      return false;
+    }
+    const payload=buildLadderSettlementPayload(state);
+    const requiredTop=Math.min(4,payload.participants.length);
+    const topCount=payload.participants.filter(x=>x.placement&&x.placement<=4).length;
+    if(topCount<requiredTop){ showToast("測試天梯結算失敗：前四名資料尚未完整。",true); return false; }
+    try{
+      await flushCloudStateWrites();
+      const settled=await window.cloudSync.settleTestLadderTournament(state.cloudCode,payload);
+      if(!settled||!settled.ok){ showToast((settled&&settled.message)||"測試天梯積分寫入失敗",true); return false; }
+      state.testLadderPointsAwarded=true;
+      state.testLadderSeasonId="TEST-S1";
+      state.testLadderAwardedAt=settled.awardedAt||Date.now();
+      state.testLadderResults=settled.results||[];
+      showToast(settled.alreadyAwarded?"本場測試天梯先前已完成結算，不會重複加分":"測試天梯積分結算完成");
+    }catch(e){ console.error("[test ladder settlement]",e); showToast("測試天梯結算失敗；賽事尚未封存",true); return false; }
+  }
+
   // Ranked events are not considered completed until the database-backed
   // ladder transaction has succeeded (or the cloud proves it was already awarded).
   if(state.meta && state.meta.ladderMode==="ranked"){
@@ -19080,6 +19102,54 @@ init();
       const s=await fx.getDocs(fx.collection(dbHandle,"ladderTransactions"));
       const out=[]; s.forEach(d=>{const x=Object.assign({id:d.id},d.data()); x.createdAtMs=cloudSafeTimestampMs(x.createdAt); out.push(x);});
       return out.sort((a,b)=>(b.createdAtMs||0)-(a.createdAtMs||0)).slice(0,200);
+    },
+
+    async getTestLadderRanking(){
+      if(!cloudEnabled) return [];
+      const snap=await fx.getDocs(fx.collection(dbHandle,"testLadderPlayers"));
+      const out=[]; snap.forEach(d=>out.push(Object.assign({testPlayerKey:d.id},d.data())));
+      return out.sort((a,b)=>(Number(b.seasonPoints||0)-Number(a.seasonPoints||0))||(Number(b.wins||0)-Number(a.wins||0))||String(a.testPlayerKey).localeCompare(String(b.testPlayerKey)));
+    },
+
+    async settleTestLadderTournament(code,payload){
+      if(!cloudEnabled||!code) return {ok:false,reason:"network"};
+      const actorUid=authHandle&&authHandle.currentUser&&authHandle.currentUser.uid;
+      if(!actorUid) return {ok:false,reason:"auth-required"};
+      const eventCode=String(code).toUpperCase();
+      const tournamentSnap=await fx.getDoc(fx.doc(dbHandle,"tournaments",eventCode));
+      if(!tournamentSnap.exists()) return {ok:false,reason:"event-not-found"};
+      const tournament=tournamentSnap.data()||{};
+      if(tournament.testMode!==true||tournament.eventAuthority!=="test"||tournament.ownerUid!==actorUid) return {ok:false,reason:"not-own-test-event",message:"只能結算自己建立的測試賽事"};
+      const items=(payload&&payload.participants||[]).filter(x=>x&&x.source==="test"&&/^T\d{3}$/.test(String(x.testPlayerKey||"")));
+      if(!items.length) return {ok:false,reason:"no-test-players",message:"本場沒有可寫入測試天梯的實驗玩家"};
+      const results=[]; let newWrites=0;
+      for(const item of items){
+        const key=String(item.testPlayerKey);
+        const txId=eventCode+"_"+key;
+        const txRef=fx.doc(dbHandle,"testLadderTransactions",txId);
+        const playerRef=fx.doc(dbHandle,"testLadderPlayers",key);
+        const r=await fx.runTransaction(dbHandle,async tx=>{
+          const prior=await tx.get(txRef);
+          if(prior.exists()) return {already:true,points:Number(prior.data().delta||0)};
+          const ps=await tx.get(playerRef);
+          const old=ps.exists()?ps.data():{};
+          const delta=Number(item.pointsEarned||0);
+          const next={
+            testPlayerKey:key, playerName:String(item.playerName||key), seasonId:"TEST-S1",
+            seasonPoints:Number(old.seasonPoints||0)+delta, careerPoints:Number(old.careerPoints||0)+delta,
+            totalEvents:Number(old.totalEvents||0)+1, wins:Number(old.wins||0)+Number(item.wins||0), losses:Number(old.losses||0)+Number(item.losses||0),
+            championCount:Number(old.championCount||0)+(item.placement===1?1:0), runnerUpCount:Number(old.runnerUpCount||0)+(item.placement===2?1:0),
+            thirdPlaceCount:Number(old.thirdPlaceCount||0)+(item.placement===3?1:0), fourthPlaceCount:Number(old.fourthPlaceCount||0)+(item.placement===4?1:0),
+            updatedAt:Date.now()
+          };
+          tx.set(playerRef,next,{merge:true});
+          tx.set(txRef,{type:"event",eventAuthority:"test",actorUid,testPlayerKey:key,playerName:String(item.playerName||key),seasonId:"TEST-S1",delta,eventCode,eventName:String(payload.eventName||""),placement:item.placement||null,wins:Number(item.wins||0),losses:Number(item.losses||0),createdAt:Date.now()});
+          return {already:false,points:delta};
+        });
+        if(!r.already) newWrites++;
+        results.push({testPlayerKey:key,playerName:item.playerName,pointsEarned:r.points,placement:item.placement||null,alreadyAwarded:!!r.already});
+      }
+      return {ok:true,seasonId:"TEST-S1",awardedAt:Date.now(),alreadyAwarded:newWrites===0,results};
     },
 
     async settleLadderTournament(code,payload){
