@@ -1,56 +1,29 @@
-name: Implement isolated test ladder settlement
+name: Diagnose tester ranked room blocker
 on:
   push:
     branches: [main]
     paths: ['.github/workflows/inspect-test-ladder-hooks.yml']
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  patch:
+  inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch test ladder settlement
+      - name: Inspect every ranked-mode gate
         shell: python
         run: |
           from pathlib import Path
-          p=Path('index.html'); s=p.read_text(encoding='utf-8')
-          def one(a,b,label):
-            global s
-            if a not in s: raise SystemExit('missing '+label)
-            s=s.replace(a,b,1)
-
-          # 1) Auto archive: test ranked rooms settle into isolated test ladder first.
-          anchor='''  // Ranked events are not considered completed until the database-backed\n  // ladder transaction has succeeded (or the cloud proves it was already awarded).\n  if(state.meta && state.meta.ladderMode==="ranked"){'''
-          repl='''  // Tester ranked rooms use a completely isolated test ladder. Official ladderMode stays general.\n  if(isOwnTestTournament() && state.testLadderEnabled===true){\n    if(!state.cloudCode || !cloudAvailable() || !window.cloudSync || !window.cloudSync.settleTestLadderTournament){\n      showToast("測試積分賽必須連上 Firebase 才能完成測試天梯結算", true);\n      return false;\n    }\n    const payload=buildLadderSettlementPayload(state);\n    const requiredTop=Math.min(4,payload.participants.length);\n    const topCount=payload.participants.filter(x=>x.placement&&x.placement<=4).length;\n    if(topCount<requiredTop){ showToast("測試天梯結算失敗：前四名資料尚未完整。",true); return false; }\n    try{\n      await flushCloudStateWrites();\n      const settled=await window.cloudSync.settleTestLadderTournament(state.cloudCode,payload);\n      if(!settled||!settled.ok){ showToast((settled&&settled.message)||"測試天梯積分寫入失敗",true); return false; }\n      state.testLadderPointsAwarded=true;\n      state.testLadderSeasonId="TEST-S1";\n      state.testLadderAwardedAt=settled.awardedAt||Date.now();\n      state.testLadderResults=settled.results||[];\n      showToast(settled.alreadyAwarded?"本場測試天梯先前已完成結算，不會重複加分":"測試天梯積分結算完成");\n    }catch(e){ console.error("[test ladder settlement]",e); showToast("測試天梯結算失敗；賽事尚未封存",true); return false; }\n  }\n\n  // Ranked events are not considered completed until the database-backed\n  // ladder transaction has succeeded (or the cloud proves it was already awarded).\n  if(state.meta && state.meta.ladderMode==="ranked"){'''
-          one(anchor,repl,'auto archive hook')
-
-          # 2) Add isolated cloud settlement immediately before official settlement.
-          anchor2='''    async settleLadderTournament(code,payload){'''
-          method='''    async getTestLadderRanking(){\n      if(!cloudEnabled) return [];\n      const snap=await fx.getDocs(fx.collection(dbHandle,"testLadderPlayers"));\n      const out=[]; snap.forEach(d=>out.push(Object.assign({testPlayerKey:d.id},d.data())));\n      return out.sort((a,b)=>(Number(b.seasonPoints||0)-Number(a.seasonPoints||0))||(Number(b.wins||0)-Number(a.wins||0))||String(a.testPlayerKey).localeCompare(String(b.testPlayerKey)));\n    },\n\n    async settleTestLadderTournament(code,payload){\n      if(!cloudEnabled||!code) return {ok:false,reason:"network"};\n      const actorUid=authHandle&&authHandle.currentUser&&authHandle.currentUser.uid;\n      if(!actorUid) return {ok:false,reason:"auth-required"};\n      const eventCode=String(code).toUpperCase();\n      const tournamentSnap=await fx.getDoc(fx.doc(dbHandle,"tournaments",eventCode));\n      if(!tournamentSnap.exists()) return {ok:false,reason:"event-not-found"};\n      const tournament=tournamentSnap.data()||{};\n      if(tournament.testMode!==true||tournament.eventAuthority!=="test"||tournament.ownerUid!==actorUid) return {ok:false,reason:"not-own-test-event",message:"只能結算自己建立的測試賽事"};\n      const items=(payload&&payload.participants||[]).filter(x=>x&&x.source==="test"&&/^T\\d{3}$/.test(String(x.testPlayerKey||"")));\n      if(!items.length) return {ok:false,reason:"no-test-players",message:"本場沒有可寫入測試天梯的實驗玩家"};\n      const results=[]; let newWrites=0;\n      for(const item of items){\n        const key=String(item.testPlayerKey);\n        const txId=eventCode+"_"+key;\n        const txRef=fx.doc(dbHandle,"testLadderTransactions",txId);\n        const playerRef=fx.doc(dbHandle,"testLadderPlayers",key);\n        const r=await fx.runTransaction(dbHandle,async tx=>{\n          const prior=await tx.get(txRef);\n          if(prior.exists()) return {already:true,points:Number(prior.data().delta||0)};\n          const ps=await tx.get(playerRef);\n          const old=ps.exists()?ps.data():{};\n          const delta=Number(item.pointsEarned||0);\n          const next={\n            testPlayerKey:key, playerName:String(item.playerName||key), seasonId:"TEST-S1",\n            seasonPoints:Number(old.seasonPoints||0)+delta, careerPoints:Number(old.careerPoints||0)+delta,\n            totalEvents:Number(old.totalEvents||0)+1, wins:Number(old.wins||0)+Number(item.wins||0), losses:Number(old.losses||0)+Number(item.losses||0),\n            championCount:Number(old.championCount||0)+(item.placement===1?1:0), runnerUpCount:Number(old.runnerUpCount||0)+(item.placement===2?1:0),\n            thirdPlaceCount:Number(old.thirdPlaceCount||0)+(item.placement===3?1:0), fourthPlaceCount:Number(old.fourthPlaceCount||0)+(item.placement===4?1:0),\n            updatedAt:Date.now()\n          };\n          tx.set(playerRef,next,{merge:true});\n          tx.set(txRef,{type:"event",eventAuthority:"test",actorUid,testPlayerKey:key,playerName:String(item.playerName||key),seasonId:"TEST-S1",delta,eventCode,eventName:String(payload.eventName||""),placement:item.placement||null,wins:Number(item.wins||0),losses:Number(item.losses||0),createdAt:Date.now()});\n          return {already:false,points:delta};\n        });\n        if(!r.already) newWrites++;\n        results.push({testPlayerKey:key,playerName:item.playerName,pointsEarned:r.points,placement:item.placement||null,alreadyAwarded:!!r.already});\n      }\n      return {ok:true,seasonId:"TEST-S1",awardedAt:Date.now(),alreadyAwarded:newWrites===0,results};\n    },\n\n    async settleLadderTournament(code,payload){'''
-          one(anchor2,method,'cloud method')
-
-          p.write_text(s,encoding='utf-8')
-
-      - name: Verify settlement isolation
-        shell: python
-        run: |
-          from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8')
-          required=['async settleTestLadderTournament','async getTestLadderRanking','testLadderPointsAwarded=true','testLadderTransactions','testLadderPlayers','not-own-test-event']
-          for x in required: assert x in s,x
-          a=s.index('async settleTestLadderTournament'); b=s.index('async settleLadderTournament',a)
-          block=s[a:b]
-          assert '"ladderPlayers"' not in block and '"ladderTransactions"' not in block
-          assert '"testLadderPlayers"' in block and '"testLadderTransactions"' in block
-          print('isolated test settlement verified')
-
-      - name: Commit implementation
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --cached --quiet && exit 0
-          git commit -m "Implement isolated test ladder settlement"
-          git push
+          s=Path('index.html').read_text(encoding='utf-8'); lines=s.splitlines()
+          keys=['set-ladder-mode','ladderMode=isTester','ladderMode="general"','testLadderEnabled','isTester()']
+          hits=[]
+          for i,l in enumerate(lines):
+            if any(k in l for k in keys): hits.append(i)
+          seen=set()
+          for i in hits:
+            a=max(0,i-8); b=min(len(lines),i+16)
+            if any(a<=x<b for x in seen): continue
+            seen.update(range(a,b))
+            print(f'===== {a+1}-{b} =====')
+            for n in range(a,b): print(f'{n+1}: {lines[n][:2200]}')
