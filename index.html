@@ -2434,6 +2434,18 @@ header.topbar .brandtext .t-conn-heading .online-presence{min-height:20px;paddin
 header.topbar .brandtext .t-conn-heading .online-presence span{font-size:8px;line-height:1.2;letter-spacing:0;}
 header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;line-height:1.2;letter-spacing:0;}
 
+/* Compact mobile header: lift account row and trim space above the tabs. */
+@media(max-width:899px){
+ .stickytop.mode-shell>header.topbar,.stickytop.account-management-stickytop>header.topbar{
+  row-gap:2px!important;padding-top:8px!important;padding-bottom:4px!important;
+ }
+ header.topbar .header-account-controls{gap:0;align-self:start;}
+ .mode-shell>header.topbar .header-account-controls .account-badge,
+ .account-management-stickytop>header.topbar .header-account-controls .account-badge{
+  min-height:36px;padding:4px 11px;
+ }
+}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
