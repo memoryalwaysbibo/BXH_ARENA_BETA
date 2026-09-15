@@ -2480,7 +2480,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <div id="toast-root" class="toast-wrap"></div>
 
 <script src="inventory-ui.js?v=13.31.0"></script>
-<script src="raffle-ui.js?v=13.32.0"></script>
+<script src="raffle-ui.js?v=13.32.1"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
 // Preserve an existing provider; propagate storage failures to existing callers.
@@ -2647,9 +2647,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.32.0";
+const APP_VERSION = "v13.32.1";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.32.1",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎建立權限與管理入口修正",updateLevel:"patch",added:["管理介面新增會員抽獎管理分頁","工作人員可建立並管理自己的會員抽獎活動"],changed:["玩家與公開介面僅保留瀏覽、參加及查看結果；管理者切換玩家模式亦不顯示主辦工具","管理與玩家操作狀態隔離，保留 Tester 本人 TEST 活動限制"],fixed:["修正主辦工具出現在玩家頁面及工作人員被排除的問題"],environment:"HTML + Firebase",deployStatus:"部署與驗收見 RELEASE_v13.32.1.md 及交接文件",firebaseImpact:"無資料迁移",securityRulesImpact:"沿用後端存取",permissionImpact:"建立權限為有效 staff/admin/super_admin；Tester 僅本人 TEST 活動",publicSummary:"調整會員抽獎權限與入口，玩家介面專注參加及查看結果。"},
   {version:"v13.32.0",date:"2026/09/16",timezone:"Asia/Taipei",title:"獨立會員抽獎系統",updateLevel:"feature",added:["會員抽獎活動、資格條件、票券報名與取消退票","主辦確認名單手動開獎、後端定時開獎、站內信與系統公告","固定結果拉霸回放、領獎／棄領／補抽及封存紀錄"],changed:["抽獎資料獨立於賽事，不計勝敗、天梯或參賽場數"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署與實測狀態見 RELEASE_v13.32.0.md 及交接文件",firebaseImpact:"新增 raffleEvents、rafflePublic、raffleMemberships、raffleJobs、raffleAnnouncements，串接 userItems 與站內信",securityRulesImpact:"新增資料只經 Callable 與排程後端存取",permissionImpact:"主辦管理自己的活動；Tester 只能管理自己的 TEST 活動",publicSummary:"新增獨立會員抽獎與票券資格，支援現場及線上自動開獎。"},
   {version:"v13.31.0",date:"2026/09/16",timezone:"Asia/Taipei",title:"我的道具基礎系統",updateLevel:"feature",added:["玩家中心新增我的道具分頁、道具資料與分頁歷程","最高管理員搜尋玩家並發放道具，同步寄送站內信","發放請求保留至確認成功，斷線與刷新可重試同一筆"],changed:["道具按發放批次分開保存來源與期限，綁定帳號不可轉讓"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署與測試證據請見 RELEASE_v13.31.0.md；手機及登入實測另列",firebaseImpact:"新增 userItems/{uid}/lots 與 events、inventoryOperations；原子寫入既有站內信",securityRulesImpact:"沿用預設拒絕，新增資料僅後端存取",permissionImpact:"玩家只能查看自己的道具；發放僅限最高管理員，Tester 無發放權限",publicSummary:"新增我的道具、發放通知與歷程；抽獎扣票將於抽獎系統串接。"},
   {version:"v13.30.0",date:"2026/09/16",time:"",timezone:"Asia/Taipei",title:"站內信基礎系統",updateLevel:"feature",updateLevelLabel:"獨立收件匣與未讀通知",added:["玩家頂部獨立站內信入口與未讀數量","站內信收件匣、信件詳情、已讀／未讀切換","最高管理員可依玩家 UID 發送測試信"],changed:["站內信經 Callable Function 存取，不由前端直接寫入信件資料"],fixed:[],environment:"HTML + Firebase",deployStatus:"需更新前端並部署 mailboxService；完成後仍需登入帳號端到端驗證",firebaseImpact:"新增 userMail/{uid}/messages、mailboxStats、mailOperations",securityRulesImpact:"信件與未讀統計只透過後端處理",permissionImpact:"玩家只能讀取與切換自己的信件狀態；測試信僅最高管理員可發送",publicSummary:"新增獨立站內信入口、未讀提醒與收件匣，作為活動及中獎通知基礎。"},
@@ -14460,8 +14461,11 @@ function renderApp(){
   const app = document.getElementById("app");
   const allTabs = [["management","賽事管理"],["ladder","天梯排行"],["live","即時戰況"],["bracket","對戰表"],["referee","裁判台"],["duty","我的執勤"],["registrations","報名管理"],["settings","賽事設定"],["people","人員管理"],["operations","抽獎與維護"],["history","賽事紀錄"],["version","版本更新"]];
   let tabs = hasAdminAccess() ? allTabs : allTabs.filter(t=>!["management","referee","settings","registrations","people"].includes(t[0]));
+  if(hasAdminAccess()&&canManageMemberRaffles())tabs.splice(1,0,["member-raffles","會員抽獎管理"]);
+  if(activeTab==='member-raffles'&&(!hasAdminAccess()||!canManageMemberRaffles()))activeTab='live';
   let content = "";
   if(activeTab==="management") content = renderTournamentManagementTab();
+  else if(activeTab==="member-raffles") content = renderRafflePage();
   else if(activeTab==="ladder") content = wrapBracketWatermark(renderLadderLeaderboardPage(hasAdminAccess()));
   else if(activeTab==="live") content = wrapBracketWatermark(renderLive());
   else if(activeTab==="bracket") content = renderBracket();
@@ -15182,6 +15186,7 @@ function handleAction(action, target){
   }
   if(action==="switch-tab"){
     const targetTab = target.getAttribute("data-tab");
+    if(targetTab==='member-raffles'&&(!hasAdminAccess()||!canManageMemberRaffles())){showToast('目前身分沒有此操作權限。',true);return;}
     if((targetTab==="management" || targetTab==="referee" || targetTab==="settings" || targetTab==="registrations" || targetTab==="people") && !hasAdminAccess()){
       showToast("目前身分沒有此操作權限。", true);
       return;
