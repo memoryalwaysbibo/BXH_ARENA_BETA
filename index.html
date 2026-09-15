@@ -2404,6 +2404,19 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
 .title-inline-editor .field{margin-bottom:16px}
 .title-inline-editor textarea{min-height:120px}
 
+.mood-station{border:1px solid #766739;background:linear-gradient(120deg,#1d1b14,#141619);padding:16px;margin-bottom:16px;overflow:hidden}
+.mood-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:#e6cc7c;margin-bottom:12px}
+.mood-head .btn-row{margin:0;gap:8px}.mood-head .btn{min-height:40px}
+.mood-window{overflow:hidden;border-radius:8px;background:#0d1010;padding:12px;color:#e7e6df;outline-offset:3px}
+.mood-track{display:flex;width:max-content;max-width:none}.mood-track:has(.mood-group){animation:mood-scroll 45s linear infinite}
+.mood-group{display:flex;gap:32px;padding-right:32px}.mood-item{white-space:nowrap}.mood-item b{color:#d7c179}
+.mood-track.paused,.mood-window:hover .mood-track,.mood-window:focus .mood-track{animation-play-state:paused}
+.mood-compose{margin-top:16px}.mood-compose label{display:block;margin-bottom:8px}
+.mood-compose input{appearance:none;-webkit-appearance:none;width:100%;box-sizing:border-box;background:#202124!important;color:#eee!important;border:1px solid #70613c;border-radius:12px;padding:12px;font:inherit;font-size:16px;min-height:48px;color-scheme:dark}
+.mood-manage{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #37372c;padding:12px 0;margin-top:8px}.mood-manage span{overflow-wrap:anywhere}.mood-manage button{flex-shrink:0}
+@keyframes mood-scroll{to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.mood-track:has(.mood-group){animation:none}.mood-window{overflow-x:auto}.mood-group[aria-hidden=true]{display:none}}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -11802,8 +11815,65 @@ function renderPlayerCenterLoggedIn(){
   </div>`;
 }
 
+let moodState=null;
+function moodContext(){
+ const key=currentAuthUid()+':'+engagementSessionEpoch;
+ if(!moodState||moodState.key!==key)moodState={key,revision:0,messages:null,loading:false,busy:false,open:false,paused:false,text:'',operationId:null,error:'',canModerate:false};
+ return moodState;
+}
+function moodLength(text){return [...new Intl.Segmenter('zh-Hant',{granularity:'grapheme'}).segment(text.normalize('NFKC').trim())].length;}
+function moodError(e){
+ const message=String(e?.message||'');
+ const errors={'text-length':'留言請輸入 1～30 字。','blocked-text':'留言含有不適合公開的字詞，請調整後再送出。','no-links':'心情小棧不開放連結或電子郵件，請改成短留言。','invalid-text':'請使用單行文字，並移除隱藏字元。','cooldown':'每 60 秒可更新一次留言，請稍後再試。','account-inactive':'此帳號目前無法留言。','not-owner':'只能刪除自己的留言。','login-required':'請先登入後再留言。'};
+ for(const[key,value]of Object.entries(errors))if(message.includes(key))return value;
+ return '心情小棧暫時無法連線，請稍後重試。';
+}
+async function loadMood(){
+ const c=moodContext();if(!firebaseUser?.uid||c.busy){c.loading=false;return;}
+ c.loading=true;const revision=c.revision;
+ try{const r=await window.engagementService.mood({action:'list'});if(c!==moodContext()||revision!==c.revision)return;if(!r?.ok)throw Error('load-failed');c.messages=r.messages||[];c.canModerate=r.canModerate===true;c.error='';}
+ catch(e){if(c===moodContext()&&revision===c.revision)c.error=moodError(e);}
+ finally{if(c===moodContext()){c.loading=false;render();}}
+}
+function renderMoodStation(){
+ if(!firebaseUser?.uid||guestReadOnlyMode)return '';
+ const c=moodContext();
+ if(c.messages===null&&!c.loading&&!c.error){c.loading=true;setTimeout(loadMood,0);}
+ const items=c.messages||[];
+ const group=items.map(m=>`<span class="mood-item"><b>${esc(m.name)}</b>：${esc(m.text)}</span>`).join('');
+ return `<section class="panel mood-station" aria-label="心情小棧">
+ <div class="mood-head"><b>☕ 心情小棧</b><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="mood-pause" aria-pressed="${c.paused}">${c.paused?'播放':'暫停'}</button><button class="btn btn-primary btn-sm" data-action="mood-open" ${c.busy?'disabled':''}>${c.open?'收合':'我有話要說'}</button></div></div>
+ <div class="mood-window" tabindex="0" aria-label="玩家留言，聚焦可暫停"><div class="mood-track ${c.paused?'paused':''}">${items.length?`<div class="mood-group">${group}</div><div class="mood-group" aria-hidden="true">${group}</div>`:`<span>${c.loading?'正在載入心情…':'今天想說什麼？分享你的陀螺心情。'}</span>`}</div></div>
+ ${c.error?`<p class="hint" role="status">${esc(c.error)} <button class="btn btn-ghost btn-sm" data-action="mood-refresh" ${c.loading||c.busy?'disabled':''}>重試</button></p>`:''}
+ ${c.open?`<div class="mood-compose"><label for="mood-text">我有話要說</label><input id="mood-text" maxlength="300" value="${esc(c.text)}" placeholder="寫下 1～30 字的小心情" ${c.busy?'disabled':''}><div class="hint"><span id="mood-count">${moodLength(c.text)}</span>／30 字｜每人一則，60 秒可更新，展示 24 小時。</div><div class="btn-row"><button class="btn btn-primary" data-action="mood-post" ${c.busy?'disabled':''}>${c.busy?'處理中…':'發布留言'}</button><button class="btn btn-ghost" data-action="mood-cancel" ${c.busy?'disabled':''}>取消</button></div>
+ ${items.filter(m=>m.isOwn||c.canModerate).map(m=>`<div class="mood-manage"><span><b>${esc(m.name)}</b>：${esc(m.text)}</span><button class="btn btn-ghost btn-sm" data-action="mood-remove" data-message-id="${esc(m.id)}" ${c.busy?'disabled':''}>${m.isOwn?'刪除我的留言':'下架'}</button></div>`).join('')}</div>`:''}</section>`;
+}
+async function handleMood(action,target){
+ const c=moodContext();if(!firebaseUser?.uid||guestReadOnlyMode||c.busy)return;
+ if(action==='mood-open'){c.open=!c.open;render();return;}
+ if(action==='mood-cancel'){c.open=false;c.text='';c.operationId=null;c.error='';render();return;}
+ if(action==='mood-pause'){c.paused=!c.paused;render();return;}
+ if(action==='mood-refresh'){if(!c.loading)loadMood();return;}
+ let payload;
+ if(action==='mood-post'){
+  if(moodLength(c.text)<1||moodLength(c.text)>30){c.error='留言請輸入 1～30 字。';render();return;}
+  c.operationId=c.operationId||crypto.randomUUID();payload={action:'post',text:c.text,operationId:c.operationId};
+ }else if(action==='mood-remove')payload={action:'remove',id:target.getAttribute('data-message-id')};
+ else return;
+ c.revision++;c.busy=true;c.error='';render();
+ try{
+  const r=await window.engagementService.mood(payload);if(c!==moodContext())return;if(!r?.ok)throw Error('write-failed');
+  c.messages=r.messages||[];c.canModerate=r.canModerate===true;
+  if(action==='mood-post'){c.text='';c.operationId=null;c.open=false;}
+  showToast(action==='mood-post'?'心情已發布':'留言已移除');
+ }catch(e){if(c===moodContext())c.error=moodError(e);}
+ finally{if(c===moodContext()){c.busy=false;render();}}
+}
+document.addEventListener('input',e=>{if(e.target?.id==='mood-text'){const c=moodContext();c.text=e.target.value;c.operationId=null;const count=document.getElementById('mood-count');if(count)count.textContent=moodLength(c.text);}});
+setInterval(()=>{if(appPhase==='player-center'&&playerActiveTab==='home'&&firebaseUser?.uid&&!guestReadOnlyMode){const c=moodContext();if(!c.loading&&!c.busy)loadMood();}},60000);
+
 function renderPlayerHomeTab(p){
-  return `${safeEngagementRender(renderDailyCheckInEntry)}${renderTournamentLobby({ loggedIn:true, profile:p })}`;
+  return `${renderMoodStation()}${safeEngagementRender(renderDailyCheckInEntry)}${renderTournamentLobby({ loggedIn:true, profile:p })}`;
 }
 
 let hostAchievementCount=null;
@@ -14745,6 +14815,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
 
 /* ==== actions ==== */
 function handleAction(action, target){
+  if(action.startsWith("mood-")){handleMood(action,target);return;}
   if(action.startsWith("title-recipient-")){handleTitleRecipient(action,target);return;}
   if(action.startsWith('entry-')){handleEntrySelection(action);return;}
   if(state.entrySelection?.status==='drawn'&&['import-roster-from-registrations','update-players','quick-add-players','load-test','random-test-roster','load-online-roster'].includes(action)){showToast('名額已抽定，請使用依序遞補；不能覆寫正式名單',true);return;}
@@ -18846,6 +18917,7 @@ init();
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
+    async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
     async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
     async setTitlePreferences(payload){ return callEngagementFunction("setTitlePreferences",payload); },
