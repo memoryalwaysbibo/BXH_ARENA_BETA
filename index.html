@@ -11457,6 +11457,42 @@ function ladderLeaderboardTable(rows, adminMode=false){
     </tr>`).join("")}</tbody>
   </table></div>`;
 }
+let testLadderView = {uid:null,rows:[],loading:false,loaded:false,error:""};
+function canReadTestLadder(){ return isTester() || isAdminTierOrAbove(); }
+async function loadTestLadder(force=false){
+  if(!canReadTestLadder()) return;
+  const uid=currentAuthUid();
+  if(testLadderView.uid!==uid) testLadderView={uid,rows:[],loading:false,loaded:false,error:""};
+  const view=testLadderView;
+  if(view.loading || (view.loaded&&!force)) return;
+  view.loading=true; view.error=""; render();
+  try{
+    if(!window.cloudSync?.getTestLadderRanking) throw new Error("not-ready");
+    const rows=await ladderReadWithTimeout(window.cloudSync.getTestLadderRanking(),10000,"test-ladder");
+    if(currentAuthUid()!==uid || !canReadTestLadder() || testLadderView!==view) return;
+    view.rows=rows.filter(p=>p.seasonId==="TEST-S1");
+  }catch(e){
+    view.error="測試天梯讀取失敗，請確認連線後重新整理。";
+  }finally{
+    view.loading=false; view.loaded=true;
+    if(currentAuthUid()===uid && canReadTestLadder() && testLadderView===view) render();
+  }
+}
+function renderTestLadderPanel(){
+  if(!canReadTestLadder()) return "";
+  const uid=currentAuthUid();
+  if(testLadderView.uid!==uid) testLadderView={uid,rows:[],loading:false,loaded:false,error:""};
+  const v=testLadderView;
+  if(!v.loaded&&!v.loading) setTimeout(()=>loadTestLadder(),0);
+  return `<section class="panel" aria-label="測試天梯 TEST-S1" style="border-color:var(--gold-dim)">
+    <div class="panel-title"><span>🧪 測試天梯｜TEST-S1</span><button class="btn btn-ghost btn-sm" data-action="test-ladder-refresh" ${v.loading?'disabled':''}>重新整理測試天梯</button></div>
+    <p class="hint">64 位實驗玩家專用。此處顯示測試積分，不計入正式 BXH 天梯。</p>
+    ${v.error?`<p role="alert">${esc(v.error)}</p>`:""}
+    ${v.loading?'<p role="status">正在讀取測試天梯…</p>':!v.rows.length?'<p>尚無測試積分紀錄，完成一場測試積分賽後即可查看。</p>':`<div style="overflow-x:auto"><table aria-label="TEST-S1 排行榜" style="min-width:560px;width:100%"><thead><tr><th>排名</th><th>編號</th><th>姓名</th><th>積分</th><th>參賽場次</th><th>勝</th><th>敗</th></tr></thead><tbody>${v.rows.map((p,i)=>`<tr><td>${i+1}</td><td>${esc(p.testPlayerKey)}</td><td>${esc(p.playerName||p.testPlayerKey)}</td><td><strong>${Number(p.seasonPoints||0)} PT</strong></td><td>${Number(p.totalEvents||0)}</td><td>${Number(p.wins||0)}</td><td>${Number(p.losses||0)}</td></tr>`).join("")}</tbody></table></div>`}
+    <p class="hint">排序：測試積分 → 勝場 → T 編號。手機可左右滑動表格。</p>
+  </section>`;
+}
+
 function renderLadderLeaderboardPage(adminMode=false){
   if(!ladderPublicLoaded && !ladderPublicLoading) setTimeout(()=>loadLadderPublic(false),0);
   if(adminMode && isAdminTierOrAbove() && !ladderAdminLogsLoaded) setTimeout(()=>loadLadderAdminLogs(false),0);
@@ -11468,6 +11504,7 @@ function renderLadderLeaderboardPage(adminMode=false){
   const now=Date.now();
   const ended=control&&control.endAt&&now>=control.endAt;
   return `
+    ${adminMode?renderTestLadderPanel():""}
     ${playerSearchPanel()}
     <div class="panel ladder-hero">
       <div class="panel-title"><span>BXH 天梯排行</span><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="ladder-refresh">重新整理</button>${adminMode&&isSuperAdmin()?`<button class="btn btn-primary btn-sm" data-action="ladder-new-season">開啟新賽季</button>`:""}</div></div>
@@ -14825,6 +14862,10 @@ function handleAction(action, target){
       }
       showToast(isExistingAccount ? "玩家資料已補齊" : "玩家資料設定完成");
     })();
+    return;
+  }
+  if(action==="test-ladder-refresh"){
+    if(canReadTestLadder()) loadTestLadder(true);
     return;
   }
   if(action==="ladder-refresh"){
