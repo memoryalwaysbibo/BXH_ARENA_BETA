@@ -11,22 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate ladder and tester permission hooks
+      - name: Locate exact ladder functions
         shell: python
         run: |
           from pathlib import Path
           s=Path('index.html').read_text(encoding='utf-8')
           lines=s.splitlines()
-          keys=['canCreateOfficialTournament','ladderPlayers','ladderTransactions','ladderPointsAwarded','ladderMode','eventAuthority','test_admin','tester','awardLadder','settleLadder','finalizeLadder','currentUserRole','role===']
+          keys=['awardLadderPointsForTournament','ladderPlayers','ladderTransactions','renderLadder','loadLadder','queryLadder','ladderRanking','isTesterRole','eventAuthority']
           hits=[]
           for i,line in enumerate(lines):
             if any(k.lower() in line.lower() for k in keys): hits.append(i)
-          # merge nearby hit windows and print useful source
           windows=[]
           for i in hits:
-            a=max(0,i-12); b=min(len(lines),i+24)
+            a=max(0,i-8); b=min(len(lines),i+30)
             if windows and a<=windows[-1][1]: windows[-1][1]=max(windows[-1][1],b)
             else: windows.append([a,b])
           for a,b in windows:
             print(f'===== lines {a+1}-{b} =====')
-            for n in range(a,b): print(f'{n+1}: {lines[n][:1800]}')
+            for n in range(a,b): print(f'{n+1}: {lines[n][:2200]}')
