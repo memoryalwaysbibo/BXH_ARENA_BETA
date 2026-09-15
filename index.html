@@ -13547,6 +13547,38 @@ function restoreHorizontalNavPositions(positions){
   });
 }
 
+const AUTH_VIEW_KEY="bxh_beta_auth_view_v1";
+let authViewRestoreAttempted=false;
+function rememberAuthenticatedView(){
+ if(!firebaseUser?.uid||!userProfile||userProfile.active!==true||guestReadOnlyMode)return;
+ if(!['app','account-management','player-center','tournament-detail'].includes(appPhase))return;
+ try{sessionStorage.setItem(AUTH_VIEW_KEY,JSON.stringify({uid:firebaseUser.uid,phase:appPhase,mode:activeMode,tab:activeTab,playerTab:playerActiveTab,profileSection:playerProfileSection,adminPage:superAdminManagementPage,cloudCode:state.cloudCode||'',detailCode:tournamentDetailCode||''}));}catch(e){}
+}
+function restoreAuthenticatedView(uid,intent){
+ if(authViewRestoreAttempted)return false;
+ authViewRestoreAttempted=true;
+ if(getTournamentEntryFromUrl()||pendingRegistrationCode||guestReadOnlyMode)return false;
+ let v;try{v=JSON.parse(sessionStorage.getItem(AUTH_VIEW_KEY)||'null');}catch(e){return false;}
+ if(!v||v.uid!==uid||v.mode!==intent)return false;
+ if(v.phase==='account-management'&&intent==='admin'&&isSuperAdmin()){
+  appPhase='account-management';superAdminManagementPage=['accounts','checkin','titles'].includes(v.adminPage)?v.adminPage:'accounts';
+  accountMgmtUsers=null;window.cloudAuth.listUsers().then(users=>{if(firebaseUser?.uid===uid){accountMgmtUsers=users;render();}}).catch(()=>{});return true;
+ }
+ if(v.phase==='player-center'&&intent==='player'&&userProfile.realName){
+  appPhase='player-center';playerActiveTab=PLAYER_TABS.some(([key])=>key===v.playerTab)?v.playerTab:'home';playerProfileSectionUid=uid;playerProfileSection=v.profileSection==='titles'?'titles':'basic';return true;
+ }
+ if(v.phase==='app'&&intent==='admin'){
+  appPhase='app';
+  activeTab=v.cloudCode===(state.cloudCode||'')&&['management','ladder','live','bracket','referee','duty','registrations','settings','people','operations','history','version'].includes(v.tab)?v.tab:'management';
+  adminTournamentListLoaded=false;return true;
+ }
+ if(v.phase==='tournament-detail'&&v.detailCode){
+  resetTournamentDetailState();tournamentDetailCode=normalizeRoomCodeInput(v.detailCode);tournamentDetailLoading=true;appPhase='tournament-detail';
+  setTimeout(()=>loadTournamentDetail(tournamentDetailCode),0);return true;
+ }
+ return false;
+}
+
 function captureRenderViewport(){
   const key = currentRenderViewportKey();
   const canReadWindow = typeof window!=="undefined";
@@ -13588,6 +13620,7 @@ function finishRenderViewport(snapshot){
 function render(){
   syncEngagementIdentity();
   reconcileHistoryCloudContext();
+  rememberAuthenticatedView();
   const __viewportSnapshot = captureRenderViewport();
   try{
     const app = document.getElementById("app");
@@ -18020,7 +18053,7 @@ async function init(){
         }
 
         if(window.cloudAuth && window.cloudAuth.isReady()){
-          superAdminExists = await window.cloudAuth.hasSuperAdmin();
+          window.cloudAuth.hasSuperAdmin().then(value=>{superAdminExists=value;render();}).catch(()=>{});
           try{ await window.cloudAuth.checkRedirectResult(); }catch(e){}
           if(authUnsub){ try{ authUnsub(); }catch(e){} }
           // Single-authority auth-state handler, extracted into a named,
@@ -18065,7 +18098,8 @@ async function init(){
                   // default sensibly by role so existing behavior is preserved
                   // for accounts that have never touched activeMode before.
                   const storedMode = await loadActiveMode();
-                  const intent = pendingLoginIntent || storedMode || (mapRoleToAppRole(profile.role)==="player" ? "player" : "admin");
+                  const restoringSession = !pendingLoginIntent;
+                  const intent = pendingLoginIntent || (roleAllowsMode(profile.role,storedMode,profile)?storedMode:null) || (mapRoleToAppRole(profile.role)==="player" ? "player" : "admin");
                   pendingLoginIntent = null;
 
                   if(!roleAllowsMode(profile.role, intent,profile)){
@@ -18105,6 +18139,7 @@ async function init(){
                     try{ await window.storage.delete(REMEMBER_EMAIL_KEY); }catch(e){}
                   }
 
+                  if(restoringSession && restoreAuthenticatedView(fbUser.uid,intent)){render();return;}
                   if(appPhase==="landing" || appPhase==="admin-login" || appPhase==="admin-setup" || appPhase==="admin-success" || appPhase==="player-login" || appPhase==="player-apply" || currentRole==="guest"){
                     if(intent==="admin"){
                       appPhase = "admin-success";
@@ -18288,28 +18323,11 @@ init();
           runTransaction: fsMod.runTransaction, writeBatch: fsMod.writeBatch, deleteField: fsMod.deleteField,
           increment: fsMod.increment, collectionGroup: fsMod.collectionGroup, orderBy: fsMod.orderBy, limit: fsMod.limit
         };
-        authHandle = authMod.getAuth(app);
-        // Root cause of the mobile-first-load hang: setPersistence() depends on
-        // IndexedDB, and certain restricted in-app browsers (LINE's iOS WebView
-        // in particular, on the very first page load of a fresh WebView
-        // process) can leave an IndexedDB open() request permanently pending —
-        // it neither resolves nor rejects. Since this line was a bare `await`
-        // with no timeout, that hang blocked this ENTIRE function forever,
-        // which in turn blocked every downstream auth flow that waited on
-        // Firebase being ready. A page refresh "fixed" it only because the
-        // WebView's IndexedDB state had settled by the second attempt — the
-        // race was never actually fixed by that, just avoided.
-        // Fix: race setPersistence against a 4s timeout. If it times out or
-        // throws, fall back to session persistence (survives the current tab
-        // only, but at least Auth becomes usable instead of hanging forever).
-        const persistenceOutcome = await withTimeout(
-          authMod.setPersistence(authHandle, authMod.browserLocalPersistence).then(()=>"local").catch(()=>"failed"),
-          4000, "timeout"
-        );
-        if(persistenceOutcome!=="local"){
-          try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
-          catch(e){ /* if even session persistence fails, proceed anyway — Auth still works in-memory for this page load */ }
-        }
+        // Select durable storage at initialization; avoid racing persistence migrations.
+        authHandle = authMod.initializeAuth(app, {
+          persistence: [authMod.browserLocalPersistence, authMod.browserSessionPersistence],
+          popupRedirectResolver: authMod.browserPopupRedirectResolver
+        });
         ax = {
           onAuthStateChanged: authMod.onAuthStateChanged,
           signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
@@ -18407,6 +18425,7 @@ init();
     },
 
     async signOutUser(){
+      try{sessionStorage.removeItem("bxh_beta_auth_view_v1");}catch(e){}
       if(!authReady) return;
       try{ await ax.signOut(authHandle); }catch(e){}
     },
