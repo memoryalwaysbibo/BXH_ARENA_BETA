@@ -2390,6 +2390,8 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
 
 .title-card-details summary{cursor:pointer;font-size:12px;color:var(--metal);padding:10px 0}
 .title-card-details[open]{margin-bottom:10px}
+.title-sort-picker > summary::-webkit-details-marker{display:none}
+.title-sort-picker[open] > summary{border-color:#c3a958!important}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -11057,7 +11059,10 @@ function renderAdminTitleList(){
  const counts={all:defs?.length,issued:defs?.filter(t=>titleIssuedCount(t)>0).length,disabled:defs?.filter(t=>t.isActive!==true).length};
  return `<section class="super-admin-section"><div class="panel-title">稱號清單</div>
  <div class="btn-row">${Object.entries({all:'全部',issued:'已發放',disabled:'停用'}).map(([key,label])=>`<button class="btn ${c.filter===key?'btn-primary':'btn-ghost'}" data-action="title-list-filter" data-filter="${key}" aria-pressed="${c.filter===key}">${label}（${counts[key]??'—'}）</button>`).join('')}</div>
- <label>瀏覽排序<select id="admin-title-list-sort">${Object.entries({'date-desc':'發行日期：新到舊','date-asc':'發行日期：舊到新','rarity-desc':'品級：高到低','rarity-asc':'品級：低到高',name:'名稱：筆畫順序'}).map(([key,label])=>`<option value="${key}" ${c.sort===key?'selected':''}>${label}</option>`).join('')}</select></label>
+ <details class="title-sort-picker" style="position:relative;margin:12px 0;max-width:360px">
+ <summary class="btn btn-ghost" style="list-style:none;display:flex;justify-content:space-between;gap:12px;cursor:pointer;background:#18191c;color:#eee;border:1px solid #484638"><span>排序｜${{'date-desc':'發行日期：新到舊','date-asc':'發行日期：舊到新','rarity-desc':'品級：高到低','rarity-asc':'品級：低到高',name:'名稱：筆畫順序'}[c.sort]||'發行日期：新到舊'}</span><span aria-hidden="true">⌄</span></summary>
+ <div role="group" aria-label="稱號排序選項" style="position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:30;display:grid;gap:6px;padding:10px;background:#18191c;border:1px solid #8b7840;border-radius:12px;box-shadow:0 10px 30px #0008">
+ ${Object.entries({'date-desc':'發行日期：新到舊','date-asc':'發行日期：舊到新','rarity-desc':'品級：高到低','rarity-asc':'品級：低到高',name:'名稱：筆畫順序'}).map(([key,label])=>`<button type="button" class="btn btn-ghost" style="text-align:left;justify-content:flex-start;background:${c.sort===key?'#37321c':'#18191c'};color:${c.sort===key?'#ead17c':'#eee'}" data-action="title-list-sort" data-sort="${key}" aria-pressed="${c.sort===key}">${c.sort===key?'✓ ':''}${label}</button>`).join('')}</div></details>
  <div class="btn-row"><button class="btn btn-ghost" data-action="title-list-refresh" ${c.busy?'disabled':''}>${c.busy?'載入中…':'重新整理清單'}</button></div>
  <p class="hint">發行日期優先使用發布時間，未記錄時使用建立時間。已發放包含曾授予後撤銷的紀錄；測試發放另行標示。</p>
  ${c.error?`<p role="alert">${esc(c.error)}</p>`:''}
@@ -11068,9 +11073,6 @@ function renderAdminTitleList(){
  <button class="btn btn-ghost" data-action="title-list-edit" data-title-id="${esc(t.id)}" ${titleEditorContext().busy?'disabled':''}>選擇並編輯</button></div>`).join('')}
  ${defs&&!items.length?'<p class="hint">此分類目前沒有稱號。</p>':''}</section>`;
 }
-document.addEventListener('change',ev=>{
- if(ev.target?.id==='admin-title-list-sort'&&isSuperAdmin()){adminTitleListContext().sort=ev.target.value;render();}
-});
 
 let titleEditorState={uid:'',draft:null,preview:null,busy:false,message:''};
 function titleEditorContext(){
@@ -14695,6 +14697,14 @@ function handleAction(action, target){
   if(action.startsWith('card-')){handlePlayerCard(action,target);return;}
   if(action.startsWith('title-list-')){
     if(!isSuperAdmin())return;
+    if(action==='title-list-sort'){
+      const sort=target.getAttribute('data-sort');
+      if(['date-desc','date-asc','rarity-desc','rarity-asc','name'].includes(sort)){
+        adminTitleListContext().sort=sort;render();
+        document.querySelector('.title-sort-picker > summary')?.focus({preventScroll:true});
+      }
+      return;
+    }
     if(action==='title-list-refresh'){reloadAdminTitleList();return;}
     if(action==='title-list-filter'){adminTitleListContext().filter=target.getAttribute('data-filter');render();return;}
     if(action==='title-list-edit'){
