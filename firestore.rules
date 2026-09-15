@@ -880,6 +880,32 @@ isAdminOrAbove()
       allow update, delete: if false;
     }
 
+    // ==== 隔離式測試天梯：永不與正式 ladder* 集合共用 ====
+    match /testLadderPlayers/{testPlayerKey} {
+      allow read: if isTester() || isAdminOrAbove();
+      allow create, update: if isTester()
+        && testPlayerKey.matches('^T[0-9]{3}$')
+        && request.resource.data.testPlayerKey == testPlayerKey
+        && request.resource.data.playerName is string
+        && request.resource.data.seasonId == 'TEST-S1'
+        && request.resource.data.seasonPoints is number && request.resource.data.seasonPoints >= 0
+        && request.resource.data.careerPoints is number && request.resource.data.careerPoints >= 0
+        && request.resource.data.totalEvents is number && request.resource.data.totalEvents >= 0;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /testLadderTransactions/{logId} {
+      allow get, list: if isTester() || isAdminOrAbove();
+      allow create: if isTester()
+        && request.resource.data.type == 'event'
+        && request.resource.data.eventAuthority == 'test'
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.testPlayerKey.matches('^T[0-9]{3}$')
+        && request.resource.data.seasonId == 'TEST-S1'
+        && request.resource.data.delta is number && request.resource.data.delta >= 0;
+      allow update, delete: if false;
+    }
+
     // ==== publicPlayers/{uid} 公開玩家資料 ====
     // 僅保存公開顯示名稱與頭像；不得包含 email、電話、角色、權限、積分等私人/敏感資料。
     match /publicPlayers/{uid} {
