@@ -6251,6 +6251,7 @@ function titleConditionMeta(t){
     hosted_tournaments:{category:'event',label:'主辦成就',scope:'依系統認定且完成結算的 BXH 賽事主辦紀錄計入。',task:`成功完成主辦 ${target} 場 BXH 賽事`},
     total_checkins:{category:'activity',label:'每日簽到',scope:'由 BXH ARENA 每日簽到紀錄累積；與賽事報到完全分離。',task:`累積完成 ${target} 天每日簽到`},
     checkin_streak:{category:'activity',label:'每日簽到',scope:'依 BXH ARENA 連續每日簽到紀錄計算；中斷後重新累積。',task:`連續完成 ${target} 天每日簽到`},
+    pioneer_registration:{category:'special',label:'封測限定',scope:'以 Firebase 帳號建立時間判定：台灣時間 2026/9/21 23:59 前註冊，不限人數。',task:'於 2026/9/21 23:59 前建立帳號；自動授予，逾期仍可補領'},
     pioneer_quota:{category:'special',label:'限定任務',scope:'依 BXH ARENA 開拓者資格與限定名額規則判定。',task:'完成開拓者限定資格'},
     profile_completion:{category:'activity',label:'玩家資料',scope:'依會員資料的八項完整度計算；首次達到 100% 自動授予。',task:'個人資料完成度達到 100%'},
     manual:{category:'special',label:'特殊榮譽',scope:'由 BXH 官方依指定資格人工授予，不依一般賽事進度自動取得。',task:'符合 BXH 官方指定授予資格'}
@@ -11114,15 +11115,13 @@ function renderTitleEditor(inline=false){
  <div class="btn-row"><button class="btn btn-primary" data-action="title-editor-new" ${c.busy?'disabled':''}>＋ 新增稱號</button><button class="btn btn-ghost" data-action="title-editor-load" ${c.busy?'disabled':''}>重新載入</button></div><label>選擇既有稱號<select id="title-editor-select"><option value="">— 新稱號草稿 —</option>${defs.map(t=>`<option value="${esc(t.id)}" ${d.titleId===t.id?'selected':''}>${esc(t.name||t.id)}</option>`).join('')}</select></label>
  <div class="field"><label>稱號名稱</label><input id="title-editor-name" maxlength="60" value="${esc(d.name)}"></div>
  <div class="field"><label>稀有度／視覺等級</label><select id="title-editor-rarity">${Object.entries({common:'一般',rare:'稀有',epic:'史詩',legendary:'傳說',limited:'限定',eternal:'永恆'}).map(([k,v])=>`<option value="${k}" ${(d.rarity||'common')===k?'selected':''}>${v}｜${k}</option>`).join('')}</select><div class="hint">稀有度會同步決定玩家端稱號顏色、徽章與圖鑑卡片樣式。</div></div>
- <div class="field"><label>達成條件</label><select id="title-editor-condition">${Object.entries({manual:'指定 UID 人工授予',profile_completion:'個人資料完成度達100%',hosted_tournaments:'成功完成主辦場數',completed_tournaments:'正式賽事完成場數',championships:'正式賽事冠軍次數',best_placement:'正式賽事名次不大於',total_checkins:'正式累積簽到天數',checkin_streak:'正式連續簽到天數',...(d.titleId==='pioneer'?{pioneer_quota:'開拓者累計100人名額'}:{})}).map(([k,v])=>`<option value="${k}" ${d.conditionType===k?'selected':''}>${v}</option>`).join('')}</select></div>
+ <div class="field"><label>達成條件</label><select id="title-editor-condition">${Object.entries({manual:'指定 UID 人工授予',profile_completion:'個人資料完成度達100%',hosted_tournaments:'成功完成主辦場數',completed_tournaments:'正式賽事完成場數',championships:'正式賽事冠軍次數',best_placement:'正式賽事名次不大於',total_checkins:'正式累積簽到天數',checkin_streak:'正式連續簽到天數',...(d.titleId==='pioneer'?{pioneer_registration:'開拓者：9/21 23:59 前註冊自動授予'}:{})}).map(([k,v])=>`<option value="${k}" ${d.conditionType===k?'selected':''}>${v}</option>`).join('')}</select></div>
  <div class="field"><label>門檻數值（人工授予填1，資料完成度填100）</label><input id="title-editor-target" type="number" min="1" max="100000" value="${Number(d.targetValue)||1}"></div>
  <div class="field"><label>說明</label><textarea id="title-editor-description" maxlength="500">${esc(d.description||'')}</textarea></div>
  <label><input id="title-editor-active" type="checkbox" ${d.isActive?'checked':''}>啟用</label>
  <div class="btn-row"><button class="btn btn-primary" data-action="title-editor-save" ${c.busy?'disabled':''}>儲存稱號</button>${!d.create?`<button class="btn btn-danger" data-action="title-editor-delete" ${c.busy?'disabled':''}>刪除稱號</button>`:''}</div>
  <div class="hint">已有稱號保留發放歷史；可使用下方的「標記絕版」停止發放。</div>
- <hr><b>開拓者限量發放</b><p class="hint">先啟用「開拓者」。預覽依 UID 排序的啟用正式帳號，排除測試與曾獲得者；累計100人即自動停止，撤銷不補回名額。</p>
- <button class="btn btn-ghost" data-action="title-pioneer-preview" ${c.busy?'disabled':''}>預覽符合帳號</button>
- ${c.preview?`<p>剩餘名額 ${Number(c.preview.remaining)}｜本批 ${c.preview.candidates.length} 人</p><div class="hint">${c.preview.candidates.map(u=>esc(u.name)+'（'+esc(u.uid)+'）').join('<br>')}</div><button class="btn btn-primary" data-action="title-pioneer-execute" ${c.busy||!c.preview.candidates.length?'disabled':''}>確認發放本批</button>`:''}
+ <hr><b>開拓者限時自動發放</b><p class="hint">台灣時間 2026/9/21 23:59 前建立帳號即可獲得，不限人數，包含既有帳號。以系統帳號建立時間判定；符合資格即使截止後登入仍可補領。已授予紀錄不重複發放。</p>
  ${c.message?`<p class="hint" role="status">${esc(c.message)}</p>`:''}</div></details>`;
  if(inline){
    const fields=html.slice(html.indexOf('<div class="field"><label>稱號名稱'),html.indexOf('<div class="hint">已有稱號'));
