@@ -1,29 +1,44 @@
-name: Diagnose tester ranked room blocker
+name: Fix tester test-ranked room creation
 on:
   push:
     branches: [main]
     paths: ['.github/workflows/inspect-test-ladder-hooks.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  inspect:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect every ranked-mode gate
+      - name: Fix tester ranked selection and publish reset
         shell: python
         run: |
           from pathlib import Path
-          s=Path('index.html').read_text(encoding='utf-8'); lines=s.splitlines()
-          keys=['set-ladder-mode','ladderMode=isTester','ladderMode="general"','testLadderEnabled','isTester()']
-          hits=[]
-          for i,l in enumerate(lines):
-            if any(k in l for k in keys): hits.append(i)
-          seen=set()
-          for i in hits:
-            a=max(0,i-8); b=min(len(lines),i+16)
-            if any(a<=x<b for x in seen): continue
-            seen.update(range(a,b))
-            print(f'===== {a+1}-{b} =====')
-            for n in range(a,b): print(f'{n+1}: {lines[n][:2200]}')
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          old='''    if(isTester()){\n      d.name=ensureTestName(d.name);\n      d.ladderMode="general";\n      markTesterSandboxState(state);\n    }'''
+          new='''    if(isTester()){\n      d.name=ensureTestName(d.name);\n      // Preserve the tester's ranked choice in the draft. Official meta.ladderMode\n      // remains general; testLadderEnabled is the isolated test-ladder switch.\n      markTesterSandboxState(state);\n    }'''
+          if old not in s: raise SystemExit('publish reset blocker not found')
+          s=s.replace(old,new,1)
+          old2='''  if(action==="set-ladder-mode"){\n    if(!hasAdminAccess()){ showToast("目前身分沒有修改賽事類型的權限", true); return; }'''
+          new2='''  if(action==="set-ladder-mode"){\n    if(!hasAdminAccess() && !isOwnTestTournament()){ showToast("目前身分沒有修改賽事類型的權限", true); return; }'''
+          if old2 not in s: raise SystemExit('mode permission blocker not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+      - name: Verify tester ranked creation path
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert 'd.ladderMode="general";' not in s[s.index('if(action==="open-registration-publish-preview")'):s.index('if(action==="set-ladder-mode")')]
+          assert 'if(!hasAdminAccess() && !isOwnTestTournament())' in s
+          assert 'state.testLadderEnabled=isTester()?(d.ladderMode==="ranked"):false;' in s
+          assert 'data.meta.ladderMode="general";' in s
+          print('tester can select ranked; publish preserves testLadderEnabled; official ladder stays isolated')
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix tester test-ranked room creation"
+          git push
