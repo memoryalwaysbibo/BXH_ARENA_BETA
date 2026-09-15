@@ -2420,9 +2420,9 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
 @media(prefers-reduced-motion:reduce){.mood-track:has(.mood-group){animation:none}.mood-window{overflow-x:auto}.mood-group[aria-hidden=true]{display:none}}
 
 
-.header-account-controls{grid-area:account;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0;max-width:100%;}
+.header-account-controls{position:relative;z-index:2;grid-area:account;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0;max-width:100%;}
 header.topbar .header-account-controls .account-menu-wrap{width:auto!important;max-width:100%;min-width:0;margin:0!important;flex:0 1 auto!important;}
-.online-presence{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:36px;padding:6px 11px;border:1px solid #716039;border-radius:999px;background:rgba(217,185,92,.07);color:#e9d58c;box-sizing:border-box;white-space:nowrap;}
+.online-presence{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;min-height:36px;padding:6px 11px;border:1px solid #716039;border-radius:999px;background:rgba(217,185,92,.07);color:#e9d58c;box-sizing:border-box;white-space:nowrap;}
 .online-presence span{font-size:11px;line-height:1.4;}.online-presence strong{font-size:15px;line-height:1.4;color:#f5e4a2;font-variant-numeric:tabular-nums;}
 @media(max-width:899px){header.topbar .header-account-controls{grid-column:1/-1;justify-self:stretch;width:100%;gap:8px;}.stickytop.mode-shell>header.topbar{row-gap:10px!important;}}
 
@@ -13902,13 +13902,13 @@ function presenceContext(){
  return presenceState;
 }
 function presenceAllowed(){return !!firebaseUser?.uid&&userProfile?.active===true&&userProfile?.role==='super_admin'&&!userProfile?.isTestAccount&&!userProfile?.deleted&&!['frozen','disabled','deleted'].includes(userProfile?.accountStatus);}
-function presenceLabel(){const c=presenceContext();return c.error?'暫無資料':c.count===null?'讀取中…':Date.now()-c.asOf>120000?'等待更新':c.count+' 人';}
+function presenceLabel(){if(!firebaseUser?.uid)return '登入同步中';if(userProfile?.isTestAccount)return '測試帳號不提供';if(userProfile?.active!==true||userProfile?.deleted||['frozen','disabled','deleted'].includes(userProfile?.accountStatus))return '帳號未啟用';const c=presenceContext();return c.error?'暫無資料':c.count===null?'讀取中…':Date.now()-c.asOf>120000?'等待更新':c.count+' 人';}
 function renderOnlinePresence(){
- if(!presenceAllowed())return '';
+ if(userProfile?.role!=='super_admin')return '';
  return `<div class="online-presence" title="最近 2 分鐘內使用本站的已登入帳號；同帳號多開只算一人，不含遊客。"><span>● 線上人數</span><strong data-presence-count>${presenceLabel()}</strong></div>`;
 }
 function refreshPresenceBadge(){
- const allowed=presenceAllowed();
+ const allowed=userProfile?.role==='super_admin';
  document.querySelectorAll('.online-presence').forEach(el=>{if(!allowed)el.remove();});
  if(!allowed)return;
  document.querySelectorAll('header.topbar .header-account-controls').forEach(host=>{
