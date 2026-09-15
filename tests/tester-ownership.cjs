@@ -55,6 +55,10 @@ let count=0;
     await check('cannot create forged public mirror over another owner',()=>setDoc(doc(tester,'publicTournaments','OTHER'),mirror()),false);
     const batch=writeBatch(tester);batch.set(doc(tester,'tournaments','ATOMIC'),room());batch.set(doc(tester,'publicTournaments','ATOMIC'),mirror());
     await check('atomic TEST private and public creation',()=>batch.commit(),true);
+    const ledger=(eventCode)=>({type:'event',eventAuthority:'test',actorUid:'tester-a',eventCode,testPlayerKey:'T064',seasonId:'TEST-S1',delta:1});
+    await check('direct ledger write rejects other owner',()=>setDoc(doc(tester,'testLadderTransactions','OTHER_T064'),ledger('OTHER')),false);
+    await check('direct ledger write rejects official event',()=>setDoc(doc(tester,'testLadderTransactions','OFFICIAL_T064'),ledger('OFFICIAL')),false);
+    await check('direct ledger write rejects forged transaction ID',()=>setDoc(doc(tester,'testLadderTransactions','FORGED'),ledger('OWN')),false);
     // Execute the actual app cloud methods with the Emulator SDK, not duplicate implementations.
     const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
     const createMethod=html.slice(html.indexOf('    async createRoom(data){'),html.indexOf('    // Admin/staff use only'));

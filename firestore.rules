@@ -904,6 +904,10 @@ isAdminOrAbove()
         && request.resource.data.type == 'event'
         && request.resource.data.eventAuthority == 'test'
         && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.eventCode is string
+        && tournamentExistsFor(request.resource.data.eventCode)
+        && isTesterOwnedTestData(myProfile(), tournamentDataFor(request.resource.data.eventCode))
+        && logId == request.resource.data.eventCode + '_' + request.resource.data.testPlayerKey
         && request.resource.data.testPlayerKey.matches('^T[0-9]{3}$')
         && request.resource.data.seasonId == 'TEST-S1'
         && request.resource.data.delta is number && request.resource.data.delta >= 0;
