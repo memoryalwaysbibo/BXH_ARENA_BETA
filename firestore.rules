@@ -43,6 +43,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /onlinePresence/{uid} { allow read, write: if false; }
     match /playerPrivacy/{uid} { allow read, write: if false; }
     match /playerDirectory/{uid} { allow read, write: if false; }
 

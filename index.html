@@ -2419,6 +2419,11 @@ body .modal-overlay.confirmation-overlay{z-index:2100!important;}
 @keyframes mood-scroll{to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){.mood-track:has(.mood-group){animation:none}.mood-window{overflow-x:auto}.mood-group[aria-hidden=true]{display:none}}
 
+
+.online-presence{position:relative;z-index:2;flex-shrink:0;min-width:82px;text-align:center;padding:8px 10px;border:1px solid #716039;border-radius:12px;background:linear-gradient(145deg,#262419,#15171b);color:#e9d58c;box-sizing:border-box}
+.online-presence span{display:block;font-size:10px;white-space:nowrap}.online-presence strong{display:block;font-size:20px;line-height:1.4;color:#f5e4a2;font-variant-numeric:tabular-nums}
+@media(min-width:381px) and (max-width:899px){.mode-shell>header.topbar .online-presence{position:absolute;right:12px;top:58px;min-width:76px;padding:4px 7px}.online-presence strong{font-size:17px}}
+@media(max-width:380px){.mode-shell>header.topbar .online-presence{grid-column:1/-1;grid-row:2;justify-self:end;padding:4px 9px}.mode-shell>header.topbar:has(.online-presence) .account-menu-wrap{grid-row:3}.online-presence strong{font-size:17px}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -11203,6 +11208,7 @@ function renderAccountManagementScreen(){
       <div class="logo-wrap"><div class="logo-glow"></div><img class="logo" src="${LOGO_SRC}" alt="BXH"></div>
       <div class="brandtext"><span class="t1"><span class="w-bxh">BXH</span><span class="w-arena">ARENA</span></span><span class="t2">戰鬥陀螺賽事系統 <small style="opacity:.55;font-size:9px;">${APP_VERSION}</small></span>${topbarConnectionRailHtml()}</div>
       <div class="spacer"></div>
+      ${renderOnlinePresence()}
       ${accountMenuHtml()}
     </header>${renderSuperAdminManagementTabs(page)}</div>
     ${accountMenuOverlayHtml()}
@@ -11795,6 +11801,7 @@ function renderPlayerCenterLoggedIn(){
       <div class="logo-wrap"><div class="logo-glow"></div><img class="logo" src="${LOGO_SRC}" alt="BXH"></div>
       <div class="brandtext"><span class="t1"><span class="w-bxh">BXH</span><span class="w-arena">ARENA</span></span><span class="t2">戰鬥陀螺賽事系統</span>${topbarConnectionRailHtml()}</div>
       <div class="spacer"></div>
+      ${renderOnlinePresence()}
       ${accountMenuHtml()}
     </header>
     ${renderPlayerNavHtml()}
@@ -13887,6 +13894,31 @@ function topbarCloudIndicatorDescriptor(){
   return { key:"local", en:"STANDBY", label:"等待連線" };
 }
 
+// Presence: one lease per authenticated UID, foreground tabs only.
+let presenceState={key:'',count:null,asOf:0,error:false,busy:false,lastAttempt:0};
+function presenceContext(){
+ const key=currentAuthUid()+':'+engagementSessionEpoch;
+ if(presenceState.key!==key)presenceState={key,count:null,asOf:0,error:false,busy:false,lastAttempt:0};
+ return presenceState;
+}
+function presenceAllowed(){return !!firebaseUser?.uid&&userProfile?.active===true&&userProfile?.role==='super_admin'&&!userProfile?.isTestAccount&&!userProfile?.deleted&&!['frozen','disabled','deleted'].includes(userProfile?.accountStatus);}
+function presenceLabel(){const c=presenceContext();return c.error?'暫無資料':c.count===null?'讀取中…':Date.now()-c.asOf>120000?'等待更新':c.count+' 人';}
+function renderOnlinePresence(){
+ if(!presenceAllowed())return '';
+ return `<div class="online-presence" title="最近 2 分鐘內使用本站的已登入帳號；同帳號多開只算一人，不含遊客。"><span>● 線上人數</span><strong data-presence-count>${presenceLabel()}</strong></div>`;
+}
+function refreshPresenceBadge(){document.querySelectorAll('.online-presence').forEach(el=>{if(!presenceAllowed()){el.remove();return;}const n=el.querySelector('[data-presence-count]');if(n)n.textContent=presenceLabel();});}
+async function tickPresence(){
+ const c=presenceContext();refreshPresenceBadge();
+ if(document.visibilityState!=='visible'||!firebaseUser?.uid||userProfile?.active!==true||!window.engagementService?.presence||c.busy||Date.now()-c.lastAttempt<45000)return;
+ c.busy=true;c.lastAttempt=Date.now();
+ try{const r=await window.engagementService.presence({action:'beat'});if(c!==presenceContext())return;if(!r?.ok)throw Error('presence-failed');c.count=Number.isSafeInteger(r.count)?r.count:null;c.asOf=Date.now();c.error=false;}
+ catch(e){if(c===presenceContext())c.error=true;}
+ finally{if(c===presenceContext()){c.busy=false;refreshPresenceBadge();}}
+}
+setInterval(tickPresence,5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')tickPresence();});
+
 function topbarConnectionRailHtml(){
   const s = topbarCloudIndicatorDescriptor();
   return `<div class="top-connection-state" aria-label="BXH LIVE LINK：${esc(s.label)}">
@@ -14288,7 +14320,8 @@ function renderApp(){
           ${topbarConnectionRailHtml()}
         </div>
         <div class="spacer"></div>
-        ${accountMenuHtml()}
+        ${renderOnlinePresence()}
+      ${accountMenuHtml()}
       </header>
       ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← 返回賽事大廳</button><span>目前為公開觀賽模式</span></div>`:""}
       <nav class="tabs">
@@ -18936,6 +18969,7 @@ init();
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
+    async presence(payload){return callEngagementFunction("onlinePresence",payload,15000);},
     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
     async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
