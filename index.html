@@ -5244,6 +5244,8 @@ function normalizeRoomCodeInput(raw){
 async function commitJoinedTournamentData(code, data, usePublic){
   state = Object.assign(defaultState(data.id), data);
   state.cloudCode = code;
+  resetSettingsFormDraft();
+  resetRegistrationFormDraft();
   refereeAssignmentDraftEnabled = null;
   await setCurrentId(state.id);
   await saveRecord(state);
@@ -16382,6 +16384,8 @@ function handleAction(action, target){
       ns.meta.name = (src.meta.name || "未命名賽事") + "（複製）";
       ns.players = src.players.map(p=>({id:uid("p"), name:p.name, checkedIn:false}));
       state = isTester() ? markTesterSandboxState(ns) : ns;
+      resetSettingsFormDraft();
+      resetRegistrationFormDraft();
       await saveRecord(state);
       await setCurrentId(state.id);
       recordIndex = await loadIndex();
@@ -16468,6 +16472,8 @@ function handleAction(action, target){
         ns.players = prevPlayers.map(n=>({id:uid("p"), name:n.name, checkedIn:false}));
       }
       state = isTester() ? markTesterSandboxState(ns) : ns;
+      resetSettingsFormDraft();
+      resetRegistrationFormDraft();
       await saveRecord(state);
       await setCurrentId(state.id);
       recordIndex = await loadIndex();
