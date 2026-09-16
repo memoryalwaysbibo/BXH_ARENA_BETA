@@ -19552,36 +19552,13 @@ init();
       if(!uid) throw { code: "auth-required" };
       const selectionDoc=await fx.getDoc(fx.doc(dbHandle,"publicTournaments",code));
       if(selectionDoc.exists()&&selectionDoc.data().registrationSelection)return window.engagementService.lotteryRegistration({code,action:'cancel'});
-      const tourRef = fx.doc(dbHandle, "tournaments", code);
-      const pubRef = fx.doc(dbHandle, "publicTournaments", code);
-      const regRef = fx.doc(dbHandle, "tournaments", code, "registrations", uid);
-
-      return await fx.runTransaction(dbHandle, async (tx) => {
-        const pubSnap = await tx.get(pubRef);
-        if(!pubSnap.exists()) throw { code: "not-found" };
-        const pub = pubSnap.data();
-        const regSnap = await tx.get(regRef);
-        if(!regSnap.exists()) throw { code: "not-registered" };
-        const reg = regSnap.data();
-        if(reg.status !== "confirmed" && reg.status !== "waitlist") throw { code: "nothing-to-cancel" };
-        let publicRuntime=null;
-        try{ publicRuntime=pub.bracketView?JSON.parse(pub.bracketView):null; }catch(e){}
-        if(pub.tournamentPhase === "live" || pub.tournamentPhase === "settling" || pub.tournamentPhase === "done" || pub.tournamentPhase === "cancelled" || (publicRuntime&&publicRuntime.archiveStatus==="completed")) throw { code: "tournament-started" };
-
-        // 常見情況下用公開鏡像的期限給出具體訊息；真正的權威判定在 Rules
-        // 內部讀私人 tournaments.cancellationDeadline，這裡漏判也不會真的
-        // 允許逾期取消。
-        if(pub.cancellationDeadline && Date.now() >= pub.cancellationDeadline){
-          throw { code: "cancel-deadline-passed" };
-        }
-
-        const field = reg.status === "confirmed" ? "confirmedCount" : "waitlistCount";
-        tx.update(regRef, { status: "cancelled", cancelledAt: fx.serverTimestamp(), cancelledBy: uid, updatedAt: fx.serverTimestamp() });
-        tx.update(tourRef, { [field]: fx.increment(-1), updatedAt: Date.now() });
-        tx.update(pubRef, { [field]: fx.increment(-1), updatedAt: Date.now() });
-
-        return { ok: true };
-      });
+      const mine=await window.engagementService.familyRegistration({action:'mine',code});
+      if(!mine?.ok)throw Error('unavailable');
+      const registrationId=await chooseFamilyRegistrationToCancel(mine.rows||[]);
+      if(authHandle?.currentUser?.uid!==uid)throw Error('auth-required');
+      const result=await window.engagementService.familyRegistration({action:'cancel',code,registrationId,operationId:crypto.randomUUID()});
+      if(!result?.ok)throw Error('cancel-failed');
+      return result;
     },
 
     async promoteEarliestWaitlist(code){
