@@ -5382,11 +5382,19 @@ async function ensureCloudRoomForTournament(){
   render();
 }
 
+function cloudCreateRoomErrorMessage(prefix="建立失敗"){
+  const code=String((typeof window!=="undefined"&&window.__BXH_LAST_CLOUD_ERROR_CODE)||"");
+  if(code==="permission-denied") return prefix+"：Firestore 權限被拒絕，請重新整理後再試";
+  if(code==="unauthenticated") return prefix+"：登入狀態已失效，請重新登入";
+  if(code==="already-exists") return prefix+"：房間代碼重複，請再試一次";
+  if(code==="unavailable" || code==="deadline-exceeded") return prefix+"：雲端服務暫時無法連線";
+  return prefix+"：雲端建立操作未完成，請稍後再試";
+}
 async function cloudStartRoom(){
   if(!cloudAvailable()){ showToast("尚未設定或無法連上雲端同步，僅能使用本機模式", true); return; }
   cloudStatus = "connecting"; render();
   const code = await window.cloudSync.createRoom(state);
-  if(!code){ cloudStatus="error"; render(); showToast("建立賽事代碼失敗", true); return; }
+  if(!code){ cloudStatus="error"; render(); showToast(cloudCreateRoomErrorMessage("建立失敗"), true); return; }
   state.cloudCode = code;
   saveState();
   if(cloudUnsub) { try{ cloudUnsub(); }catch(e){} }
@@ -8804,7 +8812,7 @@ async function publishRegistrationConfig(){
     const code = await window.cloudSync.createRoom(state);
     if(!code){
       cloudStatus = "error"; render();
-      showToast("發布失敗：無法建立賽事代碼，草稿仍已保留", true);
+      showToast(cloudCreateRoomErrorMessage("發布失敗")+"；草稿仍已保留", true);
       return;
     }
     state.cloudCode = code;
@@ -20323,11 +20331,9 @@ init();
     async createRoom(data){
       if(!cloudEnabled) return null;
       try{
-        let code, tries=0;
-        do{
-          code = generateRoomCode();
-          tries++;
-        } while(tries<12 && await docExists(code));
+        // Room-code collision protection is handled by the atomic create batch below.
+        // Do not preflight-read tournaments/{code}: community hosts are not allowed
+        // to read private tournament documents before they own one.
         const creatorUid=currentUserUidForWrites();
         const testerSession=!!(userProfile&&userProfile.active!==false&&(userProfile.role==="tester"||userProfile.isTestAccount===true)&&creatorUid);
         if(testerSession){
@@ -20424,17 +20430,17 @@ init();
           updatedAt: Date.now(),
           visibility: "public"
         }, publicRegistrationFields, testFields);
-        if(testerSession){
-          const batch=fx.writeBatch(dbHandle);
-          batch.set(fx.doc(dbHandle,"tournaments",code),privatePayload);
-          batch.set(fx.doc(dbHandle,"publicTournaments",code),publicPayload);
-          await batch.commit();
-        }else{
-          await fx.setDoc(fx.doc(dbHandle,"tournaments",code),privatePayload);
-          await fx.setDoc(fx.doc(dbHandle,"publicTournaments",code),publicPayload);
-        }
+        // Both documents must be created in one atomic batch. Beta Rules validate
+        // the public mirror with getAfter(), which only sees the paired private
+        // tournament when both writes are in the same batch.
+        const batch=fx.writeBatch(dbHandle);
+        batch.create(fx.doc(dbHandle,"tournaments",code),privatePayload);
+        batch.create(fx.doc(dbHandle,"publicTournaments",code),publicPayload);
+        await batch.commit();
+        if(typeof window!=="undefined") window.__BXH_LAST_CLOUD_ERROR_CODE = null;
         return code;
       }catch(e){
+        if(typeof window!=="undefined") window.__BXH_LAST_CLOUD_ERROR_CODE = (e&&e.code)||"unknown";
         console.warn("建立雲端賽事代碼失敗", e);
         return null;
       }
