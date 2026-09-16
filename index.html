@@ -6527,9 +6527,9 @@ const ADMIN_TIER_ONLY_ACTIONS = new Set([
 const TESTER_TIER_ACTIONS = new Set(["set-scoring-mode","set-round-scoring-mode","correct-quick-result","board-reshuffle"]);
 const TESTER_CREATION_ACTIONS = new Set(["new-tournament-blank"]);
 
-function hasAdminAccess(){ return currentRole === "admin"; }
+function hasAdminAccess(){ return currentRole === "admin" || currentRole === "tester"; }
 function isCommunityRoom(){ return !!(state && state.meta && state.meta.eventAuthority==="community"); }
-function isCommunityRoomOwner(){ return !!(isCommunityRoom() && currentRole==="player" && firebaseUser && state.ownerUid===firebaseUser.uid); }
+function isCommunityRoomOwner(){ return !!(isCommunityRoom() && firebaseUser && state.ownerUid===firebaseUser.uid && (currentRole==="player" || currentRole==="tester")); }
 function isTester(){ return !!(userProfile && userProfile.active!==false && (userProfile.role==="tester"||userProfile.isTestAccount===true)); }
 function isTestTournament(st=state){ return !!(st && st.testMode===true && st.meta && st.meta.eventAuthority==="test"); }
 function isOwnTestTournament(st=state){
@@ -15247,7 +15247,7 @@ function handleAction(action, target){
     showToast("封測帳號只能操作自己建立並標示（測試）的賽事。", true);
     return;
   }
-  if(isTester() && action==="set-ladder-mode" && target.getAttribute("data-mode")==="ranked" && !isOwnTestTournament()){
+  if(isTester() && action==="set-ladder-mode" && target.getAttribute("data-mode")==="ranked" && !isOwnTestTournament() && !isCommunityRoomOwner()){
     showToast("封測帳號只能在自己的測試賽事啟用測試天梯。", true);
     return;
   }
