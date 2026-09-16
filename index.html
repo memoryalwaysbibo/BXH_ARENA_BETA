@@ -15700,7 +15700,7 @@ function handleAction(action, target){
         const code=(e&&e.code)?String(e.code):"";
         const msg=(e&&e.message)?String(e.message):"";
         if(code.includes("permission-denied")){
-          showToast("建立失敗：Firestore 權限被拒絕｜請確認已發布 v13.24.2 Rules",true);
+          showToast("建立失敗：Firestore 權限被拒絕｜請確認 Beta Rules 已部署（目前版本 v13.29.8）",true);
         }else if(code.includes("unauthenticated")){
           showToast("建立失敗：登入狀態已失效，請重新登入",true);
         }else if(code.includes("unavailable") || code.includes("network") || msg.toLowerCase().includes("network")){
@@ -20273,8 +20273,8 @@ init();
         const tournamentRef=fx.doc(dbHandle,"tournaments",code);
         const publicRef=fx.doc(dbHandle,"publicTournaments",code);
         const batch=fx.writeBatch(dbHandle);
-        batch.set(tournamentRef,Object.assign({},base,{data:JSON.stringify(data)}));
-        batch.set(publicRef,{
+        batch.create(tournamentRef,Object.assign({},base,{data:JSON.stringify(data)}));
+        batch.create(publicRef,{
           bracketView:JSON.stringify(buildPublicMirrorFields(data)),updatedAt:now,visibility:"public",eventAuthority:"community",ownerUid:uid,ladderMode:"general",registrationEnabled:false,registrationStatus:"closed",tournamentPhase:computeTournamentPhase(data),name:data.meta.name||"",eventDate:data.meta.date||"",location:data.meta.location||"",startAt:data.meta.startTime||"",formatType:data.meta.formatType||"single",lastActivityAt:now,expiresAt:new Date(expMs)
         });
         await batch.commit();
