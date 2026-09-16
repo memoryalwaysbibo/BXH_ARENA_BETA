@@ -2500,6 +2500,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="raffle-replay.css?v=13.34.0">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -2511,7 +2512,8 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 
 <script src="inventory-ui.js?v=13.31.0"></script>
 <script src="court-call-ui.js?v=13.33.0-build2"></script>
-<script src="raffle-ui.js?v=13.32.3"></script>
+<script src="raffle-replay.js?v=13.34.0"></script>
+<script src="raffle-ui.js?v=13.34.0"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
 // Preserve an existing provider; propagate storage failures to existing callers.
@@ -2678,9 +2680,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.33.0";
+const APP_VERSION = "v13.34.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.34.0",date:"2026/09/16",title:"黑金拉霸與得獎揭曉",updateLevel:"feature",added:["雙龍黑金拉霸、三軸依序停止","得獎人姓名、玩家編號與獎品彈窗","手動下一位與自動播放、手機滿版回放"],changed:["紀錄回放沿用後端固定結果"],fixed:["取代簡易圖示輪播"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.34.0.md 與交接",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用原活動查看權限",publicSummary:"黑金拉霸動畫與得獎人揭曉，支援逐位或自動回放。"},
   {version:"v13.33.0",date:"2026/09/16",title:"BXH CALL 裁判叫號與單次 PASS",updateLevel:"feature",added:["裁判通知雙方，選手回覆正在過去或申請稍候","裁判核准 PASS，同台同輪延後兩場、每人每賽事成功一次","待回補及兩場完成後再次叫號"],changed:["PASS 與一般跳過分開；已計分及不足兩場不可核准"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.33.0.md 與交接",firebaseImpact:"courtCalls 與 callRevision",securityRulesImpact:"阻止舊賽事快照覆寫 PASS",permissionImpact:"裁判按台分權；玩家只回覆本人場次",publicSummary:"裁判叫號與選手暫緩回報，裁判核准後同台延後兩場。"},
   {version:"v13.32.4",date:"2026/09/16",timezone:"Asia/Taipei",title:"賽事看板全螢幕與手機排版修正",updateLevel:"patch",added:["完整對戰表全螢幕與不支援瀏覽器的頁內滿版備援"],changed:["看板標題改顯示實際賽事名稱，移除重複工具列並整理手機操作","看板匯出完整內容，排除操作按鈕與視窗裁切"],fixed:["全螢幕 API 缺少時按鈕無反應","匯出圖片只保留固定高度視窗"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.4.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"不變",publicSummary:"改善整張對戰表的全螢幕瀏覽、手機排版及圖片匯出。"},
   {version:"v13.32.3",date:"2026/09/16",timezone:"Asia/Taipei",title:"手機 QR 儲存與活動分享辨識改善",updateLevel:"patch",added:["活動名稱及獎品分享文字、分享到 LINE","附活動名稱的 QR 圖片、系統圖片分享及長按儲存"],changed:["PNG 下載提示明確區分下載檔案與存入相簿"],fixed:["分享只有裸網址、手機下載誤認已存入相簿"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.3.md",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動分享限制",publicSummary:"分享抽獎時帶上活動資訊，QR 圖片可長按儲存或分享。"},

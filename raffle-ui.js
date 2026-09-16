@@ -145,10 +145,8 @@ setInterval(()=>{
  if(!c.loading&&!c.busy&&!c.editing&&!c.pending&&c.id&&['open','freezing','locked'].includes(c.detail?.event?.state)&&(appPhase==='raffle-public'||appPhase==='player-center'&&playerActiveTab==='raffles'))loadRaffles();
 },60000);
 function playRaffleReplay(detail){
- if(!detail?.drawnAt)return;const overlay=document.createElement('div');overlay.className='raffle-replay';overlay.innerHTML=`<p>紀錄回放 · ${esc(detail.event.title)}</p><h2 class="raffle-slot" aria-live="polite">準備揭曉</h2><p class="raffle-replay-progress"></p><button class="btn btn-ghost raffle-fullscreen">全螢幕</button><button class="btn btn-primary raffle-replay-close">關閉回放</button>`;document.body.appendChild(overlay);const slot=overlay.querySelector('.raffle-slot'),progress=overlay.querySelector('.raffle-replay-progress');let index=0,frames=0,timer;
- const close=()=>{clearInterval(timer);if(document.fullscreenElement===overlay)document.exitFullscreen?.().catch(()=>{});overlay.remove();};overlay.querySelector('.raffle-replay-close').onclick=close;overlay.querySelector('.raffle-fullscreen').onclick=()=>overlay.requestFullscreen?.().catch(()=>{});overlay.requestFullscreen?.().catch(()=>{});
- if(!detail.winners.length){slot.textContent='本次沒有合格得獎者';return;}
- timer=setInterval(()=>{const winner=detail.winners[index];frames++;if(frames<12){slot.textContent=['🎰','🎟️','✨'][frames%3]+' · · ·';return;}slot.textContent=winner.nickname+'（'+winner.playerId+'）';progress.textContent=winner.prizeName+'｜'+(index+1)+' / '+detail.winners.length;if(frames>=30){frames=0;index++;if(index>=detail.winners.length)clearInterval(timer);}},100);
+ if(!detail?.drawnAt)return;
+ window.bxhRaffleReplay?.open(detail);
 }
 let raffleAnnouncementsState={loaded:false,loading:false,rows:[]};
 function renderRaffleAnnouncements(){const a=raffleAnnouncementsState;if(!a.loaded&&!a.loading){a.loading=true;setTimeout(async()=>{try{const r=await window.engagementService.raffle({action:'announcements'});a.rows=r.announcements||[];}catch{}finally{a.loaded=true;a.loading=false;render();}},0);}const visible=a.rows.filter(x=>x.expiresAt>Date.now());return visible.length?`<div class="raffle-announcement-window" aria-label="系統開獎公告"><div class="mood-track"><div class="mood-group">${visible.map(x=>`<span class="mood-item"><b>系統公告</b> ${esc(x.text)}</span>`).join('')}</div></div></div>`:'';}
