@@ -1,4 +1,4 @@
-// BXH ARENA Firestore Rules v13.29.8
+// BXH ARENA Firestore Rules v13.29.9
 // 2026-09-16: redeploy current Beta rules for player community-room creation.
 // 2026-09-15: tester management is restricted to the actor's own TEST tournament.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
@@ -669,7 +669,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && (canReadTournamentPrivate() || isCommunityOwnerData(resource.data) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data)));
       allow list: if isSignedIn() && (canReadTournamentPrivate() || isCommunityOwnerData(resource.data) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data)));
       allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && (
-isTournamentAdminEquivalent() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data) || (isSignedIn() && myProfile().active == true && validCommunityInvariant(request.resource.data))
+isTournamentAdminEquivalent() || isStaffOfficialCreatorData(request.resource.data) || validTesterTestCreate(request.resource.data) || (isSignedIn() && myProfile().get('active', true) == true && validCommunityInvariant(request.resource.data))
         );
       allow delete: if operationsUnlocked(resource.data) && (
 isAdminOrAbove() || (isSignedIn() && isCommunityOwnerData(resource.data)) || (isTester() && isTesterOwnedTestData(myProfile(), resource.data))
