@@ -1,4 +1,4 @@
-// BXH ARENA Firestore Rules v13.29.9
+// BXH ARENA Firestore Rules v13.30.0
 // 2026-09-16: redeploy current Beta rules for player community-room creation.
 // 2026-09-15: tester management is restricted to the actor's own TEST tournament.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
@@ -124,13 +124,11 @@ service cloud.firestore {
     function isCommunityOwnerData(tournamentData) {
       return request.auth != null
         && tournamentData.eventAuthority == 'community'
-        && !isTester()
         && tournamentData.createdBy == request.auth.uid
         && tournamentData.ownerUid == request.auth.uid;
     }
     function validCommunityInvariant(d) {
       return d.eventAuthority == 'community'
-        && !isTester()
         && d.createdBy == request.auth.uid
         && d.ownerUid == request.auth.uid
         && d.createdByRole == 'player'
