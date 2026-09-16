@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 388602)
-... 505830 bytes omitted ...
-
 <!DOCTYPE html>
 <!-- FINAL BETA title CMS v2: generic configurable title editor -->
 
@@ -497,8 +494,7 @@ table.rank-table tr:last-child td{border-bottom:none;}
 .scoring-mode-card{
   flex:1;text-align:left;padding:14px 16px;border-radius:10px;
   background:var(--panel-2);border:1px solid var(--border);cursor:pointer;
-}
-.scoring-mode-card.active{border-color:var(--gold);background:linear-gradient(160deg, rgba(217,185,92,0.1), var(--panel-2));}
+}.scoring-mode-card.active{border-color:var(--gold);background:linear-gradient(160deg, rgba(217,185,92,0.1), var(--panel-2));}
 .scoring-mode-card:disabled{opacity:0.5;cursor:not-allowed;}
 .smc-title{font-family:var(--font-d);font-weight:700;font-size:14px;color:var(--white);}
 .scoring-mode-card.active .smc-title{color:var(--gold);}
@@ -997,8 +993,7 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 .hoc-champion-zone{position:relative;display:flex;flex-direction:column;align-items:center;margin-top:26px;animation:hoc-rise 1s ease-out 0.6s both;}
 @keyframes hoc-rise{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
 .hoc-trophy-wrap{position:relative;width:108px;height:108px;display:flex;align-items:center;justify-content:center;animation:hoc-trophy-drop 1s cubic-bezier(.2,.9,.3,1.3) 0.9s both;}
-@keyframes hoc-trophy-drop{from{opacity:0;transform:translateY(-40px) scale(0.7);}to{opacity:1;transform:translateY(0) scale(1);}}
-.hoc-trophy-halo{position:absolute;inset:-30%;background:radial-gradient(circle, rgba(243,217,139,0.45) 0%, transparent 70%);animation:hoc-halo-pulse 3s ease-in-out infinite;}
+@keyframes hoc-trophy-drop{from{opacity:0;transform:translateY(-40px) scale(0.7);}to{opacity:1;transform:translateY(0) scale(1);}}.hoc-trophy-halo{position:absolute;inset:-30%;background:radial-gradient(circle, rgba(243,217,139,0.45) 0%, transparent 70%);animation:hoc-halo-pulse 3s ease-in-out infinite;}
 @keyframes hoc-halo-pulse{0%,100%{opacity:0.55;transform:scale(1);}50%{opacity:0.85;transform:scale(1.08);}}
 .hoc-trophy-svg{position:relative;width:92px;height:92px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));}
 .hoc-champion-title{font-family:var(--font-d);font-weight:700;font-size:14px;letter-spacing:5px;color:var(--champagne-gold);margin-top:10px;}
@@ -1497,8 +1492,7 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
   header.topbar .account-menu{
     top:calc(100% + 6px);
     right:0;
-    left:auto;
-    width:min(280px, calc(100vw - 24px));
+    left:auto;    width:min(280px, calc(100vw - 24px));
     min-width:0;
     max-width:calc(100vw - 24px);
     z-index:1200;
@@ -1997,8 +1991,7 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 
   function currentUserUidForWrites(){
     try{ return (authReady && authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null; }
-    catch(e){ return null; }
-  }
+    catch(e){ return null; }  }
 
   function currentUserDisplayNameForWrites(){
     try{
@@ -2497,8 +2490,7 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
       const controlRef=fx.doc(dbHandle,"ladderSystem","current");
 
       // Lock the ladder first. Event settlement checks this flag inside its own transaction.
-      const lock=await fx.runTransaction(dbHandle,async tx=>{
-        const cs=await tx.get(controlRef); if(!cs.exists()) return {ok:false,reason:"not-initialized"};
+      const lock=await fx.runTransaction(dbHandle,async tx=>{        const cs=await tx.get(controlRef); if(!cs.exists()) return {ok:false,reason:"not-initialized"};
         const c=cs.data();
         if(c.rolloverInProgress!==true && c.lastRolloverCompletedAtMs && (Date.now()-Number(c.lastRolloverCompletedAtMs)) < 10*60*1000){
           return {ok:true,alreadyCompleted:true,oldSeason:c.lastRolloverFromSeason||null,newSeason:c.currentSeason||"S1"};
@@ -2997,8 +2989,7 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
         }:{};
         // publicRegistrationFields: the SAME fields, minus assignedStaffUids —
         // that field is staff-roster data and has no business in a collection
-        // unauthenticated readers can access (spec section 5).
-        const publicRegistrationFields = Object.assign({}, registrationFields);
+        // unauthenticated readers can access (spec section 5).        const publicRegistrationFields = Object.assign({}, registrationFields);
         delete publicRegistrationFields.assignedStaffUids;
         delete publicRegistrationFields.refereeStationAssignments;
         delete publicRegistrationFields.refereeStationNames;
