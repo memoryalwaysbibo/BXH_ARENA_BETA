@@ -26,7 +26,7 @@ function renderCourtCallPlayer(code){
 function courtCallVisibleCodes(){
  if(!currentAuthUid())return [];
  if(appPhase==='player-center'&&playerActiveTab==='registered')return (myRegistrationsCache||[]).filter(r=>r.status==='confirmed'&&smartCallEnabled(r.tournamentCode)&&schedulePhase(myRegistrationsTournamentInfo[r.tournamentCode]||{})==='live').map(r=>r.tournamentCode);
- if((appPhase==='app'||appPhase==='community-room')&&activeTab==='referee'&&state.cloudCode&&canOperateCurrentTournament())return [state.cloudCode];
+ if((appPhase==='app'&&activeTab==='referee'||appPhase==='community-room'&&communityRoomActiveTab==='referee')&&state.cloudCode&&canOperateCurrentTournament())return [state.cloudCode];
  return [];
 }
 function scheduleCourtCallPoll(){

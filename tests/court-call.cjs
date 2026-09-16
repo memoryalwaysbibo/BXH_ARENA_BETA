@@ -10,3 +10,5 @@ const before=box.courtCallContext('BXH-TEST');box.engagementSessionEpoch=2;asser
 const out=box.courtCallRow({code:'BXH-TEST',busy:false,pending:null},{matchId:'A',station:1,round:0,sequence:2,players:[{name:'<玩家>',response:'coming'}],pass:{status:'approved',requester:true},waitingFor:[],canPass:false},false);assert(out.includes('我已準備好'));assert(!out.includes('data-action="court-call-pass"'));
 assert(html.includes('callPassProtected(remote,m)'));assert(html.includes('call-state-stale'));
 console.log('PASS B-C-A-D, one/two completion ordering, paused dependency protection, public ETA order, identity isolation, used PASS UI and stale-write guard');
+
+box.appPhase="community-room";box.communityRoomActiveTab="referee";box.activeTab="live";box.state.cloudCode="BXH-TEST";box.canOperateCurrentTournament=()=>true;assert.deepEqual(Array.from(box.courtCallVisibleCodes()),["BXH-TEST"]);box.communityRoomActiveTab="live";assert.equal(box.courtCallVisibleCodes().length,0);console.log("PASS community referee uses its own navigation tab for live replies");
