@@ -18664,6 +18664,13 @@ async function init(){
     }
   }catch(e){ /* cloud sync is always optional; never let it break local mode */ }
 }
+<!-- CODEX BETA IMMEDIATE LANDING RENDER v1 -->
+try{
+  appPhase="landing";
+  render();
+}catch(e){
+  console.warn("BXH ARENA：初始入口繪製失敗",e);
+}
 init();
 </script>
 
