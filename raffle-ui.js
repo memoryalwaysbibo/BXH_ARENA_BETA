@@ -1,9 +1,30 @@
-/* v13.32.1 | Independent member raffles. Results are always supplied by the server. */
+/* v13.32.2 | Independent member raffles. Results are always supplied by the server. */
 'use strict';
 let raffleState=null,raffleLinkConsumed=false;
 function canManageMemberRaffles(){return !!(userProfile&&userProfile.active===true&&!userProfile.deleted&&!['deleted','disabled','frozen'].includes(userProfile.accountStatus)&&(['staff','admin','super_admin','tester'].includes(userProfile.role)||userProfile.isTestAccount===true));}
 function isRaffleManagementView(){return appPhase==='app'&&activeTab==='member-raffles'&&hasAdminAccess()&&canManageMemberRaffles();}
 function rafflePendingKey(){return 'bxh.raffle.pending:'+currentAuthUid()+(isRaffleManagementView()?'':':player');}
+function raffleShareUrl(event){
+ if(!event||event.testMode||!['open','freezing','locked','drawn','cancelled','archived'].includes(event.state)||!/^[a-f0-9]{64}$/.test(event.id||''))return '';
+ const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('raffle',event.id);return url.href;
+}
+async function copyRaffleShareUrl(input,status){
+ try{await navigator.clipboard.writeText(input.value);status.textContent='已複製活動網址';}
+ catch{input.focus();input.select();input.setSelectionRange(0,input.value.length);let ok=false;try{ok=document.execCommand('copy')===true;}catch{}status.textContent=ok?'已複製活動網址':'請長按或手動複製上方已選取的網址';}
+}
+function openRaffleShare(event){
+ const url=raffleShareUrl(event);if(!url)return;
+ document.getElementById('raffle-share-dialog')?.remove();
+ const previous=document.activeElement,dialog=document.createElement('dialog');dialog.id='raffle-share-dialog';
+ dialog.setAttribute('aria-labelledby','raffle-share-title');dialog.style.cssText='box-sizing:border-box;width:min(440px,calc(100% - 16px));max-height:90dvh;overflow:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:16px;padding:16px';
+ dialog.innerHTML=`<h2 id="raffle-share-title">分享抽獎活動</h2><p>${esc(event.title)}</p><div id="raffle-share-qr" style="background:#fff;padding:16px;width:248px;max-width:100%;box-sizing:border-box;margin:16px auto" aria-label="活動網址 QR Code"></div><label for="raffle-share-url">活動網址</label><input id="raffle-share-url" type="text" readonly value="${esc(url)}" style="width:100%;box-sizing:border-box;margin:8px 0 16px"><div class="btn-row"><button class="btn btn-primary" data-raffle-share="copy">複製網址</button><button class="btn btn-ghost" data-raffle-share="download">下載 QR</button><button class="btn btn-ghost" data-raffle-share="retry">重新產生 QR</button><button class="btn btn-ghost" data-raffle-share="close">關閉</button></div><p class="hint">掃碼可查看活動，登入後再參加；活動結束後仍可查閱結果。</p><p role="status" aria-live="polite" data-raffle-share-status></p>`;
+ document.body.appendChild(dialog);const input=dialog.querySelector('input'),status=dialog.querySelector('[data-raffle-share-status]'),download=dialog.querySelector('[data-raffle-share="download"]');
+ const generate=()=>{download.disabled=true;try{if(renderQrCodeInto('raffle-share-qr',url,216)||dialog.querySelector('#raffle-share-qr canvas')){download.disabled=false;status.textContent='QR 已產生';}else status.textContent='QR 元件尚未載入，可先複製網址或稍後重新產生。';}catch{status.textContent='QR 產生失敗，活動網址仍可使用。';}};
+ dialog.querySelector('[data-raffle-share="copy"]').onclick=()=>copyRaffleShareUrl(input,status);
+ dialog.querySelector('[data-raffle-share="retry"]').onclick=generate;
+ download.onclick=()=>{try{const source=dialog.querySelector('#raffle-share-qr canvas');if(!source)throw Error('qr-unavailable');const canvas=document.createElement('canvas');canvas.width=canvas.height=source.width+32;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(source,16,16);const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='BXH_RAFFLE_'+event.id+'_QR.png';a.click();status.textContent='已送出 QR 圖片下載；手機可於下載項目查看。';}catch{status.textContent='無法下載 QR，請先重新產生或複製活動網址。';}};
+ dialog.querySelector('[data-raffle-share="close"]').onclick=()=>dialog.close();dialog.onclose=()=>{dialog.remove();previous?.focus?.();};dialog.showModal();generate();
+}
 const raffleStateLabels={draft:'草稿',open:'開放報名',freezing:'確認資格中',locked:'名單已鎖定',drawn:'已開獎',cancelled:'已取消',archived:'已封存'};
 function raffleDateInput(n){return new Date(n+28800000).toISOString().slice(0,16);}
 function raffleNewDraft(){const now=Date.now();return {title:'',description:'',startAt:raffleDateInput(now),endAt:raffleDateInput(now+86400000),drawAt:raffleDateInput(now+86460000),claimUntil:raffleDateInput(now+8*86400000),claimInstructions:'',mode:'manual',checkedInOnly:false,combination:'all',prizes:[{name:'',imageUrl:'',quantity:1}],conditions:[]};}
@@ -30,7 +51,7 @@ function renderRafflePage(){
  const c=raffleContext(),management=isRaffleManagementView();if(!c.editing&&!c.loading&&!c.busy&&!c.error&&(c.id?!c.detail:c.events===null))setTimeout(()=>loadRaffles(),0);
  const d=c.detail,e=d?.event,locked=c.loading||c.busy||!!c.pending;
  return `<section class="panel"><div class="panel-title"><span>🎰 ${management?'會員抽獎管理':'會員抽獎'}</span><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="raffle-list">全部活動</button>${currentAuthUid()?'<button class="btn btn-ghost btn-sm" data-action="raffle-mine">我的活動</button>':''}<button class="btn btn-ghost btn-sm" data-action="raffle-refresh" ${c.loading||c.busy?'disabled':''}>重新整理</button>${management&&c.canCreate?'<button class="btn btn-primary btn-sm" data-action="raffle-new">建立活動</button>':''}</div></div>${c.error?`<p class="auth-error" role="alert">${esc(c.error)}</p>`:''}${c.pending?`<p class="hint">有一筆待確認操作。<button class="btn btn-primary" data-action="raffle-retry-pending" ${c.busy?'disabled':''}>重試原操作</button></p>`:''}${c.loading?'<p role="status">載入活動中……</p>':''}
- ${management&&c.editing?renderRaffleEditor(c):e?`<article><h2>${e.testMode?'（TEST）':''}${esc(e.title)}</h2><p class="hint">${esc(raffleStateLabels[e.state])}${e.delayed?'｜處理延遲，系統正在重試':''}｜${e.mode==='auto'?'線上自動開獎':'現場手動開獎'}</p><div class="mailbox-body">${esc(e.description)}</div><p>報名：${esc(mailboxDate(e.startAt))} ～ ${esc(mailboxDate(e.endAt))}<br>開獎：${esc(mailboxDate(e.drawAt))}（台灣時間）<br>領獎期限：${esc(mailboxDate(e.claimUntil))}</p><p class="hint">${e.conditions.length?(e.combination==='all'?'全部符合：':'符合任一項：')+e.conditions.map(raffleRuleLabel).map(esc).join('；'):'有效會員即可參加'}${e.checkedInOnly?'；只抽主辦已標記報到者':''}</p><div class="grid grid-2 inventory-grid">${e.prizes.map(p=>`<div class="panel inventory-card">${inventoryImage(p.imageUrl)?`<img class="inventory-image" src="${esc(p.imageUrl)}" alt="${esc(p.name)}" referrerpolicy="no-referrer">`:''}<span>${esc(p.name)} × ${p.quantity}</span></div>`).join('')}</div>
+ ${management&&c.editing?renderRaffleEditor(c):e?`<article>${raffleShareUrl(e)?'<button class="btn btn-ghost" data-action="raffle-share">分享活動／QR</button>':''}<h2>${e.testMode?'（TEST）':''}${esc(e.title)}</h2><p class="hint">${esc(raffleStateLabels[e.state])}${e.delayed?'｜處理延遲，系統正在重試':''}｜${e.mode==='auto'?'線上自動開獎':'現場手動開獎'}</p><div class="mailbox-body">${esc(e.description)}</div><p>報名：${esc(mailboxDate(e.startAt))} ～ ${esc(mailboxDate(e.endAt))}<br>開獎：${esc(mailboxDate(e.drawAt))}（台灣時間）<br>領獎期限：${esc(mailboxDate(e.claimUntil))}</p><p class="hint">${e.conditions.length?(e.combination==='all'?'全部符合：':'符合任一項：')+e.conditions.map(raffleRuleLabel).map(esc).join('；'):'有效會員即可參加'}${e.checkedInOnly?'；只抽主辦已標記報到者':''}</p><div class="grid grid-2 inventory-grid">${e.prizes.map(p=>`<div class="panel inventory-card">${inventoryImage(p.imageUrl)?`<img class="inventory-image" src="${esc(p.imageUrl)}" alt="${esc(p.name)}" referrerpolicy="no-referrer">`:''}<span>${esc(p.name)} × ${p.quantity}</span></div>`).join('')}</div>
  <p>我的狀態：${esc(d.myEntry?({joined:'已參加',pending_review:'待主辦審核',rejected:'審核未通過',cancelled:'已取消'})[d.myEntry.status]||d.myEntry.status:currentAuthUid()?'尚未參加':'尚未登入')}${d.myEntry?.award?'｜'+esc(d.myEntry.award.prizeName)+'：'+esc(({pending:'已中獎／待領獎',claimed:'已領獎',forfeited:'已棄領',replaced:'已補抽'})[d.myEntry.award.status]||''):''}${d.myEntry?.refundedAt?'｜退票處理完成':''}</p>
  ${!management&&e.state==='open'&&d.myEntry?.status!=='joined'?`<button class="btn btn-primary" data-action="${currentAuthUid()?'raffle-join':'raffle-login'}" ${locked?'disabled':''}>${currentAuthUid()?'參加活動':'登入／註冊後參加'}</button>`:''}
  ${d.winners.length||d.drawnAt?`<section class="panel"><div class="panel-title">開獎結果</div><p class="hint">結果由後端保存；回放沿用同一份結果。</p><button class="btn btn-primary" data-action="raffle-play">全螢幕拉霸／紀錄回放</button><details><summary>查看完整結果</summary>${d.winners.map(w=>`<p>${esc(w.prizeName)}：${esc(w.nickname)}（${esc(w.playerId)}）｜${esc(({pending:'待領獎',claimed:'已領獎',forfeited:'已棄領'})[w.status])}${management&&d.isManager?`<span class="btn-row">${w.status==='pending'?`<button class="btn btn-ghost btn-sm" data-action="raffle-claim" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>確認已領獎</button><button class="btn btn-ghost btn-sm" data-action="raffle-forfeit" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>記錄棄領</button>`:w.status==='forfeited'?`<button class="btn btn-ghost btn-sm" data-action="raffle-redraw" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>補抽此份獎品</button>`:''}</span>`:''}</p>`).join('')||'<p>本次沒有合格得獎者。</p>'}</details><p class="mailbox-body">領獎方式：${esc(e.claimInstructions)}</p></section>`:''}
@@ -44,10 +65,11 @@ async function raffleMutate(payload){
 }
 async function handleRaffle(action,target){
  const c=raffleContext();if(c.busy)return;
- const memberActions=['raffle-play','raffle-login','raffle-public','raffle-home','raffle-list','raffle-mine','raffle-open','raffle-refresh','raffle-more','raffle-join','raffle-retry-pending'];
+ const memberActions=['raffle-share','raffle-play','raffle-login','raffle-public','raffle-home','raffle-list','raffle-mine','raffle-open','raffle-refresh','raffle-more','raffle-join','raffle-retry-pending'];
  if(!isRaffleManagementView()&&!memberActions.includes(action))return;
  if(c.loading&&!['raffle-home','raffle-login','raffle-play'].includes(action))return;
  if(action==='raffle-play'){playRaffleReplay(c.detail);return;}
+ if(action==='raffle-share'){openRaffleShare(c.detail?.event);return;}
  if(action==='raffle-login'){try{sessionStorage.setItem('bxh.raffle.return',c.id);}catch{}pendingLoginIntent='player';appPhase='player-login';render();return;}
  if(action==='raffle-public'){appPhase='raffle-public';c.id='';render();return;}
  if(action==='raffle-home'){appPhase=currentAuthUid()?'player-center':'landing';if(currentAuthUid())playerActiveTab='home';raffleLinkConsumed=true;render();return;}
