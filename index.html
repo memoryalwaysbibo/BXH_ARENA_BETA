@@ -2501,7 +2501,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="stylesheet" href="raffle-replay.css?v=13.34.0">
-<link rel="stylesheet" href="raffle-claims.css?v=13.35.0">
+<link rel="stylesheet" href="raffle-claims.css?v=13.37.0">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -2515,7 +2515,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <script src="court-call-ui.js?v=13.33.0-build2"></script>
 <script src="raffle-replay.js?v=13.34.0"></script>
 <script src="raffle-claims-ui.js?v=13.35.0"></script>
-<script src="family-ui.js?v=13.36.0"></script>
+<script src="family-ui.js?v=13.37.0"></script>
 <script src="raffle-ui.js?v=13.35.0"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
@@ -2683,9 +2683,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.36.0";
+const APP_VERSION = "v13.37.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.37.0",date:"2026/09/16",title:"家庭選手代報名與賽事身分",updateLevel:"feature",added:["一般賽事可選本人或一位孩子報名","家庭選手獨立賽事紀錄、由家長接收叫號"],changed:["孩子以獨立選手編號進入裁判名單"],fixed:["孩子戰績不歸入家長積分"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.37.0.md",firebaseImpact:"familyRegistration、courtCallService",securityRulesImpact:"沿用既有報名取消與候補規則",permissionImpact:"僅家長替自己的孩子報名",publicSummary:"開放一般賽事代報名；積分賽、超額抽籤與帳號移交尚未開放。"},
   {version:"v13.36.0",date:"2026/09/16",title:"家庭選手資料",updateLevel:"feature",added:["會員資料新增孩子資料與獨立選手編號","編輯、封存與恢復，保留修改紀錄"],changed:[],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.36.0.md",firebaseImpact:"familyPlayers 私有資料",securityRulesImpact:"預設拒絕客戶端存取",permissionImpact:"僅家長本人管理",publicSummary:"先建立孩子獨立資料；代報名與帳號移交尚未開放。"},
   {version:"v13.35.0",date:"2026/09/16",title:"領獎 QR 核銷與紀錄追蹤",updateLevel:"feature",added:["得獎者專屬領獎 QR 與手動輸入碼","相機掃碼後確認交付，保存核銷時間與人員","活動核銷人員授權與核銷紀錄"],changed:["手動核銷同步保存時間及操作人","多人同時核銷僅成功一次，補抽後原碼失效"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.35.0.md 與交接",firebaseImpact:"raffleClaimCodes 與核銷紀錄",securityRulesImpact:"沿用後端專用集合預設拒絕",permissionImpact:"主辦、最高管理員及活動授權核銷人員",publicSummary:"出示領獎 QR，由主辦確認交付，核銷紀錄可追溯。"},
   {version:"v13.34.0",date:"2026/09/16",title:"黑金拉霸與得獎揭曉",updateLevel:"feature",added:["雙龍黑金拉霸、三軸依序停止","得獎人姓名、玩家編號與獎品彈窗","手動下一位與自動播放、手機滿版回放"],changed:["紀錄回放沿用後端固定結果"],fixed:["取代簡易圖示輪播"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.34.0.md 與交接",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用原活動查看權限",publicSummary:"黑金拉霸動畫與得獎人揭曉，支援逐位或自動回放。"},
@@ -6138,6 +6139,15 @@ const PUBLIC_TOURNAMENTS_ERROR_MESSAGES = {
 // 無法歸類的 permission-denied 才顯示「操作未完成，請重新整理後再試」，
 // 不再籠統翻譯成單一句話。
 const REGISTRATION_ERROR_MESSAGES = {
+  "registration-state-conflict": "報名人數尚未同步，請聯絡主辦重新發布賽事。",
+  "registration-aborted": "已取消這次報名操作",
+  "family-ranked-unavailable": "積分賽尚未開放孩子代報名，請選本人參賽。",
+  "family-lottery-unavailable": "超額抽籤賽事尚未開放孩子代報名。",
+  "child-not-found": "孩子資料不可使用，請重新讀取家庭選手資料。",
+  "participant-change-locked": "本場已綁定原參賽者，取消後重新報名仍須選同一人。",
+  "profile-incomplete": "請先完成家長會員資料。",
+  "test-event-required": "測試帳號僅能報名自己的 TEST 賽事。",
+  "roster-locked": "對戰表已產生，請聯絡主辦確認參賽名單。",
   "auth-required": "請先登入",
   "not-found": "找不到賽事",
   "profile-missing": "玩家資料尚未完成，請先完成資料",
@@ -6161,7 +6171,7 @@ const REGISTRATION_ERROR_MESSAGES = {
 };
 function mapRegistrationError(e){
   const code = (e && e.code) || (e && e.message) || "unknown";
-  return REGISTRATION_ERROR_MESSAGES[code] || "發生未知錯誤，請稍後再試";
+  return REGISTRATION_ERROR_MESSAGES[code] || Object.entries(REGISTRATION_ERROR_MESSAGES).find(([key])=>String(e?.message||"").includes(key))?.[1] || "發生未知錯誤，請稍後再試";
 }
 let publicTournamentsLoading = false;
 let findEventsFilters = { keyword:"", date:"", region:"", format:"all" };
@@ -11885,7 +11895,7 @@ function buildLadderSettlementPayload(st){
   const participants=(st.players||[]).filter(p=>actualIds.has(p.id)).map(p=>{
     const placement=placementMap[p.id]||null;
     const pointsEarned=placement===1?10:placement===2?7:placement===3?5:placement===4?3:1;
-    return { localPlayerId:p.id, testPlayerKey:p.testPlayerKey||null, playerUid:p.registrationUid||p.accountUid||p.uid||null, playerName:p.name, source:p.source||"onsite", placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };
+    return { localPlayerId:p.id, testPlayerKey:p.testPlayerKey||null, playerUid:p.familyPlayerId||p.registrationUid||p.accountUid||p.uid||null, playerName:p.name, source:p.familyPlayerId?"family":p.source||"onsite", placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };
   });
   return { eventCode:st.cloudCode, eventName:(st.meta&&st.meta.name)||"", eventDate:(st.meta&&st.meta.date)||"", formatType:(st.meta&&st.meta.formatType)||"single", participants };
 }
@@ -12934,6 +12944,7 @@ function setSmartCallEnabled(code,on){
 function smartCallNorm(v){ return String(v||"").trim().toLowerCase().replace(/\s+/g,""); }
 function smartCallFindPlayerId(st,r){
   if(!st||!Array.isArray(st.players)) return null;
+  if(r?.familyPlayerId)return st.players.find(p=>p.id==="family_"+r.familyPlayerId||p.familyPlayerId===r.familyPlayerId)?.id||null;
   const candidates=[r&&r.displayName,r&&r.realName,r&&r.gameId,r&&r.publicName,userProfile&&userProfile.realName,userProfile&&userProfile.displayName,userProfile&&userProfile.gameId].map(smartCallNorm).filter(Boolean);
   const found=st.players.find(p=>candidates.includes(smartCallNorm(p&&p.name)));
   return found ? found.id : null;
@@ -13061,6 +13072,7 @@ function renderPlayerRegisteredTab(){
       <div class="fe-meta">${esc(metaParts.length ? metaParts.join("　｜　") : "活動資訊待公布")}</div>
       <div class="fe-meta" style="margin-top:4px;color:var(--metal-dim);">賽事代碼 ${esc(r.tournamentCode)}</div>
       <div class="fe-status-row"><span class="fe-status-chip status-${r.status}">${esc(statusLabel)}</span></div>
+      <p class="hint">參賽者：${esc(r.displayName||r.realName||"本人")}${r.familyPlayerId?"（孩子，由家長代報名）":""}</p>
       ${r.status==='confirmed' && schedulePhase(info)==='live' && smartCallModel(r,info).kind!=='done' ? smartCallCardHtml(r,info) : (schedulePhase(info)==='live'&&smartCallModel(r,info).kind==='done'?'<p class="hint">本次參賽已結束｜賽事進行中，名次待結算</p>':'')}
       <div class="fe-card-action">
         <button class="btn btn-ghost btn-sm" data-action="view-public-tournament" data-code="${esc(r.tournamentCode)}">查看詳情</button>
@@ -17952,7 +17964,7 @@ function handleAction(action, target){
   if(action==="load-online-roster"){
     if(!state.meta.registrationEnabled){ showToast("此賽事未啟用線上報名", true); return; }
     if(!state.cloudCode){ showToast("此賽事尚未發布到雲端", true); return; }
-    if(state.startedAt){ showToast("賽事開始後不能重新載入參賽名單", true); return; }
+    if(state.startedAt||state.bracketSize||state.matches.length){ showToast("對戰表產生後不能重新載入名單，請先清除對戰表", true); return; }
     (async ()=>{
       try{
         if(window.cloudSync && window.cloudSync.connect) await window.cloudSync.connect();
@@ -17960,21 +17972,14 @@ function handleAction(action, target){
         const regs = await window.cloudSync.listRegistrationsForAdmin(state.cloudCode);
         adminRegistrationsCache = regs;
         const confirmed = regs.filter(r=>r.status==="confirmed");
-        let added=0, skipped=0;
-        confirmed.forEach(r=>{
-          const rid = String(r.uid||"");
-          const name = (r.displayName||r.publicName||r.realName||"").trim();
-          if(!name){ skipped++; return; }
-          const exists = state.players.some(p=>(rid && p.registrationUid===rid) || (!rid && p.name===name));
-          if(exists){ skipped++; return; }
-          state.players.push({ id:uid("p"), name, checkedIn: state.meta.checkinRequired ? false : true, source:"online", registrationUid:rid });
-          added++;
-        });
+        const before=state.players.length;
+        state.players=mergeFamilyOnlineRoster(state.players,confirmed,state.meta.checkinRequired,()=>uid("p"));
+        const added=Math.max(0,state.players.length-before),skipped=confirmed.length-added;
         state.meta.checkinClosedEarly = false;
         state.meta.checkinClosedAt = null;
         await saveState();
         render();
-        showToast("線上名單載入完成：新增 "+added+" 人，略過 "+skipped+" 人");
+        showToast("線上名單已同步，目前共 "+state.players.length+" 位選手");
       }catch(e){
         console.warn("[load-online-roster]",e);
         showToast("載入線上報名名單失敗，請稍後再試", true);
@@ -19240,6 +19245,7 @@ init();
     async presence(payload){return callEngagementFunction("onlinePresence",payload,15000);},
     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async mailbox(payload){return callEngagementFunction("mailboxService",payload,30000);},
+    async familyRegistration(payload){return callEngagementFunction("familyRegistration",payload,60000);},
     async family(payload){return callEngagementFunction("familyPlayers",payload,60000);},
     async inventory(payload){return callEngagementFunction("inventoryService",payload,30000);},
     async courtCall(payload){return callEngagementFunction("courtCallService",payload,60000);},
@@ -19512,92 +19518,10 @@ init();
       const uid = (authReady && authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null;
       if(!uid) throw { code: "auth-required" };
       const selectionDoc=await fx.getDoc(fx.doc(dbHandle,"publicTournaments",code));
+      const childId=await chooseFamilyParticipant(selectionDoc.exists()?selectionDoc.data():{});
+      if(authHandle?.currentUser?.uid!==uid)throw Error('auth-required');
       if(selectionDoc.exists()&&selectionDoc.data().registrationSelection)return window.engagementService.lotteryRegistration({code,action:'join',childEligibilityConfirmed});
-      const tourRef = fx.doc(dbHandle, "tournaments", code);
-      const pubRef = fx.doc(dbHandle, "publicTournaments", code);
-      const regRef = fx.doc(dbHandle, "tournaments", code, "registrations", uid);
-      const userRef = fx.doc(dbHandle, "users", uid);
-
-      // v13.13.3 legacy-profile repair: older super_admin/admin/staff accounts may
-      // already have realName/phone from player-mode completion but lack the
-      // profileCompleted flag. Backfill it before registration so the account is
-      // treated the same as newly-created player accounts.
-      try{
-        const preUserSnap = await fx.getDoc(userRef);
-        if(preUserSnap.exists()){
-          const preUser = preUserSnap.data();
-          if(preUser.realName && typeof preUser.phone === "string" && preUser.profileCompleted !== true){
-            await fx.updateDoc(userRef, { profileCompleted:true, updatedAt:Date.now() });
-          }
-        }
-      }catch(e){
-        console.warn("[joinTournamentAsPlayer] legacy profile repair skipped", e);
-      }
-
-      return await fx.runTransaction(dbHandle, async (tx) => {
-        const pubSnap = await tx.get(pubRef);
-        if(!pubSnap.exists()) throw { code: "not-found" };
-        const pub = pubSnap.data();
-
-        const regSnap = await tx.get(regRef);
-        const userSnap = await tx.get(userRef);
-        if(!userSnap.exists()) throw { code: "profile-missing" };
-        const user = userSnap.data();
-
-        if(!pub.registrationEnabled) throw { code: "not-enabled" };
-        if(pub.eventCancelled) throw { code: "cancelled" };
-        let publicRuntime=null;
-        try{ publicRuntime=pub.bracketView?JSON.parse(pub.bracketView):null; }catch(e){}
-        if(pub.tournamentPhase === "live" || pub.tournamentPhase === "settling" || pub.tournamentPhase === "done" || pub.tournamentPhase === "cancelled" || (publicRuntime&&publicRuntime.archiveStatus==="completed")) throw { code: "tournament-started" };
-        const now = Date.now();
-        if(!pub.registrationOpenAt || now < pub.registrationOpenAt) throw { code: "not-open-yet" };
-        if(!pub.registrationCloseAt || now >= pub.registrationCloseAt) throw { code: "closed" };
-
-        let desiredStatus;
-        if(pub.confirmedCount < pub.capacity) desiredStatus = "confirmed";
-        else if(pub.waitlistEnabled && pub.waitlistCount < pub.waitlistCapacity) desiredStatus = "waitlist";
-        else throw { code: "full" };
-
-        if(pub.targetGroup === "children" && childEligibilityConfirmed !== true){
-          throw { code: "child-eligibility-required" };
-        }
-
-        const isFirstTime = !regSnap.exists();
-        const existingReg = regSnap.exists() ? regSnap.data() : null;
-        if(existingReg && existingReg.status !== "cancelled") throw { code: "already-registered" };
-
-        const realName=String(user.realName||"").trim();
-        const gameId=String(user.gameId||user.nickname||((user.displayName&&user.displayName!==user.realName)?user.displayName:"")||"").trim();
-        const nameMode=pub.participantNameMode==="gameId"?"gameId":"realName";
-        const displayName=nameMode==="gameId"?(gameId||realName):realName;
-
-        if(isFirstTime){
-          tx.set(regRef, {
-            uid, tournamentCode: code,
-            realName, gameId, displayName, nameMode, phone: user.phone||"",
-            publicName: displayName,
-            email: user.email || null,
-            status: desiredStatus, source: "player",
-            childEligibilityConfirmed: true,
-            createdAt: fx.serverTimestamp(), updatedAt: fx.serverTimestamp(),
-            cancelledAt: null, cancelledBy: null, promotedAt: null, promotedBy: null,
-          });
-        } else {
-          tx.update(regRef, {
-            status: desiredStatus,
-            createdAt: fx.serverTimestamp(), updatedAt: fx.serverTimestamp(),
-            cancelledAt: null, cancelledBy: null,
-            promotedAt: null, promotedBy: null,
-            childEligibilityConfirmed: true,
-          });
-        }
-
-        const counterField = desiredStatus === "confirmed" ? "confirmedCount" : "waitlistCount";
-        tx.update(tourRef, { [counterField]: fx.increment(1), updatedAt: Date.now() });
-        tx.update(pubRef, { [counterField]: fx.increment(1), updatedAt: Date.now() });
-
-        return { ok: true, status: desiredStatus };
-      });
+      return window.engagementService.familyRegistration({action:'join',code,childId,childEligibilityConfirmed:childEligibilityConfirmed===true,operationId:crypto.randomUUID()});
     },
 
     async cancelRegistrationAsPlayer(code){
@@ -19816,7 +19740,7 @@ init();
       const resolved=[]; const skipped=[]; const cancelled=[];
       for(const item of (payload.participants||[])){
         // Explicit test players are never written into the official ladder.
-        if(item.source==="test"||item.isTestData===true){
+        if(item.source==="family"||item.source==="test"||item.isTestData===true){
           skipped.push(item.playerName);
           continue;
         }
