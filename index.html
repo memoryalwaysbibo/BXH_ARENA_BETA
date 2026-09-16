@@ -15243,7 +15243,12 @@ function handleAction(action, target){
   if(action.startsWith("account-batch-")){handleAccountBatch(action,target);return;}
   const id = target.getAttribute("data-id");
   if(action.startsWith("ops-")){handleTournamentOperationsAction(action,target);return;}
-  if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !isOwnTestTournament() && !TESTER_CREATION_ACTIONS.has(action)){
+  // Tester accounts may operate their own TEST sandbox and their own player-
+// hosted general room. The latter is still a general/community room, so it
+// must pass through the community-owner allowlist instead of being rejected
+// by the tester sandbox guard before the action handler runs.
+const testerCanOperateAction=isOwnTestTournament()||(isCommunityRoomOwner()&&COMMUNITY_OWNER_ACTIONS.has(action));
+if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !TESTER_CREATION_ACTIONS.has(action)){
     showToast("封測帳號只能操作自己建立並標示（測試）的賽事。", true);
     return;
   }
