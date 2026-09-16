@@ -2698,7 +2698,7 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.37.0";
+const APP_VERSION = "v13.38.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
   {version:"v13.37.0",date:"2026/09/16",title:"家庭選手代報名與賽事身分",updateLevel:"feature",added:["一般賽事可選本人或一位孩子報名","家庭選手獨立賽事紀錄、由家長接收叫號"],changed:["孩子以獨立選手編號進入裁判名單"],fixed:["孩子戰績不歸入家長積分"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.37.0.md",firebaseImpact:"familyRegistration、courtCallService",securityRulesImpact:"沿用既有報名取消與候補規則",permissionImpact:"僅家長替自己的孩子報名",publicSummary:"開放一般賽事代報名；積分賽、超額抽籤與帳號移交尚未開放。"},
@@ -19540,10 +19540,11 @@ init();
       const uid = (authReady && authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null;
       if(!uid) throw { code: "auth-required" };
       const selectionDoc=await fx.getDoc(fx.doc(dbHandle,"publicTournaments",code));
-      const childId=await chooseFamilyParticipant(selectionDoc.exists()?selectionDoc.data():{});
       if(authHandle?.currentUser?.uid!==uid)throw Error('auth-required');
       if(selectionDoc.exists()&&selectionDoc.data().registrationSelection)return window.engagementService.lotteryRegistration({code,action:'join',childEligibilityConfirmed});
-      return window.engagementService.familyRegistration({action:'join',code,childId,childEligibilityConfirmed:childEligibilityConfirmed===true,operationId:crypto.randomUUID()});
+      const selection=await chooseFamilyParticipant(selectionDoc.exists()?selectionDoc.data():{},code,childEligibilityConfirmed);
+      if(authHandle?.currentUser?.uid!==uid)throw Error('auth-required');
+      return window.engagementService.familyRegistration({action:'join',code,childIds:selection.childIds,allocation:selection.allocation,childEligibilityConfirmed:childEligibilityConfirmed===true,operationId:crypto.randomUUID()});
     },
 
     async cancelRegistrationAsPlayer(code){
