@@ -2,7 +2,7 @@
 function openFamilyPlayers(){
  document.getElementById('bxh-family-dialog')?.close();
  const uid=currentAuthUid(),epoch=engagementSessionEpoch,previous=document.activeElement,dialog=document.createElement('dialog');dialog.id='bxh-family-dialog';dialog.className='raffle-claim-dialog';
- dialog.innerHTML='<header><h2>家庭選手</h2><button class="btn btn-ghost" data-family="close">關閉</button></header><p class="hint">孩子不需另外申請帳號，可由家長替一位孩子報名一般賽事。積分賽、超額抽籤與長大後帳號移交尚未開放。</p><div data-family="list"></div><button class="btn btn-primary" data-family="new">新增孩子</button><form hidden><h3 data-family="heading"></h3><label>孩子姓名<input name="name" maxlength="40" required autocomplete="off"></label><label>暱稱（選填）<input name="nickname" maxlength="40" autocomplete="off"></label><label>出生日期<input name="birthDate" type="date" required></label><label data-family="guardian"><input name="guardianConfirmed" type="checkbox" style="width:auto"> 我是孩子的家長或監護人，確認資料正確。</label><p class="hint">生日僅供家庭資料管理；代報名後，孩子姓名依主辦設定顯示於賽事。孩子戰績不會算入家長積分。</p><button class="btn btn-primary" type="submit">儲存資料</button> <button class="btn btn-ghost" type="button" data-family="cancel">取消編輯</button></form><p data-family="status" role="status" aria-live="polite"></p><button class="btn btn-ghost" data-family="refresh">重新讀取</button>';
+ dialog.innerHTML='<header><h2>家庭選手</h2><button class="btn btn-ghost" data-family="close">關閉</button></header><p class="hint">孩子不需另外申請帳號，可由家長替多位孩子報名一般賽事。每位參賽者各占一個名額；C1、C2 依建立順序固定，不會因封存或取消而重排。</p><div data-family="list"></div><button class="btn btn-primary" data-family="new">新增孩子</button><form hidden><h3 data-family="heading"></h3><label>孩子姓名<input name="name" maxlength="40" required autocomplete="off"></label><label>暱稱（選填）<input name="nickname" maxlength="40" autocomplete="off"></label><label>出生日期<input name="birthDate" type="date" required></label><label data-family="guardian"><input name="guardianConfirmed" type="checkbox" style="width:auto"> 我是孩子的家長或監護人，確認資料正確。</label><p class="hint">生日僅供家庭資料管理；代報名後，孩子姓名依主辦設定顯示於賽事。孩子戰績不會算入家長積分。</p><button class="btn btn-primary" type="submit">儲存資料</button> <button class="btn btn-ghost" type="button" data-family="cancel">取消編輯</button></form><p data-family="status" role="status" aria-live="polite"></p><button class="btn btn-ghost" data-family="refresh">重新讀取</button>';
  const q=k=>dialog.querySelector('[data-family="'+k+'"]'),form=dialog.querySelector('form'),status=q('status');let profiles=[],revision=0,editing=null,busy=false,pending=null,closed=false;
  const valid=()=>!closed&&currentAuthUid()===uid&&engagementSessionEpoch===epoch;
  const errors={'duplicate-child':'這位孩子已存在，請查看現有或已封存資料。','invalid-name':'請填寫姓名，姓名及暱稱限40字。','invalid-birth-date':'請填寫正確的出生日期，不能晚於今天。','guardian-confirmation-required':'請確認你是孩子的家長或監護人。','version-conflict':'其他視窗已更新，請重新讀取後再編輯。','profile-limit':'最多保留20位使用中的家庭選手。','profile-transferred':'此選手已移交，不能再由原家長修改。','auth-required':'請重新登入。'};
@@ -18,20 +18,34 @@ function openFamilyPlayers(){
  form.onsubmit=e=>{e.preventDefault();mutate({action:editing?'update':'create',id:editing?.id,name:form.elements.name.value,nickname:form.elements.nickname.value,birthDate:form.elements.birthDate.value,guardianConfirmed:form.elements.guardianConfirmed.checked});};q('close').onclick=close;dialog.oncancel=e=>{e.preventDefault();close();};dialog.onclose=close;q('new').onclick=()=>edit(null);q('cancel').onclick=()=>{form.hidden=true;};q('refresh').onclick=()=>pending?mutate():load();document.body.appendChild(dialog);dialog.showModal();load();
 }
 
-// One guardian holds one registration per event; a child keeps a permanent competitor ID.
+// v13.38.0: one guardian may register self and multiple children; each keeps its own slot.
 function mergeFamilyOnlineRoster(players,registrations,checkinRequired,newId){
  const confirmed=registrations.filter(r=>r.status==='confirmed'),ids=new Set(confirmed.map(r=>String(r.uid||'')));
  const result=players.filter(p=>p.source!=='online'||!p.registrationUid||ids.has(p.registrationUid));
  for(const r of confirmed){
   const name=String(r.displayName||r.publicName||r.realName||'').trim(),guardian=String(r.uid||'');if(!name||!guardian)continue;
-  const i=result.findIndex(p=>p.registrationUid===guardian),old=i<0?null:result[i],same=(old?.familyPlayerId||null)===(r.familyPlayerId||null);
-  const p={id:r.familyPlayerId?'family_'+r.familyPlayerId:(same&&old?.id||newId()),name,source:'online',registrationUid:guardian,checkedIn:same&&old?old.checkedIn:!checkinRequired};
+  const participant=r.registrationId||r.uid||guardian,i=result.findIndex(p=>p.registrationUid===guardian&&String(p.registrationId||p.participantId||p.uid||'')===String(participant)),old=i<0?null:result[i],same=(old?.familyPlayerId||null)===(r.familyPlayerId||null);
+  const p={id:r.familyPlayerId?'family_'+r.familyPlayerId:(same&&old?.id||newId()),name,source:'online',registrationUid:guardian,registrationId:participant,checkedIn:same&&old?old.checkedIn:!checkinRequired};
   if(r.familyPlayerId)Object.assign(p,{familyPlayerId:r.familyPlayerId,participantId:r.familyPlayerId,guardianUid:guardian});
   if(i<0)result.push(p);else result[i]=p;
  }
  return result;
 }
-async function chooseFamilyParticipant(event){
+async function chooseFamilyRegistrationToCancel(rows){
+ const list=(rows||[]).filter(x=>x&&x.registrationId&&['confirmed','waitlist'].includes(x.status));
+ if(!list.length)throw Error('not-registered');
+ if(list.length===1)return list[0].registrationId;
+ return new Promise((resolve,reject)=>{
+  const dialog=document.createElement('dialog'),focus=document.activeElement;dialog.className='raffle-claim-dialog';
+  dialog.innerHTML='<header><h2>選擇要取消的參賽者</h2><button class="btn btn-ghost" data-close>返回</button></header><p>請指定要取消本人或哪一位孩子的報名；其他報名不會受到影響。</p><form><label>參賽者<select name="registration">'+list.map(x=>'<option value="'+esc(x.registrationId)+'">'+esc(x.participantName||x.displayName||x.realName||x.registrationId)+'｜'+(x.status==='confirmed'?'正取':'備取')+'</option>').join('')+'</select></label><button class="btn btn-danger" type="submit">確認取消</button></form>';
+  let done=false;const finish=(error,value)=>{if(done)return;done=true;dialog.close();dialog.remove();focus?.focus?.();if(error)reject(Error(error));else resolve(value);};
+  dialog.querySelector('[data-close]').onclick=()=>finish('registration-aborted');dialog.oncancel=e=>{e.preventDefault();finish('registration-aborted');};dialog.onclose=()=>finish('registration-aborted');
+  dialog.querySelector('form').onsubmit=e=>{e.preventDefault();finish(null,e.target.elements.registration.value);};
+  document.body.appendChild(dialog);dialog.showModal();
+ });
+}
+
+async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
  const owner=currentAuthUid(),epoch=engagementSessionEpoch;
  const r=await window.engagementService.family({action:'list'});
  if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch)throw Error('auth-required');
@@ -39,10 +53,10 @@ async function chooseFamilyParticipant(event){
  const children=(r.profiles||[]).filter(p=>!p.archived&&!p.accountUid),blocked=!!event.registrationSelection||event.ladderMode==='ranked'||event.testLadderEnabled;
  return new Promise((resolve,reject)=>{
   const dialog=document.createElement('dialog'),focus=document.activeElement;dialog.className='raffle-claim-dialog';
-  dialog.innerHTML='<header><h2>選擇本場參賽者</h2><button class="btn btn-ghost" data-close>取消</button></header><p>同一帳號本場只能選本人或一位孩子，占用一個名額。取消後重新報名須選同一人。</p><form><label>參賽者<select name="child"><option value="">本人參賽</option>'+children.map(p=>'<option value="'+esc(p.id)+'"'+(blocked?' disabled':'')+'>'+esc(p.name)+(p.nickname?'（'+esc(p.nickname)+'）':'')+'</option>').join('')+'</select></label><p class="hint">'+(blocked?'本場為積分賽或超額抽籤，孩子代報名尚未開放。':children.length?'孩子的參賽姓名會依主辦設定顯示於名單及對戰表；生日不公開。叫號由此家長帳號接收。':'如需替孩子報名，請先至會員資料 → 家庭選手／孩子資料建立資料。')+'</p><button class="btn btn-primary" type="submit">確認參賽者並報名</button></form>';
+  dialog.innerHTML='<header><h2>選擇本場參賽者</h2><button class="btn btn-ghost" data-close>取消</button></header><p>可選本人及多位孩子；每位參賽者各占一個名額。孩子順序會固定為 C1、C2，不會重新排列。</p><form><fieldset><legend>參賽者</legend><label><input type="checkbox" name="participant" value="" checked> 本人參賽</label>'+children.map((p,i)=>{const code=p.displayCode||p.playerId||('C'+(i+1));return '<label><input type="checkbox" name="participant" value="'+esc(p.id)+'"'+(blocked?' disabled':'')+'> '+esc(p.name)+(p.nickname?'（'+esc(p.nickname)+'）':'')+' <span class="hint">'+esc(code)+'</span></label>';}).join('')+'</fieldset><p class="hint">'+(blocked?'本場為積分賽或超額抽籤，孩子代報名尚未開放。':children.length?'孩子的參賽姓名會依主辦設定顯示於名單及對戰表；生日不公開。叫號由家長帳號接收。':'如需替孩子報名，請先至會員資料 → 家庭選手／孩子資料建立資料。')+'</p><p data-family="allocation" role="status"></p><button class="btn btn-primary" type="submit">預覽名額並確認</button></form>';
   let done=false;const finish=(error,value)=>{if(done)return;done=true;clearInterval(timer);dialog.close();dialog.remove();focus?.focus?.();if(error)reject(Error(error));else resolve(value);};
   const timer=setInterval(()=>{if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch)finish('auth-required');},500);
   dialog.querySelector('[data-close]').onclick=()=>finish('registration-aborted');dialog.oncancel=e=>{e.preventDefault();finish('registration-aborted');};dialog.onclose=()=>finish('registration-aborted');
-  dialog.querySelector('form').onsubmit=e=>{e.preventDefault();if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch){finish('auth-required');return;}const id=e.target.elements.child.value;if(id&&(blocked||!children.some(p=>p.id===id)))return;finish(null,id||null);};document.body.appendChild(dialog);dialog.showModal();
+  dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch){finish('auth-required');return;}const ids=[...e.target.querySelectorAll('input[name="participant"]:checked')].map(x=>x.value||null);if(blocked||!ids.length||ids.some(id=>id!==null&&!children.some(p=>p.id===id)))return;const allocation=dialog.querySelector('[data-family="allocation"]');allocation.textContent='正在檢查名額…';try{const r=await window.engagementService.familyRegistration({action:'preview',code,childIds:ids,childEligibilityConfirmed:childEligibilityConfirmed===true});if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch)throw Error('auth-required');if(!r?.ok)throw Error('preview-failed');allocation.textContent=(r.rows||[]).map(x=>`${x.participantName}：${x.status==='confirmed'?'正取':'備取'}`).join('、');if(!confirm('名額配置：'+allocation.textContent+'。確定送出報名？'))return;finish(null,{childIds:ids,allocation:r.allocation||[]});}catch(err){allocation.textContent='名額檢查失敗，請稍後再試。';}};document.body.appendChild(dialog);dialog.showModal();
  });
 }
