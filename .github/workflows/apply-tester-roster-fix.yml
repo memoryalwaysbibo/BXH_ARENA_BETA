@@ -1,0 +1,37 @@
+name: Apply tester-owned general room roster fix
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-tester-roster-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch action guard
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          old = '  if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !isOwnTestTournament() && !TESTER_CREATION_ACTIONS.has(action)){'
+          new = '''  // Tester accounts may operate their own TEST sandbox and their own player-
+          // hosted general room. The latter is still a general/community room, so it
+          // must pass through the community-owner allowlist instead of being rejected
+          // by the tester sandbox guard before the action handler runs.
+          const testerCanOperateAction=isOwnTestTournament()||(isCommunityRoomOwner()&&COMMUNITY_OWNER_ACTIONS.has(action));
+          if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !TESTER_CREATION_ACTIONS.has(action)){'''
+          if old not in s:
+              raise SystemExit("target action guard not found")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+      - name: Commit and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/apply-tester-roster-fix.yml
+          git commit -m "Fix tester-owned general room test roster access"
+          git push
