@@ -2515,6 +2515,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <script src="court-call-ui.js?v=13.33.0-build2"></script>
 <script src="raffle-replay.js?v=13.34.0"></script>
 <script src="raffle-claims-ui.js?v=13.35.0"></script>
+<script src="family-ui.js?v=13.36.0"></script>
 <script src="raffle-ui.js?v=13.35.0"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
@@ -2682,9 +2683,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.35.0";
+const APP_VERSION = "v13.36.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.36.0",date:"2026/09/16",title:"家庭選手資料",updateLevel:"feature",added:["會員資料新增孩子資料與獨立選手編號","編輯、封存與恢復，保留修改紀錄"],changed:[],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.36.0.md",firebaseImpact:"familyPlayers 私有資料",securityRulesImpact:"預設拒絕客戶端存取",permissionImpact:"僅家長本人管理",publicSummary:"先建立孩子獨立資料；代報名與帳號移交尚未開放。"},
   {version:"v13.35.0",date:"2026/09/16",title:"領獎 QR 核銷與紀錄追蹤",updateLevel:"feature",added:["得獎者專屬領獎 QR 與手動輸入碼","相機掃碼後確認交付，保存核銷時間與人員","活動核銷人員授權與核銷紀錄"],changed:["手動核銷同步保存時間及操作人","多人同時核銷僅成功一次，補抽後原碼失效"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.35.0.md 與交接",firebaseImpact:"raffleClaimCodes 與核銷紀錄",securityRulesImpact:"沿用後端專用集合預設拒絕",permissionImpact:"主辦、最高管理員及活動授權核銷人員",publicSummary:"出示領獎 QR，由主辦確認交付，核銷紀錄可追溯。"},
   {version:"v13.34.0",date:"2026/09/16",title:"黑金拉霸與得獎揭曉",updateLevel:"feature",added:["雙龍黑金拉霸、三軸依序停止","得獎人姓名、玩家編號與獎品彈窗","手動下一位與自動播放、手機滿版回放"],changed:["紀錄回放沿用後端固定結果"],fixed:["取代簡易圖示輪播"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.34.0.md 與交接",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用原活動查看權限",publicSummary:"黑金拉霸動畫與得獎人揭曉，支援逐位或自動回放。"},
   {version:"v13.33.0",date:"2026/09/16",title:"BXH CALL 裁判叫號與單次 PASS",updateLevel:"feature",added:["裁判通知雙方，選手回覆正在過去或申請稍候","裁判核准 PASS，同台同輪延後兩場、每人每賽事成功一次","待回補及兩場完成後再次叫號"],changed:["PASS 與一般跳過分開；已計分及不足兩場不可核准"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.33.0.md 與交接",firebaseImpact:"courtCalls 與 callRevision",securityRulesImpact:"阻止舊賽事快照覆寫 PASS",permissionImpact:"裁判按台分權；玩家只回覆本人場次",publicSummary:"裁判叫號與選手暫緩回報，裁判核准後同台延後兩場。"},
@@ -13210,7 +13212,7 @@ function renderPlayerProfileTab(p){
     <button class="btn ${playerProfileSection==='titles'?'btn-primary':'btn-ghost'}" role="tab" aria-selected="${playerProfileSection==='titles'}" data-action="profile-section" data-section="titles">我的稱號</button>
   </div>`;
   if(playerProfileSection==="titles") return sectionNav+safeEngagementRender(()=>renderPlayerTitleCenter(p));
-  return `${sectionNav}
+  return `${sectionNav}<button class="btn btn-primary" data-action="family-open" style="margin-bottom:16px">家庭選手／孩子資料</button>
     <div class="panel" style="text-align:center;">
       <div class="player-id-badge player-avatar-large" style="margin:0 auto;">${p.avatarUrl ? `<img src="${esc(p.avatarUrl)}" alt="玩家頭像">` : ROLE_ICON_PLAYER}</div>
       <div class="btn-row" style="justify-content:center;margin-top:12px;">
@@ -15124,6 +15126,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
 
 /* ==== actions ==== */
 function handleAction(action, target){
+  if(action==='family-open'){openFamilyPlayers();return;}
   if(action.startsWith("court-call-")){handleCourtCall(action,target);return;}
   if(action.startsWith("raffle-")){handleRaffle(action,target);return;}
   if(action.startsWith("mailbox-")){handleMailbox(action,target);return;}
@@ -19237,6 +19240,7 @@ init();
     async presence(payload){return callEngagementFunction("onlinePresence",payload,15000);},
     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async mailbox(payload){return callEngagementFunction("mailboxService",payload,30000);},
+    async family(payload){return callEngagementFunction("familyPlayers",payload,60000);},
     async inventory(payload){return callEngagementFunction("inventoryService",payload,30000);},
     async courtCall(payload){return callEngagementFunction("courtCallService",payload,60000);},
     async raffle(payload){return callEngagementFunction("memberRaffle",payload,540000,['list','get','announcements'].includes(payload?.action));},
