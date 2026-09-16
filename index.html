@@ -604,6 +604,36 @@ table.rank-table tr:last-child td{border-bottom:none;}
   .board-logo{height:34px;}
 }
 
+
+/* v13.32.4: board presentation only */
+.board-header-left{min-width:0;flex:1;align-items:flex-start;}
+.board-header-left>div{min-width:0;}
+.board-title{overflow-wrap:anywhere;}
+.board-sub{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;}
+.board-header>.share-btn{flex-shrink:0;}
+.board-canvas>.panel{margin:0;padding:8px;background:transparent;border:0;box-shadow:none;}
+.board-canvas .event-title-bar,.board-canvas>.champion-box,.board-canvas>.panel>.hint{display:none;}
+.board-canvas .bracket-wrap{overflow:visible;}
+.board-canvas{box-sizing:border-box;padding:16px;}
+.board-help{text-align:center;margin:8px 0;font-size:12px;color:var(--metal);}
+.board-toolbar .btn,.board-theme-select{min-height:40px;}
+.board-zoom-group .btn{min-height:36px;}
+.board-shell.board-expanded,.board-shell:fullscreen{position:fixed;inset:0;z-index:1900;width:100%;height:100vh;height:100dvh;box-sizing:border-box;border-radius:0;display:flex;flex-direction:column;overflow:auto;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));}
+.board-expanded .board-viewport{flex:1;min-height:160px;height:auto;}
+.board-expanded .board-header{margin-bottom:8px;padding-bottom:8px;}
+.board-expanded .board-footer{margin-top:4px;}
+.bracket-wm-wrap:has(.board-expanded){isolation:auto;}
+.bracket-wm-content:has(.board-expanded){z-index:auto;}
+body:has(.board-expanded) .toast-wrap{z-index:2200;}
+@media(max-width:640px){
+ .board-header{flex-direction:row;align-items:flex-start;gap:8px;}
+ .board-logo{height:28px;}
+ .board-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+ .board-toolbar>.btn,.board-theme-select{width:100%;min-width:0;white-space:normal;}
+ .board-zoom-group{grid-column:1/-1;justify-content:center;}
+ .board-theme-select{grid-column:1/-1;}
+}
+
 /* ==== version update page ==== */
 .version-page{max-width:760px;margin:0 auto;}
 .version-hero{
@@ -2647,9 +2677,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.32.3";
+const APP_VERSION = "v13.32.4";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.32.4",date:"2026/09/16",timezone:"Asia/Taipei",title:"賽事看板全螢幕與手機排版修正",updateLevel:"patch",added:["完整對戰表全螢幕與不支援瀏覽器的頁內滿版備援"],changed:["看板標題改顯示實際賽事名稱，移除重複工具列並整理手機操作","看板匯出完整內容，排除操作按鈕與視窗裁切"],fixed:["全螢幕 API 缺少時按鈕無反應","匯出圖片只保留固定高度視窗"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.4.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"不變",publicSummary:"改善整張對戰表的全螢幕瀏覽、手機排版及圖片匯出。"},
   {version:"v13.32.3",date:"2026/09/16",timezone:"Asia/Taipei",title:"手機 QR 儲存與活動分享辨識改善",updateLevel:"patch",added:["活動名稱及獎品分享文字、分享到 LINE","附活動名稱的 QR 圖片、系統圖片分享及長按儲存"],changed:["PNG 下載提示明確區分下載檔案與存入相簿"],fixed:["分享只有裸網址、手機下載誤認已存入相簿"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.3.md",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動分享限制",publicSummary:"分享抽獎時帶上活動資訊，QR 圖片可長按儲存或分享。"},
   {version:"v13.32.2",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎活動分享網址與 QR Code",updateLevel:"feature",added:["已公布抽獎活動提供分享網址、QR Code 與 PNG 下載"],changed:["草稿與 TEST 活動不提供公開分享入口"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署及驗收見 RELEASE_v13.32.2.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動讀取及參加權限",publicSummary:"透過活動網址或 QR 直接查看抽獎，登入後返回原活動參加。"},
   {version:"v13.32.1",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎建立權限與管理入口修正",updateLevel:"patch",added:["管理介面新增會員抽獎管理分頁","工作人員可建立並管理自己的會員抽獎活動"],changed:["玩家與公開介面僅保留瀏覽、參加及查看結果；管理者切換玩家模式亦不顯示主辦工具","管理與玩家操作狀態隔離，保留 Tester 本人 TEST 活動限制"],fixed:["修正主辦工具出現在玩家頁面及工作人員被排除的問題"],environment:"HTML + Firebase",deployStatus:"部署與驗收見 RELEASE_v13.32.1.md 及交接文件",firebaseImpact:"無資料迁移",securityRulesImpact:"沿用後端存取",permissionImpact:"建立權限為有效 staff/admin/super_admin；Tester 僅本人 TEST 活動",publicSummary:"調整會員抽獎權限與入口，玩家介面專注參加及查看結果。"},
@@ -9125,11 +9156,11 @@ function renderBoardMode(){
   let inner;
   if(fmt==="double") inner = renderDoubleElimBracket();
   else if(fmt==="roundrobin") inner = renderRoundRobinBracket();
-  else inner = renderSingleElimBracket();
+  else inner = renderSingleElimBracket(true);
 
   const st = tournamentStatus();
   const stLabel = st==="waiting" ? "尚未開始" : (st==="done" ? "已完成" : "進行中");
-  const boardCode = "BXH-" + String(state.id||"").slice(-4).toUpperCase();
+  const boardCode = state.cloudCode || "本機賽事";
   const reshuffleAllowed = isAdminTierOrAbove() && canReshuffleBracket();
   const championHtml = state.championId ? `
     <div class="board-champion-name">${esc(playerName(state.championId))}</div>
@@ -9141,28 +9172,28 @@ function renderBoardMode(){
       <div class="board-header-left">
         <img class="board-logo" src="${LOGO_SRC}" alt="BXH">
         <div>
-          <div class="board-title">BXH 戰鬥陀螺賽事</div>
-          <div class="board-sub">${esc(state.meta.name||"未命名賽事")}　${esc(FORMAT_LABELS[fmt]||"")}　${esc(currentRoundLabelForBoard())}　<span class="board-status-chip status-${st}">${stLabel}</span></div>
+          <div class="board-title">${esc(state.meta.name||"未命名賽事")}</div>
+          <div class="board-sub"><span>${esc(FORMAT_LABELS[fmt]||"")}</span><span>${esc(currentRoundLabelForBoard())}</span><span class="board-status-chip status-${st}">${stLabel}</span></div>
         </div>
       </div>
       <button class="share-btn" data-action="open-share-modal" title="分享賽事" aria-label="分享賽事">${SHARE_ICON_SVG}</button>
     </div>
 
     <div class="board-toolbar">
-      <button class="btn btn-ghost btn-sm" data-action="board-export-image">${BOARD_ICON_EXPORT} 匯出成圖片</button>
-      <button class="btn btn-ghost btn-sm" data-action="board-reshuffle" ${reshuffleAllowed?'':'disabled'} title="${reshuffleAllowed?'':'賽事開始後不可重新抽籤'}">${BOARD_ICON_SHUFFLE} 重新抽籤</button>
+      <button class="btn btn-ghost btn-sm" data-action="board-export-image">${BOARD_ICON_EXPORT} 匯出完整對戰表</button>
+      ${reshuffleAllowed?`<button class="btn btn-ghost btn-sm" data-action="board-reshuffle">${BOARD_ICON_SHUFFLE} 重新抽籤</button>`:""}
       <span class="board-zoom-group">
-        <button class="btn btn-ghost btn-sm" data-action="board-zoom-out">${BOARD_ICON_MINUS}</button>
+        <button class="btn btn-ghost btn-sm" data-action="board-zoom-out" aria-label="縮小對戰表">${BOARD_ICON_MINUS}</button>
         <span class="board-zoom-pct" id="board-zoom-pct">${Math.round(boardZoom*100)}%</span>
-        <button class="btn btn-ghost btn-sm" data-action="board-zoom-in">${BOARD_ICON_PLUS}</button>
+        <button class="btn btn-ghost btn-sm" data-action="board-zoom-in" aria-label="放大對戰表">${BOARD_ICON_PLUS}</button>
         <button class="btn btn-ghost btn-sm" data-action="board-zoom-reset">還原</button>
       </span>
-      <button class="btn btn-ghost btn-sm" data-action="board-fullscreen">${BOARD_ICON_FULLSCREEN} 全螢幕</button>
-      <select id="board-theme-select" class="board-theme-select">
+      <button class="btn btn-ghost btn-sm" data-action="board-fullscreen">${BOARD_ICON_FULLSCREEN} 全螢幕對戰表</button>
+      <select id="board-theme-select" class="board-theme-select" aria-label="看板配色">
         ${Object.keys(BOARD_THEMES).map(k=>`<option value="${k}" ${boardTheme===k?'selected':''}>${BOARD_THEMES[k].label}</option>`).join("")}
       </select>
     </div>
-    <div class="hint" style="text-align:center;margin:6px 0 10px;">可使用雙指縮放、左右滑動查看完整對戰表</div>
+    <div class="board-help">整場賽事對戰表｜單指拖曳、雙指縮放；全螢幕後仍可拖曳查看各輪。</div>
 
     ${matchLegendHtml()}
 
@@ -9230,8 +9261,8 @@ function renderCompactSingleElimBracket(){
   </div>`;
 }
 
-function renderSingleElimBracket(){
-  if(effectiveSingleBracketLayout()==="compact") return renderCompactSingleElimBracket();
+function renderSingleElimBracket(forceTree=false){
+  if(!forceTree && effectiveSingleBracketLayout()==="compact") return renderCompactSingleElimBracket();
   const total = numRoundsTotal();
   let cols = "";
   for(let r=0;r<total;r++){
@@ -9312,6 +9343,7 @@ function drawSingleElimConnectors(outer, allCols, maxRound, suffix){
   if(!svg) return;
   const colsWrap = document.getElementById("se-bracket-cols"+suffix);
   const outerRect = outer.getBoundingClientRect();
+  const geometryScale = outer.closest?.("#board-canvas") ? boardZoom : 1;
   const totalWidth = colsWrap ? colsWrap.scrollWidth : outer.scrollWidth;
   const totalHeight = colsWrap ? colsWrap.scrollHeight : outer.scrollHeight;
   svg.setAttribute("width", totalWidth);
@@ -9339,16 +9371,16 @@ function drawSingleElimConnectors(outer, allCols, maxRound, suffix){
         if(!useRowEl) return;
         const srcRect = srcBox.getBoundingClientRect();
         const rowRect = useRowEl.getBoundingClientRect();
-        const startX = srcRect.right - outerRect.left;
-        const startY = rowRect.top - outerRect.top + rowRect.height/2;
+        const startX = (srcRect.right - outerRect.left) / geometryScale;
+        const startY = (rowRect.top - outerRect.top + rowRect.height/2) / geometryScale;
 
         const curRowEls = curBox.querySelectorAll(".mb-row");
         const destRowEl = curRowEls[sideIdx];
         if(!destRowEl) return;
         const curRect = curBox.getBoundingClientRect();
         const destRowRect = destRowEl.getBoundingClientRect();
-        const endX = curRect.left - outerRect.left;
-        const endY = destRowRect.top - outerRect.top + destRowRect.height/2;
+        const endX = (curRect.left - outerRect.left) / geometryScale;
+        const endY = (destRowRect.top - outerRect.top + destRowRect.height/2) / geometryScale;
 
         const midX = (startX+endX)/2;
         const isWinnerPath = !!winnerRowEl;
@@ -13922,6 +13954,7 @@ function render(){
     renderApp();
     bindAuthInputs();
   } finally {
+    syncBoardFullscreen();
     bindTitleEditor();
     bindPlayerCardInputs();
     renderPlayerCardOverlay();
@@ -14668,6 +14701,44 @@ function bindAuthInputs(){
   }catch(e){ /* no-op outside a real browser DOM */ }
 }
 
+let boardExpanded=false,boardFullscreenFallback=false,boardExpandedRoom=null,boardBodyOverflow=null,boardFullscreenBusy=false;
+function syncBoardFullscreen(){
+  const shell=document.getElementById('board-shell');
+  if(!shell||boardExpandedRoom!==(state.cloudCode||state.id))boardExpanded=false;
+  if(shell){
+    shell.classList.toggle('board-expanded',boardExpanded);
+    const button=shell.querySelector('[data-action="board-fullscreen"]');
+    if(button){button.textContent=boardExpanded?'退出全螢幕':'全螢幕對戰表';button.setAttribute('aria-pressed',String(boardExpanded));}
+  }
+  if(boardExpanded){
+    if(boardBodyOverflow===null)boardBodyOverflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+  }else if(boardBodyOverflow!==null){document.body.style.overflow=boardBodyOverflow;boardBodyOverflow=null;}
+}
+async function toggleBoardFullscreen(){
+  if(boardFullscreenBusy)return;
+  const shell=document.getElementById('board-shell');if(!shell)return;
+  if(boardExpanded){
+    boardExpanded=false;boardFullscreenFallback=false;syncBoardFullscreen();
+    try{if(document.fullscreenElement===shell)await document.exitFullscreen();}catch{showToast('請使用瀏覽器的退出全螢幕操作',true);}
+    return;
+  }
+  boardExpanded=true;boardExpandedRoom=state.cloudCode||state.id;boardFullscreenFallback=true;syncBoardFullscreen();
+  if(typeof shell.requestFullscreen==='function'){
+    boardFullscreenBusy=true;
+    try{await shell.requestFullscreen();boardFullscreenFallback=document.fullscreenElement!==shell;}
+    catch{boardFullscreenFallback=true;}
+    finally{boardFullscreenBusy=false;}
+  }
+  if(boardExpanded&&boardFullscreenFallback)showToast('已展開整張對戰表；此瀏覽器使用頁內滿版，可按「退出全螢幕」返回。');
+}
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement&&!boardFullscreenFallback){boardExpanded=false;syncBoardFullscreen();}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&boardExpanded&&boardFullscreenFallback){boardExpanded=false;boardFullscreenFallback=false;syncBoardFullscreen();}
+});
+
 function setBoardZoom(newZoom){
   boardZoom = Math.round(Math.max(0.5, Math.min(1.5, newZoom)) * 10) / 10;
   applyBoardTransform();
@@ -14706,33 +14777,36 @@ function ensureHtml2Canvas(){
   return __html2canvasLoadPromise;
 }
 
+let boardExportBusy=false;
 async function exportBoardAsImage(){
-  const shell = document.getElementById("board-shell");
-  if(!shell){ showToast("找不到看板內容，請先切換至賽事看板模式", true); return; }
-  showToast("正在產生圖片……");
-  shell.classList.add("board-export-freeze");
-  const prevZoom = boardZoom, prevPanX = boardPanX, prevPanY = boardPanY;
+  if(boardExportBusy)return;
+  const shell=document.getElementById('board-shell'),content=document.getElementById('board-canvas'),viewport=document.getElementById('board-viewport');
+  if(!shell||!content||!viewport){showToast('找不到看板內容，請先切換至賽事看板模式',true);return;}
+  boardExportBusy=true;showToast('正在產生完整對戰表圖片……');
   try{
     await ensureHtml2Canvas();
-    boardZoom = 1; boardPanX = 0; boardPanY = 0;
-    applyBoardTransform();
-    await new Promise(r=>setTimeout(r,50));
-    const canvas = await window.html2canvas(shell, { backgroundColor:"#070808", scale:2, useCORS:true });
-    const dataUrl = canvas.toDataURL("image/png");
-    const dateStr = new Date().toISOString().slice(0,10);
-    const safeName = (state.meta.name||"賽事").replace(/[\\\/:*?"<>|]/g,"_");
-    const fname = "BXH_"+safeName+"_"+dateStr+"_對戰表.png";
-    const a = document.createElement("a");
-    a.href = dataUrl; a.download = fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    showToast("圖片已匯出");
-  }catch(e){
-    showToast("匯出圖片失敗，請稍後再試", true);
-  }finally{
-    boardZoom = prevZoom; boardPanX = prevPanX; boardPanY = prevPanY;
-    applyBoardTransform();
-    shell.classList.remove("board-export-freeze");
-  }
+    if(!shell.isConnected)throw Error('board-changed');
+    const width=Math.ceil(Math.max(content.scrollWidth,content.offsetWidth)+48);
+    const height=Math.ceil(content.scrollHeight+shell.scrollHeight-viewport.clientHeight+48);
+    const scale=Math.min(2,8192/width,8192/height,Math.sqrt(12000000/(width*height)));
+    const canvas=await window.html2canvas(shell,{
+      backgroundColor:'#070808',scale,useCORS:true,windowWidth:Math.max(width,window.innerWidth),
+      onclone:doc=>{
+        const copy=doc.getElementById('board-shell'),view=doc.getElementById('board-viewport'),inner=doc.getElementById('board-canvas');
+        copy.classList.remove('board-expanded');copy.classList.add('board-export-freeze');
+        copy.style.cssText='position:relative;inset:auto;display:block;width:'+width+'px;height:auto;max-height:none;overflow:visible;box-sizing:border-box;padding:18px';
+        view.style.cssText='height:auto;min-height:0;overflow:visible;display:block';
+        inner.style.transform='none';inner.style.transition='none';
+        copy.querySelectorAll('.board-toolbar,.board-help,.share-btn,.event-title-bar').forEach(el=>el.style.display='none');
+      }
+    });
+    const dateStr=new Date().toISOString().slice(0,10);
+    const safeName=(state.meta.name||'賽事').replace(/[\\\/:*?"<>|]/g,'_');
+    const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='BXH_'+safeName+'_'+dateStr+'_完整對戰表.png';
+    document.body.appendChild(a);a.click();a.remove();
+    showToast('已送出完整對戰表圖片下載，請至瀏覽器下載項目查看。');
+  }catch(e){showToast('匯出圖片失敗，請稍後再試',true);}
+  finally{boardExportBusy=false;}
 }
 
 function bindBoardModeInteractions(){
@@ -16784,14 +16858,7 @@ function handleAction(action, target){
   if(action==="board-zoom-in"){ setBoardZoom(boardZoom + 0.1); return; }
   if(action==="board-zoom-out"){ setBoardZoom(boardZoom - 0.1); return; }
   if(action==="board-zoom-reset"){ setBoardZoom(1); boardPanX=0; boardPanY=0; applyBoardTransform(); return; }
-  if(action==="board-fullscreen"){
-    try{
-      const el = document.getElementById("board-shell");
-      if(el && document.fullscreenElement){ document.exitFullscreen(); }
-      else if(el && el.requestFullscreen){ el.requestFullscreen(); }
-    }catch(e){ showToast("此瀏覽器不支援全螢幕", true); }
-    return;
-  }
+  if(action==="board-fullscreen"){ toggleBoardFullscreen(); return; }
   if(action==="board-reshuffle"){
     if(!canReshuffleBracket()){ showToast("賽事開始後不可重新抽籤", true); return; }
     openModal({ type:"generic", title:"重新抽籤", message:"重新抽籤將清除目前對戰編排並重新隨機安排選手，確定要繼續嗎？", danger:true, confirmLabel:"確認重新抽籤", onConfirm:()=>{ reshuffleBracket(); } });
@@ -20831,4 +20898,3 @@ init();
 </script>
 </body>
 </html>
-

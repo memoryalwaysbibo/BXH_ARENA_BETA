@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+const listeners={},classes=new Set(),button={setAttribute(){}},messages=[];
+let present=true;
+const shell={classList:{toggle(k,on){on?classes.add(k):classes.delete(k)}},querySelector:()=>button};
+const state={id:'local',cloudCode:'BXH-ABCDEF',meta:{name:'真實賽事 <測試>',formatType:'single'},matches:[{id:'m',scoreA:2,scoreB:1}],bracketSize:32};
+const original=JSON.stringify(state),box={state,document:{body:{style:{overflow:'auto'}},getElementById:()=>present?shell:null,addEventListener:(name,fn)=>listeners[name]=fn},showToast:m=>messages.push(m)};
+vm.createContext(box);vm.runInContext(html.slice(html.indexOf('let boardExpanded=false'),html.indexOf('function setBoardZoom(')),box);
+(async()=>{
+ await box.toggleBoardFullscreen();assert(classes.has('board-expanded'));assert.equal(button.textContent,'退出全螢幕');assert.equal(box.document.body.style.overflow,'hidden');
+ await box.toggleBoardFullscreen();assert(!classes.has('board-expanded'));assert.equal(box.document.body.style.overflow,'auto');
+ shell.requestFullscreen=async()=>{throw Error('unsupported');};await box.toggleBoardFullscreen();assert(classes.has('board-expanded'));listeners.keydown({key:'Escape'});assert(!classes.has('board-expanded'));
+ shell.requestFullscreen=async()=>{box.document.fullscreenElement=shell;};box.document.exitFullscreen=async()=>{box.document.fullscreenElement=null;listeners.fullscreenchange();};
+ await box.toggleBoardFullscreen();assert(classes.has('board-expanded'));await box.toggleBoardFullscreen();assert.equal(box.document.fullscreenElement,null);
+ await box.toggleBoardFullscreen();box.document.fullscreenElement=null;listeners.fullscreenchange();assert(!classes.has('board-expanded'),'native Escape restores page');
+ delete shell.requestFullscreen;await box.toggleBoardFullscreen();present=false;box.syncBoardFullscreen();assert.equal(box.document.body.style.overflow,'auto','leaving board restores scrolling');present=true;
+ assert.equal(JSON.stringify(state),original,'view changes never mutate matches');
+ Object.assign(box,{renderSingleElimBracket:force=>{assert.equal(force,true);return '<div>TREE</div>';},tournamentStatus:()=> 'live',isAdminTierOrAbove:()=>false,canReshuffleBracket:()=>false,boardTheme:'gold',boardZoom:1,boardPanX:0,boardPanY:0,LOGO_SRC:'logo',FORMAT_LABELS:{single:'單淘汰'},currentRoundLabelForBoard:()=> '第一輪',esc:s=>String(s).replace(/</g,'&lt;'),BOARD_ICON_EXPORT:'',BOARD_ICON_SHUFFLE:'',BOARD_ICON_MINUS:'',BOARD_ICON_PLUS:'',BOARD_ICON_FULLSCREEN:'',SHARE_ICON_SVG:'',BOARD_THEMES:{gold:{label:'帝王金'}},matchLegendHtml:()=>'',trophySvg:()=>''});
+ vm.runInContext(html.slice(html.indexOf('function renderBoardMode(){'),html.indexOf('function singleRoundTitle(')),box);
+ const output=box.renderBoardMode();assert(output.includes('真實賽事 &lt;測試>'));assert(output.includes('BXH-ABCDEF'));assert(output.includes('全螢幕對戰表'));assert(!output.includes('data-action="board-reshuffle"'));assert(output.includes('TREE'));
+ const content={scrollWidth:1600,offsetWidth:1600,scrollHeight:3000,style:{transform:'scale(0.7)'}},viewport={clientHeight:500};shell.scrollHeight=800;shell.isConnected=true;
+ const clone={style:{},classList:{remove(){},add(){}},querySelectorAll:()=>[{style:{}}]},cloneView={style:{}},cloneInner={style:{}};let saved=false;
+ box.document.getElementById=id=>({'board-shell':shell,'board-canvas':content,'board-viewport':viewport})[id];box.document.body.appendChild=()=>{};box.document.createElement=()=>({click(){saved=true},remove(){}});
+ box.window={innerWidth:390,html2canvas:async(el,options)=>{assert.equal(el,shell);assert(options.scale>0&&options.scale<=2);options.onclone({getElementById:id=>({'board-shell':clone,'board-viewport':cloneView,'board-canvas':cloneInner})[id]});assert(clone.style.cssText.includes('width:1648px'));assert(cloneView.style.cssText.includes('height:auto'));assert.equal(cloneInner.style.transform,'none');return {toDataURL:()=> 'data:image/png;base64,AAA'};}};box.ensureHtml2Canvas=async()=>{};
+ vm.runInContext(html.slice(html.indexOf('let boardExportBusy=false'),html.indexOf('function bindBoardModeInteractions(){')),box);
+ await box.exportBoardAsImage();assert(saved);assert.equal(content.style.transform,'scale(0.7)','export does not change visible zoom');assert.equal(JSON.stringify(state),original);
+ console.log('PASS board native/missing/rejected fullscreen, Escape/exit cleanup, whole-tree render, real event title/code, clone-only full export, unchanged tournament data');
+})().catch(e=>{console.error(e);process.exitCode=1;});
