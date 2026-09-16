@@ -7008,6 +7008,8 @@ async function performAutoArchive(){
 
   // Tester ranked rooms use a completely isolated test ladder. Official ladderMode stays general.
   if(isOwnTestTournament() && state.testLadderEnabled===true){
+    state.settlementPhase="ladder";
+    try{ await saveRecord(state); }catch(e){}
     if(!state.cloudCode || !cloudAvailable() || !window.cloudSync || !window.cloudSync.settleTestLadderTournament){
       showToast("測試積分賽必須連上 Firebase 才能完成測試天梯結算", true);
       return false;
@@ -7034,19 +7036,27 @@ async function performAutoArchive(){
   // Ranked events are not considered completed until the database-backed
   // ladder transaction has succeeded (or the cloud proves it was already awarded).
   if(state.meta && state.meta.ladderMode==="ranked"){
+    state.settlementPhase="ladder";
+    try{ await saveRecord(state); }catch(e){}
     if(!isAdminTierOrAbove()){
-      showToast("積分賽事需由管理員／最高管理員完成天梯結算後才能封存", true);
+      state.settlementError="積分賽事需由管理員／最高管理員完成天梯結算後才能封存";
+      state.settlementErrorCode="ranked-permission";
+      state.settlementPhase="failed"; await saveRecord(state); showToast(state.settlementError, true);
       return false;
     }
     if(!state.cloudCode || !cloudAvailable() || !window.cloudSync || !window.cloudSync.settleLadderTournament){
-      showToast("積分賽事必須連上 Firebase 才能完成；目前未結算，因此不會封存", true);
+      state.settlementError="積分賽事必須連上 Firebase 才能完成；目前未結算，因此不會封存";
+      state.settlementErrorCode="ranked-cloud-unavailable";
+      state.settlementPhase="failed"; await saveRecord(state); showToast(state.settlementError, true);
       return false;
     }
     const payload=buildLadderSettlementPayload(state);
     const requiredTop=Math.min(4,payload.participants.length);
     const topCount=payload.participants.filter(x=>x.placement&&x.placement<=4).length;
     if(topCount<requiredTop){
-      showToast("天梯結算失敗：前四名資料尚未完整。單淘汰積分賽需完成季殿賽。", true);
+      state.settlementError="天梯結算失敗：前四名資料尚未完整。單淘汰積分賽需完成季殿賽。";
+      state.settlementErrorCode="ranked-incomplete";
+      state.settlementPhase="failed"; await saveRecord(state); showToast(state.settlementError, true);
       return false;
     }
     try{
