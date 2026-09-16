@@ -15706,7 +15706,7 @@ function handleAction(action, target){
         }else if(code.includes("unavailable") || code.includes("network") || msg.toLowerCase().includes("network")){
           showToast("建立失敗：Firebase 目前無法連線，請稍後再試",true);
         }else{
-          showToast("建立一般賽事失敗"+(code?"｜"+code:"")+"，請查看主控台錯誤",true);
+          showToast("建立一般賽事失敗｜"+(code||msg||"未知錯誤"),true);
         }
       }
     })();
@@ -19437,7 +19437,7 @@ init();
   }
 
   function currentUserUidForWrites(){
-    try{ return (authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null; }
+    try{ const u=(authHandle&&authHandle.currentUser) || ((typeof firebaseUser!=="undefined"&&firebaseUser)?firebaseUser:null); return u ? u.uid : null; }
     catch(e){ return null; }
   }
 
@@ -20244,21 +20244,13 @@ init();
     },
 
     async createCommunityRoom(data){
-      if(!cloudEnabled || !data) return null;
+      if(!cloudEnabled || !data) throw Object.assign(new Error("cloud-disabled"),{code:"cloud-disabled"});
       const uid=currentUserUidForWrites();
-      if(!uid) return null;
+      if(!uid) throw Object.assign(new Error("auth-not-ready"),{code:"auth-not-ready"});
       try{
-        // Player accounts are not allowed to read arbitrary private tournaments.
-        // Collision probing must therefore use the public mirror; probing
-        // tournaments/{code} directly can itself return permission-denied before
-        // the actual create batch is even attempted.
-        let code,tries=0;
-        do{
-          code=generateRoomCode();
-          tries++;
-          const probe=await fx.getDoc(fx.doc(dbHandle,"publicTournaments",code));
-          if(!probe.exists()) break;
-        }while(tries<12);
+        // Generate locally and let the atomic batch reject the rare collision.
+        // Player accounts must not perform a preflight read against public mirrors.
+        const code=generateRoomCode();
         const now=Date.now();
         data.meta=data.meta||{}; data.meta.eventAuthority="community"; data.meta.ladderMode="general"; data.meta.registrationEnabled=false; data.meta.assignedStaffUids=[];
         data.ownerUid=uid; data.createdByRole="player"; data.lastActivityAt=now;
