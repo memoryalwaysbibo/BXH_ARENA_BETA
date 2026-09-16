@@ -19437,7 +19437,7 @@ init();
   }
 
   function currentUserUidForWrites(){
-    try{ return (authReady && authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null; }
+    try{ return (authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null; }
     catch(e){ return null; }
   }
 
