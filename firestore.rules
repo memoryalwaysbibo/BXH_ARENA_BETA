@@ -1,4 +1,5 @@
 // BXH ARENA Firestore Rules v13.29.8
+// 2026-09-16: redeploy current Beta rules for player community-room creation.
 // 2026-09-15: tester management is restricted to the actor's own TEST tournament.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
 // 2026-09-11: Blaze deployment stabilization release. Permission scope is
