@@ -2510,6 +2510,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <div id="toast-root" class="toast-wrap"></div>
 
 <script src="inventory-ui.js?v=13.31.0"></script>
+<script src="court-call-ui.js?v=13.33.0"></script>
 <script src="raffle-ui.js?v=13.32.3"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
@@ -2677,9 +2678,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.32.4";
+const APP_VERSION = "v13.33.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.33.0",date:"2026/09/16",title:"BXH CALL 裁判叫號與單次 PASS",updateLevel:"feature",added:["裁判通知雙方，選手回覆正在過去或申請稍候","裁判核准 PASS，同台同輪延後兩場、每人每賽事成功一次","待回補及兩場完成後再次叫號"],changed:["PASS 與一般跳過分開；已計分及不足兩場不可核准"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.33.0.md 與交接",firebaseImpact:"courtCalls 與 callRevision",securityRulesImpact:"阻止舊賽事快照覆寫 PASS",permissionImpact:"裁判按台分權；玩家只回覆本人場次",publicSummary:"裁判叫號與選手暫緩回報，裁判核准後同台延後兩場。"},
   {version:"v13.32.4",date:"2026/09/16",timezone:"Asia/Taipei",title:"賽事看板全螢幕與手機排版修正",updateLevel:"patch",added:["完整對戰表全螢幕與不支援瀏覽器的頁內滿版備援"],changed:["看板標題改顯示實際賽事名稱，移除重複工具列並整理手機操作","看板匯出完整內容，排除操作按鈕與視窗裁切"],fixed:["全螢幕 API 缺少時按鈕無反應","匯出圖片只保留固定高度視窗"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.4.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"不變",publicSummary:"改善整張對戰表的全螢幕瀏覽、手機排版及圖片匯出。"},
   {version:"v13.32.3",date:"2026/09/16",timezone:"Asia/Taipei",title:"手機 QR 儲存與活動分享辨識改善",updateLevel:"patch",added:["活動名稱及獎品分享文字、分享到 LINE","附活動名稱的 QR 圖片、系統圖片分享及長按儲存"],changed:["PNG 下載提示明確區分下載檔案與存入相簿"],fixed:["分享只有裸網址、手機下載誤認已存入相簿"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.3.md",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動分享限制",publicSummary:"分享抽獎時帶上活動資訊，QR 圖片可長按儲存或分享。"},
   {version:"v13.32.2",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎活動分享網址與 QR Code",updateLevel:"feature",added:["已公布抽獎活動提供分享網址、QR Code 與 PNG 下載"],changed:["草稿與 TEST 活動不提供公開分享入口"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署及驗收見 RELEASE_v13.32.2.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動讀取及參加權限",publicSummary:"透過活動網址或 QR 直接查看抽獎，登入後返回原活動參加。"},
@@ -5286,10 +5288,10 @@ function applyRemoteState(remote, authoritative=false){
     if(!remote || !remote.id) return;
     if(remote.id !== state.id) return; // safety: only accept updates for the room we're actually in
     if(remoteAppliedRoomId!==remote.id){remoteAppliedRoomId=remote.id;remoteAppliedAt=0;}
-    if((remote.updatedAt||0)<remoteAppliedAt) return;
+    if((remote.updatedAt||0)<remoteAppliedAt && Number(remote.callRevision||0)<=Number(state.callRevision||0)) return;
     const localUpdated = state.updatedAt || 0;
     const remoteUpdated = remote.updatedAt || 0;
-    if(!authoritative && Number(remote.entrySelectionRevision||0)<=Number(state.entrySelectionRevision||0) && remoteUpdated <= localUpdated) return; // ignore stale/older data (avoid clobbering newer local edits)
+    if(!authoritative && Number(remote.callRevision||0)<=Number(state.callRevision||0) && Number(remote.entrySelectionRevision||0)<=Number(state.entrySelectionRevision||0) && remoteUpdated <= localUpdated) return; // ignore stale/older data (avoid clobbering newer local edits)
     remoteAppliedAt=remoteUpdated;
     const keepCode = state.cloudCode;
     state = Object.assign(defaultState(remote.id), remote);
@@ -7419,8 +7421,9 @@ async function skipMatch(matchId){
   if(!canOperateCurrentTournament() || !requireTournamentStartedForMatchAction()) return;
   const m=getMatch(matchId);
   if(!m || m.completed || !requireStationPermission(m)) return;
+  if(callPassProtected(state,m)){showToast("PASS 回補及其前置場次不可再次跳過或移台",true);return;}
   await runCourtQueueAction(matchId, Number(m.station), {expectedRevision:m.dispatchRevision||0}, (remote,match)=>{
-    if(match.completed || match.skippedAt) return {ok:false,reason:"dispatch-stale"};
+    if(match.completed || match.skippedAt || callPassProtected(remote,match)) return {ok:false,reason:"dispatch-stale"};
     const previous=state;
     try{state=remote;markMatchSkipped(matchId);}finally{state=previous;}
     return {ok:true,state:remote};
@@ -7456,6 +7459,7 @@ async function runCourtQueueAction(matchId,station,options,mutateFn,message){
   }finally{courtQueueBusy=false;renderPreservingScroll();}
 }
 function applySkippedDispatch(remote,m,target,expectedRevision){
+  if(callPassProtected(remote,m))return {ok:false,reason:"dispatch-stale"};
   if(!m || m.completed || !m.skippedAt || m.resumeQueuedAt || !m.a || !m.b || (m.dispatchRevision||0)!==expectedRevision) return {ok:false,reason:"dispatch-stale"};
   if(!Number.isInteger(target)||target<1||target>Number(remote.meta.stations||1)) return {ok:false,reason:"station-mismatch"};
   if(Object.values(remote.courtAssignments||{}).some(c=>c.currentMatchId===m.id)) return {ok:false,reason:"dispatch-stale"};
@@ -7539,6 +7543,7 @@ function stationExecutionQueue(stationNum){
   const result=normal.slice();
   for(const m of skipped.slice().reverse()){
     const at=result.reduce((last,x,i)=>m.skipWaitFor.includes(x.id)?i+1:last,0);
+    if(m.callPass && m.callPass.waitFor.some(id=>!getMatch(id)?.completed && !result.some(x=>x.id===id)))continue;
     result.splice(at,0,m);
   }
   const claimed=available.filter(m=>m.skippedAt&&m.resumeQueuedAt).sort((a,b)=>a.resumeQueuedAt-b.resumeQueuedAt || String(a.id).localeCompare(String(b.id)));
@@ -7622,6 +7627,7 @@ function redistributeStationsForCourtCount(newCount){
 // decreasing state.meta.stations while a court that would be removed still
 // has a genuinely in-progress match on it.
 function checkCanChangeStationCount(newCount){
+  if(newCount!==(state.meta.stations||1)&&state.matches.some(m=>m.callPass&&!m.completed&&m.skippedAt))return {ok:false,message:"尚有 PASS 待回補，請完成後再調整戰鬥台數量"};
   const n = Math.max(1, state.meta.stations||1);
   if(newCount>=n) return { ok:true };
   for(let i=newCount+1;i<=n;i++){
@@ -9630,7 +9636,7 @@ function renderQuickDecisionPanel(m, court, stationNum){
   const preStartLocked=!state.startedAt;
   const warnBanner = m.completed ? `<div class="banner warn"><span>此對戰已完成判定，任何操作將修改已確認的結果，請謹慎操作。</span></div>` : (preStartLocked?`<div class="banner warn"><span>賽事尚未開始。請由主辦先按「開始賽事」，裁判台才會開放判定。</span></div>`:"");
   return `<div class="panel court-card referee-workstation" id="court-card-${stationNum}" style="${courtAtmosphereStyle(stationNum)}">
-    ${refereeWorkstationHeader(m,stationNum)}${warnBanner}
+    ${refereeWorkstationHeader(m,stationNum)}${warnBanner}${renderCourtCallReferee(m)}
     <div class="ref-match-toolbar"><span>${matchStatusBarHtml(m, true)}</span><div class="msc-btns">${state.startedAt&&m.status==="in_progress"?`<button class="btn btn-ghost btn-sm" data-action="pause-match-status" data-id="${m.id}">暫停</button>`:""}${state.startedAt&&m.status==="paused"?`<button class="btn btn-ghost btn-sm" data-action="resume-match-status" data-id="${m.id}">恢復</button>`:""}${state.startedAt&&m.status!=="completed"?`<button class="btn btn-ghost btn-sm" data-action="skip-match" data-id="${m.id}">跳過</button>`:""}</div></div>
     <div class="ref-vs-arena quick${refereeViewClass(m)}">
       <button class="ref-player-side side-a" data-action="open-quick-confirm" data-id="${m.id}" data-winner="${esc(m.a.playerId)}" ${m.completed||busy||preStartLocked?'disabled':''}><span class="ref-player-label">選手 A</span><strong>${esc(aName)}</strong><span class="ref-win-call">判定獲勝</span></button>
@@ -9667,7 +9673,7 @@ function renderCourtCard(stationNum){
 
   if(!m.a || !m.b){
     return `<div class="panel court-card court-card-idle referee-workstation" id="court-card-${stationNum}" style="${courtAtmosphereStyle(stationNum)}">
-      ${refereeWorkstationHeader(m,stationNum)}
+      ${refereeWorkstationHeader(m,stationNum)}${renderCourtCallReferee(m)}
       <div class="court-next-preview">${nextMatchPreviewHtml(court, stationNum)}</div>
       <div class="empty-state"><div class="big">此對戰尚未確定選手</div><div>請等待前面輪次的比賽完成</div></div>
     </div>`;
@@ -9693,7 +9699,7 @@ function renderCourtCard(stationNum){
 
   return `
   <div class="panel court-card referee-workstation" id="court-card-${stationNum}" style="${courtAtmosphereStyle(stationNum)}">
-    ${refereeWorkstationHeader(m,stationNum)}
+    ${refereeWorkstationHeader(m,stationNum)}${renderCourtCallReferee(m)}
     ${stationLocked?`<div class="banner warn" style="margin:12px 16px 0;"><span>唯讀｜你未被指派 Court ${stationNum}，本台所有比分與判定操作已鎖定。</span></div>`:""}
     ${warnBanner}
     ${preStartLocked?`<div class="banner warn" style="margin:12px 16px 0;"><span>賽事尚未開始。比分、判定與場次控制目前鎖定。</span></div>`:""}
@@ -9758,7 +9764,7 @@ function renderSkippedMatches(){
   const skipped=refereeMatches().filter(m=>!m.completed&&m.skippedAt&&m.a&&m.b);
   if(!skipped.length) return "";
   const targets=Array.from({length:Math.max(1,state.meta.stations||1)},(_,i)=>i+1).filter(i=>canOperateStation(i));
-  return `<section class="panel"><div class="panel-title">待承接場次（${skipped.length}）</div><div class="hint">保留原比分。閒置台立即承接；忙碌台安排在目前比賽之後。未承接的場次依原台佇列接續；跳過時沒有其他可執行場次，則保留待承接。</div>${skipped.map(m=>`<div class="panel" style="margin-top:12px"><strong>${esc(matchLabel(m))}｜${esc(playerName(m.a.playerId))} vs ${esc(playerName(m.b.playerId))}</strong><div class="hint">台${Number(m.station)} · ${m.resumeQueuedAt?'已安排承接':'已跳過'}</div>${!m.resumeQueuedAt&&canOperateCurrentTournament()&&state.archiveStatus!=="completed"?`<div class="btn-row">${targets.map(i=>`<button class="btn btn-ghost btn-sm" data-action="claim-skipped-match" data-id="${esc(m.id)}" data-station="${i}" ${courtQueueBusy?'disabled':''}>${isAdminTierOrAbove()?'指派':'承接'}至台${i}</button>`).join("")}</div>`:""}</div>`).join("")}</section>`;
+  return `<section class="panel"><div class="panel-title">待承接場次（${skipped.length}）</div><div class="hint">保留原比分。閒置台立即承接；忙碌台安排在目前比賽之後。未承接的場次依原台佇列接續；跳過時沒有其他可執行場次，則保留待承接。</div>${skipped.map(m=>`<div class="panel" style="margin-top:12px"><strong>${esc(matchLabel(m))}｜${esc(playerName(m.a.playerId))} vs ${esc(playerName(m.b.playerId))}</strong><div class="hint">台${Number(m.station)} · ${m.callPass?'PASS：同台兩場後回補':m.resumeQueuedAt?'已安排承接':'已跳過'}</div>${!m.resumeQueuedAt&&!m.callPass&&canOperateCurrentTournament()&&state.archiveStatus!=="completed"?`<div class="btn-row">${targets.map(i=>`<button class="btn btn-ghost btn-sm" data-action="claim-skipped-match" data-id="${esc(m.id)}" data-station="${i}" ${courtQueueBusy?'disabled':''}>${isAdminTierOrAbove()?'指派':'承接'}至台${i}</button>`).join("")}</div>`:""}</div>`).join("")}</section>`;
 }
 function renderReferee(){
   if(!state.bracketSize){
@@ -12959,7 +12965,7 @@ function smartCallModel(r,info){
   }
   if(!target.a || !target.b || !target.a.playerId || !target.b.playerId) return {kind:"pending",station:target.station||1,message:"下一輪對手尚未確定"};
   const station=target.station||1;
-  const queue=matches.filter(m=>(m.station||1)===station && m.a&&m.b&&m.a.playerId&&m.b.playerId).sort((a,b)=>Number(a.seq||0)-Number(b.seq||0));
+  const queue=courtCallPublicQueue(st,station);
   let idx=queue.findIndex(m=>m.id===target.id); if(idx<0) idx=0;
   let eta=0; for(let i=0;i<idx;i++) eta+=smartCallRemainingSeconds(queue[i]);
   const opp=(target.a.playerId===pid)?target.b.playerId:target.a.playerId;
@@ -12988,6 +12994,7 @@ function smartCallCardHtml(r,info){
   const statusText = model.kind==="playing" ? "⚔️ 正在上場" : model.kind==="soon" ? "🔴 即將上場" : model.kind==="prepare" ? "🟡 準備" : model.kind==="done" ? "已完成" : "🟢 等待中";
   return `<div class="smart-call-box">
     <div class="smart-call-head"><div class="smart-call-title">🔔 BXH CALL｜智慧叫號</div><input class="smart-call-switch" type="checkbox" data-action="toggle-smart-call" data-code="${esc(r.tournamentCode)}" ${on?'checked':''} aria-label="智慧叫號"></div>
+    ${renderCourtCallPlayer(r.tournamentCode)}
     ${on?`<div class="smart-call-body">
       <div class="smart-call-grid">
         <div class="smart-call-stat"><div class="k">狀態</div><div class="v">${esc(statusText)}</div></div>
@@ -13955,6 +13962,7 @@ function render(){
     bindAuthInputs();
   } finally {
     syncBoardFullscreen();
+    scheduleCourtCallPoll();
     bindTitleEditor();
     bindPlayerCardInputs();
     renderPlayerCardOverlay();
@@ -15110,6 +15118,7 @@ document.addEventListener('input',event=>{const name=event.target.id;if(!['ops-t
 
 /* ==== actions ==== */
 function handleAction(action, target){
+  if(action.startsWith("court-call-")){handleCourtCall(action,target);return;}
   if(action.startsWith("raffle-")){handleRaffle(action,target);return;}
   if(action.startsWith("mailbox-")){handleMailbox(action,target);return;}
   if(action.startsWith("inventory-")){handleInventory(action,target);return;}
@@ -19223,6 +19232,7 @@ init();
     async mood(payload){return callEngagementFunction("moodStation",payload,20000);},
     async mailbox(payload){return callEngagementFunction("mailboxService",payload,30000);},
     async inventory(payload){return callEngagementFunction("inventoryService",payload,30000);},
+    async courtCall(payload){return callEngagementFunction("courtCallService",payload,60000);},
     async raffle(payload){return callEngagementFunction("memberRaffle",payload,540000,['list','get','announcements'].includes(payload?.action));},
     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
     async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
@@ -19294,6 +19304,7 @@ init();
       };
     });
     return {
+      callRevision:Number(state.callRevision||0),
       systemClosure:state.systemClosure?{reason:'idle-24h',label:state.systemClosure.label||'',closedAt:state.systemClosure.closedAt||null,lastActivityAt:state.systemClosure.lastActivityAt||null,restoredAt:state.systemClosure.restoredAt||null}:null,
       meta: {
         name: (state.meta && state.meta.name) || "",
@@ -19322,7 +19333,7 @@ init();
         a: m.a ? { playerId:m.a.playerId } : null, b: m.b ? { playerId:m.b.playerId } : null,
         isBye:!!m.isBye, scoreA:m.scoreA||0, scoreB:m.scoreB||0, log:m.log||[],
         winnerId:m.winnerId||null, loserId:m.loserId||null, completed:!!m.completed,
-        status:m.status||"pending", skippedAt:m.skippedAt||null,
+        status:m.status||"pending", skippedAt:m.skippedAt||null,callPass:m.callPass||null,
         skipWaitFor:Array.isArray(m.skipWaitFor)?m.skipWaitFor.slice():[], skipManualOnly:m.skipManualOnly===true, resumeQueuedAt:m.resumeQueuedAt||null
       })),
       courtAssignments: sanitizedCourtAssignments,
@@ -20601,15 +20612,12 @@ init();
           delete privatePayload.capacity;delete publicPayload.capacity;
         }
         const normalized=String(code).toUpperCase();
-        if(testRoom){
-          const batch=fx.writeBatch(dbHandle);
-          batch.set(fx.doc(dbHandle,"tournaments",normalized),privatePayload,{merge:true});
-          batch.set(fx.doc(dbHandle,"publicTournaments",normalized),publicPayload,{merge:true});
-          await batch.commit();
-        }else{
-          await fx.setDoc(fx.doc(dbHandle,"tournaments",normalized),privatePayload,{merge:true});
-          await fx.setDoc(fx.doc(dbHandle,"publicTournaments",normalized),publicPayload,{merge:true});
-        }
+        await fx.runTransaction(dbHandle,async tx=>{
+          const ref=fx.doc(dbHandle,"tournaments",normalized),snap=await tx.get(ref);
+          if(snap.exists()&&Number(snap.data().callRevision||0)!==Number(data.callRevision||0))throw new Error("call-state-stale");
+          tx.set(ref,privatePayload,{merge:true});
+          tx.set(fx.doc(dbHandle,"publicTournaments",normalized),publicPayload,{merge:true});
+        });
         if(typeof window!=="undefined") window.__BXH_LAST_CLOUD_ERROR_CODE = null;
         return true;
       }catch(e){

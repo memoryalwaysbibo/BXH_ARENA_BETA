@@ -54,6 +54,18 @@ service cloud.firestore {
     function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
 
     // ==== 純資料角色判斷（不含 get()）====
+    function callWriteValid() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['callRevision'])
+        && (resource.data.get('callRevision',0)==0
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['data'])
+          || request.resource.data.data.matches('.*"callRevision":'+string(resource.data.callRevision)+'[,}].*'));
+    }
+    function callMirrorValid(code) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['callRevision'])
+        && (getAfter(tourPath(code)).data.get('callRevision',0)==0
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bracketView'])
+          || request.resource.data.bracketView.matches('.*"callRevision":'+string(getAfter(tourPath(code)).data.callRevision)+'[,}].*'));
+    }
     function entrySelectionWriteValid() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['entrySelectionRevision'])
         && (resource.data.get('entrySelectionRevision', 0) == 0
@@ -642,7 +654,7 @@ service cloud.firestore {
 
     // v13.29.8: system-close state is server-owned, including for super_admin clients.
     function operationsUnlocked(d) { return !('systemClosed' in d) || d.systemClosed != true; }
-    function noOperationsCreate(d) { return !d.keys().hasAny(['systemClosed','systemClosure','entrySelectionRevision']); }
+    function noOperationsCreate(d) { return !d.keys().hasAny(['systemClosed','systemClosure','entrySelectionRevision','callRevision']); }
     function completedRoomExpiryValid() { return resource.data.get('eventAuthority','') != 'community' || resource.data.get('archiveStatus','') != 'completed' || request.resource.data.get('expiresAt',null) == null; }
     function noOperationsChange() { return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['systemClosed','systemClosure','registrationSelection','registeredCount']); }
     function lotteryRuntimeWritable() { return !('registrationSelection' in resource.data) || (!(resource.data.registrationSelection.status in ['drawing','deleting']) && request.resource.data.get('capacity',null) == resource.data.get('capacity',null)); }
@@ -663,7 +675,7 @@ isAdminOrAbove() || (isSignedIn() && isCommunityOwnerData(resource.data)) || (is
         );
 
       allow update: if
-        lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && entrySelectionWriteValid() && (
+        lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && entrySelectionWriteValid() && callWriteValid() && (
 (
           isTournamentAdminEquivalent()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(
@@ -982,7 +994,7 @@ isAdminOrAbove()
                    || canReadPublicAsStaff();
 
       // 官方管理員可刪除正式賽事；community 房僅房主可刪除自己的公開鏡像。
-      allow delete: if operationsUnlocked(resource.data) && tournamentOperationsUnlocked(code) && (
+      allow delete: if operationsUnlocked(resource.data) && tournamentOperationsUnlocked(code)  && (
 isAdminOrAbove()
         || (isSignedIn() && tournamentExistsFor(code) && isCommunityOwnerData(tournamentDataFor(code)))
         || (isTester() && tournamentExistsFor(code) && isTesterOwnedTestData(myProfile(), tournamentDataFor(code)))
@@ -1054,7 +1066,7 @@ isAdminOrAbove()
         );
 
       allow update: if
-        lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && tournamentOperationsUnlocked(code) && (
+        lotteryRuntimeWritable() && completedRoomExpiryValid() && operationsUnlocked(resource.data) && noOperationsChange() && preservesTestSource() && tournamentOperationsUnlocked(code) && callMirrorValid(code) && (
 (
           isTournamentAdminEquivalent()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['confirmedCount','waitlistCount'])
