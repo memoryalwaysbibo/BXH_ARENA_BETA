@@ -20331,9 +20331,10 @@ init();
     async createRoom(data){
       if(!cloudEnabled) return null;
       try{
-        // Room-code collision protection is handled by the atomic create batch below.
-        // Do not preflight-read tournaments/{code}: community hosts are not allowed
-        // to read private tournament documents before they own one.
+        // Generate the code locally. Do not preflight-read tournaments/{code}:
+        // community hosts are not allowed to read private tournament documents
+        // before they own one. The atomic create batch below prevents overwrites.
+        const code = generateRoomCode();
         const creatorUid=currentUserUidForWrites();
         const testerSession=!!(userProfile&&userProfile.active!==false&&(userProfile.role==="tester"||userProfile.isTestAccount===true)&&creatorUid);
         if(testerSession){
