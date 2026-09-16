@@ -8895,11 +8895,7 @@ function roomStatusDescriptor(phase){
   const p=phase||"waiting";
   if(p==="cancelled") return {key:"cancelled",label:"已取消",dot:"red"};
   if(p==="done") return {key:"done",label:"已結束",dot:"gray"};
-  if(p==="settling" && state.settlementError) return {key:"failed",label:"封存失敗",dot:"red"};
-  if(p==="settling" && state.settlementPhase==="ladder") return {key:"settling",label:"天梯結算中",dot:"orange"};
-  if(p==="settling" && state.settlementPhase==="archive") return {key:"settling",label:"封存同步中",dot:"orange"};
-  if(p==="settling" && state.settlementPhase==="processing") return {key:"settling",label:"結算處理中",dot:"orange"};
-  if(p==="settling") return {key:"settling",label:"待封存",dot:"orange"};
+  if(p==="settling") return {key:"settling",label:"結算中",dot:"orange"};
   if(p==="live") return {key:"live",label:"比賽中",dot:"yellow"};
   if(p==="prestart") return {key:"prestart",label:"等待開始",dot:"gray"};
   return {key:"registration",label:"報名中",dot:"green"};
