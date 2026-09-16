@@ -1,4 +1,4 @@
-/* v13.32.2 | Independent member raffles. Results are always supplied by the server. */
+/* v13.32.3 | Independent member raffles. Results are always supplied by the server. */
 'use strict';
 let raffleState=null,raffleLinkConsumed=false;
 function canManageMemberRaffles(){return !!(userProfile&&userProfile.active===true&&!userProfile.deleted&&!['deleted','disabled','frozen'].includes(userProfile.accountStatus)&&(['staff','admin','super_admin','tester'].includes(userProfile.role)||userProfile.isTestAccount===true));}
@@ -8,22 +8,66 @@ function raffleShareUrl(event){
  if(!event||event.testMode||!['open','freezing','locked','drawn','cancelled','archived'].includes(event.state)||!/^[a-f0-9]{64}$/.test(event.id||''))return '';
  const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('raffle',event.id);return url.href;
 }
-async function copyRaffleShareUrl(input,status){
- try{await navigator.clipboard.writeText(input.value);status.textContent='已複製活動網址';}
- catch{input.focus();input.select();input.setSelectionRange(0,input.value.length);let ok=false;try{ok=document.execCommand('copy')===true;}catch{}status.textContent=ok?'已複製活動網址':'請長按或手動複製上方已選取的網址';}
+function raffleShareText(event){
+ const url=raffleShareUrl(event);if(!url)return '';
+ const lines=['🎁 BXH 抽獎活動｜'+String(event.title||'未命名活動')];
+ if(event.prizes?.length)lines.push('獎品：'+event.prizes.map(p=>String(p.name)+' × '+p.quantity).join('、'));
+ if(Number.isFinite(event.drawAt)&&event.drawAt>0)lines.push('開獎：'+new Date(event.drawAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+'（台灣時間）');
+ lines.push('點擊查看活動詳情與參加資格',url);return lines.join('\n');
+}
+async function copyRaffleShareUrl(input,status,label='活動網址'){
+ try{await navigator.clipboard.writeText(input.value);status.textContent='已複製'+label;}
+ catch{input.focus();input.select();input.setSelectionRange(0,input.value.length);let ok=false;try{ok=document.execCommand('copy')===true;}catch{}status.textContent=ok?'已複製'+label:'請長按或手動複製上方已選取的'+label;}
+}
+function raffleQrCard(source,title){
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+ if(!ctx)throw Error('canvas-unavailable');
+ canvas.width=720;ctx.font='bold 30px sans-serif';
+ const lines=[];let line='';
+ for(const ch of String(title||'抽獎活動')){if(ctx.measureText(line+ch).width>624&&line){lines.push(line);line='';}line+=ch;}if(line)lines.push(line);
+ canvas.height=800+lines.length*42;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+ ctx.textAlign='center';ctx.fillStyle='#111827';ctx.font='bold 26px sans-serif';ctx.fillText('BXH ARENA｜抽獎活動',360,48);
+ ctx.font='bold 30px sans-serif';lines.forEach((s,i)=>ctx.fillText(s,360,100+i*42));
+ const top=128+lines.length*42;
+ ctx.imageSmoothingEnabled=false;ctx.drawImage(source,72,top,576,576);
+ ctx.font='24px sans-serif';ctx.fillText('掃碼查看活動詳情與參加資格',360,top+632);
+ return canvas;
+}
+async function shareRaffleQrFile(file,status,fallback){
+ try{
+  if(!file||typeof navigator.share!=='function'||typeof navigator.canShare!=='function'||!navigator.canShare({files:[file]})){fallback();return;}
+  await navigator.share({files:[file]});status.textContent='分享操作已完成；是否存入照片，請到相簿確認。';
+ }catch(error){if(error?.name==='AbortError')status.textContent='已取消分享，圖片仍可長按儲存。';else fallback();}
 }
 function openRaffleShare(event){
  const url=raffleShareUrl(event);if(!url)return;
  document.getElementById('raffle-share-dialog')?.remove();
  const previous=document.activeElement,dialog=document.createElement('dialog');dialog.id='raffle-share-dialog';
- dialog.setAttribute('aria-labelledby','raffle-share-title');dialog.style.cssText='box-sizing:border-box;width:min(440px,calc(100% - 16px));max-height:90dvh;overflow:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:16px;padding:16px';
- dialog.innerHTML=`<h2 id="raffle-share-title">分享抽獎活動</h2><p>${esc(event.title)}</p><div id="raffle-share-qr" style="background:#fff;padding:16px;width:248px;max-width:100%;box-sizing:border-box;margin:16px auto" aria-label="活動網址 QR Code"></div><label for="raffle-share-url">活動網址</label><input id="raffle-share-url" type="text" readonly value="${esc(url)}" style="width:100%;box-sizing:border-box;margin:8px 0 16px"><div class="btn-row"><button class="btn btn-primary" data-raffle-share="copy">複製網址</button><button class="btn btn-ghost" data-raffle-share="download">下載 QR</button><button class="btn btn-ghost" data-raffle-share="retry">重新產生 QR</button><button class="btn btn-ghost" data-raffle-share="close">關閉</button></div><p class="hint">掃碼可查看活動，登入後再參加；活動結束後仍可查閱結果。</p><p role="status" aria-live="polite" data-raffle-share-status></p>`;
- document.body.appendChild(dialog);const input=dialog.querySelector('input'),status=dialog.querySelector('[data-raffle-share-status]'),download=dialog.querySelector('[data-raffle-share="download"]');
- const generate=()=>{download.disabled=true;try{if(renderQrCodeInto('raffle-share-qr',url,216)||dialog.querySelector('#raffle-share-qr canvas')){download.disabled=false;status.textContent='QR 已產生';}else status.textContent='QR 元件尚未載入，可先複製網址或稍後重新產生。';}catch{status.textContent='QR 產生失敗，活動網址仍可使用。';}};
- dialog.querySelector('[data-raffle-share="copy"]').onclick=()=>copyRaffleShareUrl(input,status);
- dialog.querySelector('[data-raffle-share="retry"]').onclick=generate;
- download.onclick=()=>{try{const source=dialog.querySelector('#raffle-share-qr canvas');if(!source)throw Error('qr-unavailable');const canvas=document.createElement('canvas');canvas.width=canvas.height=source.width+32;const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(source,16,16);const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='BXH_RAFFLE_'+event.id+'_QR.png';a.click();status.textContent='已送出 QR 圖片下載；手機可於下載項目查看。';}catch{status.textContent='無法下載 QR，請先重新產生或複製活動網址。';}};
- dialog.querySelector('[data-raffle-share="close"]').onclick=()=>dialog.close();dialog.onclose=()=>{dialog.remove();previous?.focus?.();};dialog.showModal();generate();
+ dialog.setAttribute('aria-labelledby','raffle-share-title');dialog.style.cssText='box-sizing:border-box;width:min(460px,calc(100% - 16px));max-height:90dvh;overflow:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:16px;padding:16px';
+ dialog.innerHTML=`<h2 id="raffle-share-title">分享抽獎活動</h2><p style="overflow-wrap:anywhere">${esc(event.title)}</p><label for="raffle-share-text">活動分享內容</label><textarea id="raffle-share-text" readonly rows="5" style="width:100%;box-sizing:border-box;margin:8px 0">${esc(raffleShareText(event))}</textarea><div class="btn-row"><button class="btn btn-primary" data-raffle-share="copy-text">複製活動資訊</button><a class="btn btn-primary" data-raffle-share="line" target="_blank" rel="noopener noreferrer">分享到 LINE</a><button class="btn btn-ghost" data-raffle-share="native">其他分享</button></div><div id="raffle-share-qr" hidden aria-hidden="true"></div><img data-raffle-share-image hidden alt="${esc(event.title)} 活動 QR 圖片，可長按儲存" style="width:100%;max-width:340px;height:auto;margin:16px auto;-webkit-touch-callout:default;user-select:auto"><p class="hint">儲存到相簿：長按 QR 圖片，選擇儲存影像；也可點「分享 QR 圖片」選擇儲存影像或傳送。</p><div class="btn-row"><button class="btn btn-primary" data-raffle-share="image">分享 QR 圖片</button><button class="btn btn-ghost" data-raffle-share="save">長按儲存 QR</button><button class="btn btn-ghost" data-raffle-share="download">下載 PNG 檔</button><button class="btn btn-ghost" data-raffle-share="retry">重新產生 QR</button></div><details style="margin-top:16px"><summary>只需要活動網址</summary><input id="raffle-share-url" type="text" readonly value="${esc(url)}" style="width:100%;box-sizing:border-box;margin:8px 0"><button class="btn btn-ghost" data-raffle-share="copy">只複製網址</button></details><p class="hint">掃碼可查看活動，登入後再參加；活動結束後仍可查閱結果。</p><p role="status" aria-live="polite" data-raffle-share-status></p><button class="btn btn-ghost" data-raffle-share="close">關閉</button>`;
+ document.body.appendChild(dialog);
+ const pick=k=>dialog.querySelector('[data-raffle-share="'+k+'"]'),input=dialog.querySelector('#raffle-share-url'),shareText=dialog.querySelector('textarea'),status=dialog.querySelector('[data-raffle-share-status]'),preview=dialog.querySelector('[data-raffle-share-image]');
+ let file=null,generation=0;
+ const filename='BXH_'+String(event.title||'抽獎活動').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').slice(0,60)+'_QR.png';
+ const showSave=()=>{preview.scrollIntoView({block:'center',behavior:'smooth'});status.textContent='請長按 QR 圖片，選擇「儲存影像／加入照片」。若 LINE 沒有此選項，請從瀏覽器選單改用 Safari 開啟本活動後儲存。';};
+ const generate=()=>{
+  const token=++generation;file=null;preview.hidden=true;preview.removeAttribute('src');['download','image','save'].forEach(k=>pick(k).disabled=true);
+  try{
+   renderQrCodeInto('raffle-share-qr',url,288);const source=dialog.querySelector('#raffle-share-qr canvas');if(!source)throw Error('qr-unavailable');
+   const canvas=raffleQrCard(source,event.title);preview.src=canvas.toDataURL('image/png');preview.hidden=false;
+   ['download','save'].forEach(k=>pick(k).disabled=false);status.textContent='QR 圖片已產生，可長按圖片儲存。';
+   canvas.toBlob(blob=>{if(token!==generation||!dialog.isConnected)return;try{if(blob&&typeof File==='function')file=new File([blob],filename,{type:'image/png'});}catch{}pick('image').disabled=false;},'image/png');
+  }catch{status.textContent='QR 產生失敗，可重新產生；仍可分享活動資訊或網址。';}
+ };
+ pick('copy').onclick=()=>copyRaffleShareUrl(input,status);
+ pick('copy-text').onclick=()=>copyRaffleShareUrl(shareText,status,'活動資訊');
+ pick('line').href='https://line.me/R/share?text='+encodeURIComponent(shareText.value);
+ pick('native').hidden=typeof navigator.share!=='function';
+ pick('native').onclick=async()=>{try{await navigator.share({title:'BXH 抽獎活動｜'+event.title,text:shareText.value});status.textContent='分享操作已完成。';}catch(error){if(error?.name==='AbortError')status.textContent='已取消分享。';else status.textContent='目前無法開啟系統分享，請使用「複製活動資訊」或「分享到 LINE」。';}};
+ pick('retry').onclick=generate;pick('save').onclick=showSave;
+ pick('image').onclick=()=>shareRaffleQrFile(file,status,showSave);
+ pick('download').onclick=()=>{try{const a=document.createElement('a');a.href=preview.src;a.download=filename;dialog.appendChild(a);a.click();a.remove();status.textContent='已提出 PNG 檔下載；這不會自動存入相簿。若沒有下載，請改用長按圖片儲存。';}catch{showSave();}};
+ pick('close').onclick=()=>dialog.close();dialog.onclose=()=>{generation++;file=null;dialog.remove();previous?.focus?.();};dialog.showModal();generate();
 }
 const raffleStateLabels={draft:'草稿',open:'開放報名',freezing:'確認資格中',locked:'名單已鎖定',drawn:'已開獎',cancelled:'已取消',archived:'已封存'};
 function raffleDateInput(n){return new Date(n+28800000).toISOString().slice(0,16);}
@@ -108,3 +152,4 @@ function playRaffleReplay(detail){
 }
 let raffleAnnouncementsState={loaded:false,loading:false,rows:[]};
 function renderRaffleAnnouncements(){const a=raffleAnnouncementsState;if(!a.loaded&&!a.loading){a.loading=true;setTimeout(async()=>{try{const r=await window.engagementService.raffle({action:'announcements'});a.rows=r.announcements||[];}catch{}finally{a.loaded=true;a.loading=false;render();}},0);}const visible=a.rows.filter(x=>x.expiresAt>Date.now());return visible.length?`<div class="raffle-announcement-window" aria-label="系統開獎公告"><div class="mood-track"><div class="mood-group">${visible.map(x=>`<span class="mood-item"><b>系統公告</b> ${esc(x.text)}</span>`).join('')}</div></div></div>`:'';}
+

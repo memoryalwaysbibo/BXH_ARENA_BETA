@@ -2480,7 +2480,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <div id="toast-root" class="toast-wrap"></div>
 
 <script src="inventory-ui.js?v=13.31.0"></script>
-<script src="raffle-ui.js?v=13.32.2"></script>
+<script src="raffle-ui.js?v=13.32.3"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
 // Preserve an existing provider; propagate storage failures to existing callers.
@@ -2647,9 +2647,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.32.2";
+const APP_VERSION = "v13.32.3";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.32.3",date:"2026/09/16",timezone:"Asia/Taipei",title:"手機 QR 儲存與活動分享辨識改善",updateLevel:"patch",added:["活動名稱及獎品分享文字、分享到 LINE","附活動名稱的 QR 圖片、系統圖片分享及長按儲存"],changed:["PNG 下載提示明確區分下載檔案與存入相簿"],fixed:["分享只有裸網址、手機下載誤認已存入相簿"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.32.3.md",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動分享限制",publicSummary:"分享抽獎時帶上活動資訊，QR 圖片可長按儲存或分享。"},
   {version:"v13.32.2",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎活動分享網址與 QR Code",updateLevel:"feature",added:["已公布抽獎活動提供分享網址、QR Code 與 PNG 下載"],changed:["草稿與 TEST 活動不提供公開分享入口"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署及驗收見 RELEASE_v13.32.2.md 與交接紀錄",firebaseImpact:"無",securityRulesImpact:"無",permissionImpact:"沿用活動讀取及參加權限",publicSummary:"透過活動網址或 QR 直接查看抽獎，登入後返回原活動參加。"},
   {version:"v13.32.1",date:"2026/09/16",timezone:"Asia/Taipei",title:"抽獎建立權限與管理入口修正",updateLevel:"patch",added:["管理介面新增會員抽獎管理分頁","工作人員可建立並管理自己的會員抽獎活動"],changed:["玩家與公開介面僅保留瀏覽、參加及查看結果；管理者切換玩家模式亦不顯示主辦工具","管理與玩家操作狀態隔離，保留 Tester 本人 TEST 活動限制"],fixed:["修正主辦工具出現在玩家頁面及工作人員被排除的問題"],environment:"HTML + Firebase",deployStatus:"部署與驗收見 RELEASE_v13.32.1.md 及交接文件",firebaseImpact:"無資料迁移",securityRulesImpact:"沿用後端存取",permissionImpact:"建立權限為有效 staff/admin/super_admin；Tester 僅本人 TEST 活動",publicSummary:"調整會員抽獎權限與入口，玩家介面專注參加及查看結果。"},
   {version:"v13.32.0",date:"2026/09/16",timezone:"Asia/Taipei",title:"獨立會員抽獎系統",updateLevel:"feature",added:["會員抽獎活動、資格條件、票券報名與取消退票","主辦確認名單手動開獎、後端定時開獎、站內信與系統公告","固定結果拉霸回放、領獎／棄領／補抽及封存紀錄"],changed:["抽獎資料獨立於賽事，不計勝敗、天梯或參賽場數"],fixed:[],environment:"HTML + Firebase",deployStatus:"部署與實測狀態見 RELEASE_v13.32.0.md 及交接文件",firebaseImpact:"新增 raffleEvents、rafflePublic、raffleMemberships、raffleJobs、raffleAnnouncements，串接 userItems 與站內信",securityRulesImpact:"新增資料只經 Callable 與排程後端存取",permissionImpact:"主辦管理自己的活動；Tester 只能管理自己的 TEST 活動",publicSummary:"新增獨立會員抽獎與票券資格，支援現場及線上自動開獎。"},
@@ -20830,3 +20831,4 @@ init();
 </script>
 </body>
 </html>
+
