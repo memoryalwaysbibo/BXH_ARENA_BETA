@@ -2577,6 +2577,8 @@ function defaultState(id){
     updatedAt: now,
     completedAt: null,
     archiveStatus: "ongoing",
+    settlementPhase: "idle",
+    settlementAttempt: 0,
     meta:{ name:"BXH 戰鬥陀螺賽事", date:"", location:"", checkin:"", startTime:"", format:"單淘汰賽", formatType:"single", stations:1, bronzeMatch:false, checkinRequired:false, checkinLeadMinutes:60, checkinClosedEarly:false, checkinClosedAt:null, scoringMode:"standard", roundScoringModes:{}, ladderMode:"general", eventAuthority:"official",
       registrationEnabled:false, registrationOpenAt:null, registrationCloseAt:null, registrationCapacity:null,
       waitlistEnabled:false, waitlistCapacity:0, registrationFee:null, targetGroup:"open", participantNameMode:"realName", cancellationDeadline:null,
@@ -2714,9 +2716,10 @@ let cloudTestBusy = false;
 let cloudTestResult = null;
 
 /* ==== version tracking system ==== */
-const APP_VERSION = "v13.38.0";
+const APP_VERSION = "v13.39.0";
 const APP_VERSION_DISPLAY = "V13";
 const VERSION_HISTORY = [
+  {version:"v13.39.0",date:"2026/09/16",title:"賽事結束流程重構",updateLevel:"feature",added:["分開顯示對戰完成、結算處理、天梯結算、封存同步與已完成","封存失敗保留明確原因並提供重試","封存狀態可追蹤、可重試且維持冪等"],changed:["最後一場完成後先保存結果，再處理積分與封存"],fixed:["修正完成後長時間停在結算中卻無法判斷原因"],environment:"HTML + Firebase",deployStatus:"Beta-only",firebaseImpact:"沿用既有賽事文件，新增結算中繼狀態",securityRulesImpact:"無",permissionImpact:"不變",publicSummary:"改善賽事結束、結算與封存流程。"},
   {version:"v13.37.0",date:"2026/09/16",title:"家庭選手代報名與賽事身分",updateLevel:"feature",added:["一般賽事可選本人或一位孩子報名","家庭選手獨立賽事紀錄、由家長接收叫號"],changed:["孩子以獨立選手編號進入裁判名單"],fixed:["孩子戰績不歸入家長積分"],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.37.0.md",firebaseImpact:"familyRegistration、courtCallService",securityRulesImpact:"沿用既有報名取消與候補規則",permissionImpact:"僅家長替自己的孩子報名",publicSummary:"開放一般賽事代報名；積分賽、超額抽籤與帳號移交尚未開放。"},
   {version:"v13.36.0",date:"2026/09/16",title:"家庭選手資料",updateLevel:"feature",added:["會員資料新增孩子資料與獨立選手編號","編輯、封存與恢復，保留修改紀錄"],changed:[],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.36.0.md",firebaseImpact:"familyPlayers 私有資料",securityRulesImpact:"預設拒絕客戶端存取",permissionImpact:"僅家長本人管理",publicSummary:"先建立孩子獨立資料；代報名與帳號移交尚未開放。"},
   {version:"v13.35.0",date:"2026/09/16",title:"領獎 QR 核銷與紀錄追蹤",updateLevel:"feature",added:["得獎者專屬領獎 QR 與手動輸入碼","相機掃碼後確認交付，保存核銷時間與人員","活動核銷人員授權與核銷紀錄"],changed:["手動核銷同步保存時間及操作人","多人同時核銷僅成功一次，補抽後原碼失效"],fixed:[],environment:"HTML + Firebase",deployStatus:"見 RELEASE_v13.35.0.md 與交接",firebaseImpact:"raffleClaimCodes 與核銷紀錄",securityRulesImpact:"沿用後端專用集合預設拒絕",permissionImpact:"主辦、最高管理員及活動授權核銷人員",publicSummary:"出示領獎 QR，由主辦確認交付，核銷紀錄可追溯。"},
@@ -6995,8 +6998,11 @@ async function writeArchiveStateToCloud(snapshot){
 async function performAutoArchive(){
   if(state.archiveStatus==="completed" && state.archivedAt) return true;
 
+  state.settlementAttempt=Number(state.settlementAttempt||0)+1;
+  state.settlementPhase="processing";
   state.settlementStartedAt=state.settlementStartedAt||Date.now();
   state.settlementError=null;
+  state.settlementErrorCode=null;
   state.updatedAt=Date.now();
   try{ await saveRecord(state); }catch(e){}
 
@@ -7075,6 +7081,8 @@ async function performAutoArchive(){
     }
   }
 
+  state.settlementPhase="archive";
+  try{ await saveRecord(state); }catch(e){}
   const wasAlreadyIndexed = recordIndex.some(r=>r.id===state.id);
   const previousCompletedAt = state.completedAt || null;
   state.archiveStatus = "completed";
@@ -7140,7 +7148,8 @@ async function performAutoArchive(){
           showToast("天梯積分已入帳，但賽事完成狀態尚未同步成功；請重新執行完成賽事",true);
           return false;
         }
-        showToast("已儲存本機，等待雲端同步");
+        state.settlementPhase="sync-pending";
+      showToast("已儲存本機，等待雲端同步");
       }
     }catch(e){
       queueCloudSyncRetry(state.id, state.cloudCode);
@@ -7172,6 +7181,8 @@ async function performAutoArchive(){
     try{ touchCommunityActivity(state); state.expiresAtMs=Number(state.completedAt||Date.now())+COMMUNITY_COMPLETED_FULL_MS; await window.cloudSync.saveCommunityHistory(state); await saveState(); }catch(e){ console.warn("[community history]",e); }
     communityHistoryCache=null;
   }
+  state.settlementPhase="completed";
+  state.settlementErrorCode=null;
   return true;
 }
 
