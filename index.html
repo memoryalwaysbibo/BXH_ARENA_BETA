@@ -20265,8 +20265,8 @@ init();
         const tournamentRef=fx.doc(dbHandle,"tournaments",code);
         const publicRef=fx.doc(dbHandle,"publicTournaments",code);
         const batch=fx.writeBatch(dbHandle);
-        batch.create(tournamentRef,Object.assign({},base,{data:JSON.stringify(data)}));
-        batch.create(publicRef,{
+        batch.set(tournamentRef,Object.assign({},base,{data:JSON.stringify(data)}));
+        batch.set(publicRef,{
           bracketView:JSON.stringify(buildPublicMirrorFields(data)),updatedAt:now,visibility:"public",eventAuthority:"community",ownerUid:uid,ladderMode:"general",registrationEnabled:false,registrationStatus:"closed",tournamentPhase:computeTournamentPhase(data),name:data.meta.name||"",eventDate:data.meta.date||"",location:data.meta.location||"",startAt:data.meta.startTime||"",formatType:data.meta.formatType||"single",lastActivityAt:now,expiresAt:new Date(expMs)
         });
         await batch.commit();
@@ -20427,8 +20427,8 @@ init();
         // the public mirror with getAfter(), which only sees the paired private
         // tournament when both writes are in the same batch.
         const batch=fx.writeBatch(dbHandle);
-        batch.create(fx.doc(dbHandle,"tournaments",code),privatePayload);
-        batch.create(fx.doc(dbHandle,"publicTournaments",code),publicPayload);
+        batch.set(fx.doc(dbHandle,"tournaments",code),privatePayload);
+        batch.set(fx.doc(dbHandle,"publicTournaments",code),publicPayload);
         await batch.commit();
         if(typeof window!=="undefined") window.__BXH_LAST_CLOUD_ERROR_CODE = null;
         return code;
