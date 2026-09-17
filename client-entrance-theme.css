@@ -1085,3 +1085,50 @@ textarea{
   .mailbox-item:hover,
   .inventory-card:hover{transform:none}
 }
+
+
+/* BXH unified card priority fix v1.9.1 */
+.landing-role-cards .role-card .role-card-icon,
+.role-cards [data-action^="player-goto-"] .role-card-icon{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.landing-role-cards .role-card .role-card-icon svg,
+.role-cards [data-action^="player-goto-"] .role-card-icon svg{
+  color:var(--bxh-gold-electric)!important;
+  stroke:currentColor!important;
+  stroke-width:1.75!important;
+  filter:drop-shadow(0 0 7px rgba(239,190,59,.22))!important;
+}
+.role-card:hover,
+.role-card:focus-visible,
+.role-cards [data-action^="player-goto-"]:hover,
+.role-cards [data-action^="player-goto-"]:focus-visible,
+.scoring-mode-card:hover,
+.find-event-card:hover,
+.community-event-card:hover,
+.lobby-compact-card:hover,
+.mailbox-item:hover,
+.title-card:hover,
+.account-user-card:hover,
+.court-card:hover,
+.live-court-card:hover,
+.registration-mobile-card:hover,
+.inventory-card:hover,
+.hoc-rank-card:hover,
+.match-box:hover,
+.claim-item:hover{
+  filter:brightness(1.045) drop-shadow(0 0 12px rgba(239,188,55,.24))!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .role-card:hover,
+  .role-card:focus-visible,
+  .role-cards [data-action^="player-goto-"]:hover,
+  .role-cards [data-action^="player-goto-"]:focus-visible,
+  .mailbox-item:hover,
+  .inventory-card:hover{
+    filter:brightness(1.045) drop-shadow(0 0 10px rgba(239,188,55,.20))!important;
+  }
+}
