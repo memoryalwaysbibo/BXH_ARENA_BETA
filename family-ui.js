@@ -161,11 +161,11 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
 
 
 
-// v13.41.4: full beta active-points experience loader.
+// v13.41.5: direct Firebase active-points loader.
 (function loadActivityPointsUI(){
  if(document.querySelector('script[data-bxh-activity-points]'))return;
  const script=document.createElement('script');
- script.src='activity-points-ui.js?v=13.41.4';
+ script.src='activity-points-ui.js?v=13.41.5';
  script.defer=true;
  script.dataset.bxhActivityPoints='true';
  document.head.appendChild(script);
