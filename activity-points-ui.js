@@ -3,12 +3,25 @@
  const state={snapshot:null,rows:[],mode:"records",loading:false,error:"",open:false};
  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const labels={daily_checkin:"每日簽到",match_completed:"完成真實對戰",host_completed:"房主完賽",mood_message:"心情小棧留言",ladder_points:"天梯積分",ladder_migration:"既有天梯積分補發",inactivity_penalty:"未簽到扣分",redemption:"商品兌換"};
- function runtime(){try{return Function('return {profile:userProfile,call:callEngagementFunction}')()}catch(e){return null}}
- function api(payload){const r=runtime();if(!r)throw Error("not-ready");return r.call("activityPoints",payload,25000)}
+ function runtime(){try{return Function('return {profile:userProfile}')()}catch(e){return null}}
+ let activityCallable=null;
+ async function api(payload){
+  if(!activityCallable){
+   const [apps,functions]=await Promise.all([
+    import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js"),
+    import("https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js")
+   ]);
+   const app=apps.getApps()[0];
+   if(!app)throw Object.assign(Error("firebase-app-not-ready"),{code:"app-not-ready"});
+   activityCallable=functions.httpsCallable(functions.getFunctions(app,"asia-east1"),"activityPoints",{timeout:25000});
+  }
+  const response=await activityCallable(payload);
+  return response?.data||{ok:false};
+ }
  function playerId(){const p=runtime()?.profile||{};return p.playerId||p.gameId||"尚未設定玩家 ID"}
  function date(ms){try{return new Date(Number(ms)||Date.now()).toLocaleString("zh-TW",{timeZone:"Asia/Taipei",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}catch(e){return "—"}}
- async function snapshot(){if(state.loading)return;state.loading=true;state.error="";paint();try{const r=await api({action:"snapshot"});if(!r?.ok)throw Error();state.snapshot=r;}catch(e){state.error="活躍積分暫時無法載入，請稍後重試。"}finally{state.loading=false;paint();summary()}}
- async function board(mode){if(state.loading)return;state.mode=mode;state.loading=true;state.error="";paint();try{const r=await api({action:"leaderboard",mode});state.rows=r?.rows||[]}catch(e){state.error="活躍榜暫時無法載入。"}finally{state.loading=false;paint()}}
+ async function snapshot(){if(state.loading)return;state.loading=true;state.error="";paint();try{const r=await api({action:"snapshot"});if(!r?.ok)throw Error();state.snapshot=r;}catch(e){const code=String(e?.code||e?.message||"unknown").replace(/^functions\//,"");state.error="活躍積分載入失敗（"+code+"）";console.error("[activityPoints snapshot]",e)}finally{state.loading=false;paint();summary()}}
+ async function board(mode){if(state.loading)return;state.mode=mode;state.loading=true;state.error="";paint();try{const r=await api({action:"leaderboard",mode});state.rows=r?.rows||[]}catch(e){const code=String(e?.code||e?.message||"unknown").replace(/^functions\//,"");state.error="活躍榜載入失敗（"+code+"）";console.error("[activityPoints leaderboard]",e)}finally{state.loading=false;paint()}}
  function task(name,key,max,note){const n=Math.max(0,Number(state.snapshot?.today?.bySource?.[key]||0));return `<div class="ap-task"><div><b>${name}</b><small>${n}／${max} 分</small></div><div class="ap-bar"><i style="width:${Math.min(100,n/max*100)}%"></i></div><span>${note}</span></div>`}
  function paint(){
   let root=document.getElementById("activity-points-overlay");if(!state.open){root?.remove();return}if(!root){root=document.createElement("div");root.id="activity-points-overlay";document.body.appendChild(root)}
