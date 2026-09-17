@@ -6529,12 +6529,19 @@ const TESTER_CREATION_ACTIONS = new Set(["new-tournament-blank"]);
 
 function hasAdminAccess(){ return currentRole === "admin" || currentRole === "tester"; }
 function isCommunityRoom(){ return !!(state && state.meta && state.meta.eventAuthority==="community"); }
+function isOwnTesterSandboxRoom(st=state){
+  const uid=currentAuthUid(),m=st&&st.meta||{};
+  if(!isTester()||!uid||!st) return false;
+  const owned=st.createdBy===uid||st.ownerUid===uid;
+  const tagged=st.testMode===true||st.testLabel==="（測試）"||st.createdByRole==="tester"||m.eventAuthority==="test";
+  return !!(owned&&tagged&&m.ladderMode!=="ranked");
+}
 function isCommunityRoomOwner(){ return !!(isCommunityRoom() && firebaseUser && state.ownerUid===firebaseUser.uid && (currentRole==="player" || currentRole==="tester")); }
 function isTester(){ return !!(userProfile && userProfile.active!==false && (userProfile.role==="tester"||userProfile.isTestAccount===true)); }
 function isTestTournament(st=state){ return !!(st && st.testMode===true && st.meta && st.meta.eventAuthority==="test"); }
 function isOwnTestTournament(st=state){
   const uid=currentAuthUid();
-  return !!(isTester() && uid && isTestTournament(st) && st.createdBy===uid && st.ownerUid===uid);
+  return !!(isOwnTesterSandboxRoom(st) && uid && (st.createdBy===uid||st.ownerUid===uid));
 }
 function ensureTestName(name){
   const clean=String(name||"BXH 封測賽事").trim().replace(/\s*（測試）\s*$/u,"");
@@ -20506,8 +20513,10 @@ init();
       try{
         const actorUid=currentUserUidForWrites();
         const testerSession=!!(userProfile&&userProfile.active!==false&&(userProfile.role==="tester"||userProfile.isTestAccount===true)&&actorUid);
-        if(testerSession){
-          if(!data.testMode || !data.meta || data.meta.eventAuthority!=="test" || data.createdBy!==actorUid || data.ownerUid!==actorUid) throw new Error("tester-official-write-blocked");
+const legacyTesterSandbox=!!(testerSession&&data&&data.createdBy===actorUid&&data.ownerUid===actorUid&&data.createdByRole==="tester"&&data.meta&&data.meta.ladderMode!=="ranked");
+if(testerSession){
+  if(!legacyTesterSandbox && (!data.testMode || !data.meta || data.meta.eventAuthority!=="test" || data.createdBy!==actorUid || data.ownerUid!==actorUid)) throw new Error("tester-official-write-blocked");
+  if(legacyTesterSandbox) markTesterSandboxState(data);
           data.meta.name=ensureTestName(data.meta.name);
           data.meta.ladderMode="general";
           data.ladderPointsAwarded=false;
