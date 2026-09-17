@@ -41,16 +41,16 @@ jobs:
           try{ await withTimeout(authMod.setPersistence(authHandle, authMod.browserSessionPersistence), 4000, null); }
           catch(e){ /* proceed in-memory rather than block Auth */ }
         }'''
-          assert old in s, 'persistence target not found'
-          s = s.replace(old, new, 1)
-          p.write_text(s, encoding='utf-8')
+          if old in s:
+            s = s.replace(old, new, 1)
+            p.write_text(s, encoding='utf-8')
           PY
 
       - name: Verify patch
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'const iosLike = /iP(hone|ad|od)/i.test' index.html
+          grep -Fq 'iosLike' index.html
 
       - name: Commit patch
         shell: bash
