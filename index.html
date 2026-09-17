@@ -8761,9 +8761,14 @@ function regCheckinDisplayLabel(reg){
   return CHECKIN_STATUS_LABELS[reg.checkinStatus] || "未報到";
 }
 
+function participantDisplayName(p){
+  if(!p) return "—";
+  const name=String(p.name||"未命名選手").replace(/（現場）$/,"");
+  return p.participantType==="onsite_guest"||p.source==="onsite"||p.ladderEligible===false ? name+"（現場）" : name;
+}
 function playerName(id){
   const p = state.players.find(pl=>pl.id===id);
-  return p ? p.name : "—";
+  return participantDisplayName(p);
 }
 
 // Registration status priority (per spec): cancelled > started > closed (past
@@ -9044,7 +9049,7 @@ function renderLive(){
     rankRows = stats.slice(0,10).map((p)=>`
       <tr>
         <td class="rank-num">${p.tied?"並列"+p.rank:p.rank}</td>
-        <td class="rank-name">${esc(p.name)}</td>
+        <td class="rank-name">${esc(participantDisplayName(p))}</td>
         <td>${p.wins}</td>
         <td>${p.losses}</td>
         <td>${p.diff>0?"+":""}${p.diff}</td>
@@ -9054,7 +9059,7 @@ function renderLive(){
     rankRows = stats.slice(0,10).map((p,i)=>`
       <tr>
         <td class="rank-num">${i+1}</td>
-        <td class="rank-name">${esc(p.name)}</td>
+        <td class="rank-name">${esc(participantDisplayName(p))}</td>
         <td>${p.wins}</td>
         <td>${p.losses}／2</td>
         <td>${p.diff>0?"+":""}${p.diff}</td>
@@ -9064,7 +9069,7 @@ function renderLive(){
     rankRows = stats.slice(0,10).map((p,i)=>`
       <tr>
         <td class="rank-num">${i+1}</td>
-        <td class="rank-name">${esc(p.name)}</td>
+        <td class="rank-name">${esc(participantDisplayName(p))}</td>
         <td>${p.wins}</td>
         <td>${p.losses}</td>
         <td>${p.diff>0?"+":""}${p.diff}</td>
@@ -9575,7 +9580,7 @@ function renderRoundRobinBracket(){
   const standRows = standings.map(p=>`
     <tr>
       <td class="rank-num">${p.tied?"並列"+p.rank:p.rank}</td>
-      <td class="rank-name">${esc(p.name)}</td>
+      <td class="rank-name">${esc(participantDisplayName(p))}</td>
       <td>${p.played}</td>
       <td>${p.wins}</td>
       <td>${p.losses}</td>
@@ -10381,7 +10386,7 @@ function renderPeopleManagement(){
   const row = (p,i, pendingRow)=>`
     <tr>
       <td>${i+1}</td>
-      <td class="rank-name">${esc(p.name)}</td>
+      <td class="rank-name">${esc(participantDisplayName(p))}</td>
       <td>${p.source==="online"
         ? '<span class="badge badge-neon">線上報名</span>'
         : (p.source==="test"
@@ -10428,7 +10433,7 @@ function renderPeopleManagement(){
     <div class="field">
       <label>現場新增選手</label>
       <textarea id="quick-add-textarea" placeholder="黑爸&#10;小宇"></textarea>
-      <div class="hint">每行一位。現場新增代表人已在場，會自動視為可參賽。</div>
+      <div class="hint">每行一位。系統會標示「（現場）」並保留本場排名，但不寫入天梯、個人戰績或活躍積分。建議優先請玩家申辦帳號後再報名。</div>
     </div>
     <div class="btn-row" style="margin-bottom:16px;"><button class="btn btn-primary" data-action="quick-add-players" ${state.startedAt?'disabled':''}>新增選手</button></div>
 
@@ -17358,7 +17363,18 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     if(lines.length===0){ showToast("請至少輸入一位選手", true); return; }
     const defaultChecked = !state.meta.checkinRequired;
     lines.forEach(name=>{
-      state.players.push({ id: uid("p"), name, checkedIn: defaultChecked });
+      state.players.push({
+        id:uid("guest"),
+        name:name.replace(/（現場）$/,""),
+        checkedIn:defaultChecked,
+        source:"onsite",
+        participantType:"onsite_guest",
+        accountLinked:false,
+        playerUid:null,
+        playerId:null,
+        ladderEligible:false,
+        activityEligible:false
+      });
     });
     if(document.getElementById("quick-add-textarea")) document.getElementById("quick-add-textarea").value = "";
     state.testDataDismissed = true;
@@ -19800,7 +19816,7 @@ init();
       const resolved=[]; const skipped=[]; const cancelled=[];
       for(const item of (payload.participants||[])){
         // Explicit test players are never written into the official ladder.
-        if(item.source==="family"||item.source==="test"||item.isTestData===true){
+        if(item.source==="family"||item.source==="test"||item.isTestData===true||item.participantType==="onsite_guest"||item.ladderEligible===false){
           skipped.push(item.playerName);
           continue;
         }
