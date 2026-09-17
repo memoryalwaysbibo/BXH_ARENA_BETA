@@ -161,11 +161,11 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
 
 
 
-// v13.41.2: post-authentication active-points UI loader.
+// v13.41.3: player-center active-points UI loader.
 (function loadActivityPointsUI(){
  if(document.querySelector('script[data-bxh-activity-points]'))return;
  const script=document.createElement('script');
- script.src='activity-points-ui.js?v=13.41.2';
+ script.src='activity-points-ui.js?v=13.41.3';
  script.defer=true;
  script.dataset.bxhActivityPoints='true';
  document.head.appendChild(script);
