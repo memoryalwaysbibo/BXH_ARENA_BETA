@@ -1,4 +1,5 @@
-// BXH ARENA Firestore Rules v13.30.0
+// BXH ARENA Firestore Rules v13.40.3
+// 2026-09-17: atomic community-room deletion authorizes its public mirror by immutable owner fields.
 // 2026-09-16: redeploy current Beta rules for player community-room creation.
 // 2026-09-15: tester management is restricted to the actor's own TEST tournament.
 // 2026-09-12: server-only closure, restore, raffle and activity paths.
@@ -992,10 +993,15 @@ isAdminOrAbove()
       allow list: if resource.data.visibility == 'public'
                    || canReadPublicAsStaff();
 
-      // 官方管理員可刪除正式賽事；community 房僅房主可刪除自己的公開鏡像。
-      allow delete: if operationsUnlocked(resource.data) && tournamentOperationsUnlocked(code)  && (
+      // v13.40.3: community 公開鏡像以自身不可偽造的 owner 欄位授權刪除。
+      // 不再讀取同一 batch 內也會被刪除的 tournaments 文件，避免合法房主遭 permission-denied。
+      allow delete: if operationsUnlocked(resource.data) && (
 isAdminOrAbove()
-        || (isSignedIn() && tournamentExistsFor(code) && isCommunityOwnerData(tournamentDataFor(code)))
+        || (
+          isSignedIn()
+          && resource.data.eventAuthority == 'community'
+          && resource.data.ownerUid == request.auth.uid
+        )
         || (isTester() && tournamentExistsFor(code) && isTesterOwnedTestData(myProfile(), tournamentDataFor(code)))
         );
 
