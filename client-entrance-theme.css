@@ -591,3 +591,184 @@
   .role-cards [data-action^="player-goto-"]:hover,
   .role-cards [data-action^="player-goto-"]:focus-visible{transform:none}
 }
+
+
+/* BXH ARENA super-admin inventory grant panel v1 */
+section.panel:has([data-action="inventory-grant"]){
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  margin-top:20px!important;
+  padding:24px!important;
+  border:1px solid transparent!important;
+  border-radius:20px!important;
+  background:
+    linear-gradient(155deg,rgba(19,27,42,.94),rgba(7,12,22,.96)) padding-box,
+    linear-gradient(135deg,rgba(244,204,103,.52),rgba(132,93,24,.12) 46%,rgba(255,228,151,.30)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,242,198,.075),
+    inset 0 0 42px rgba(181,129,26,.045),
+    0 22px 56px rgba(0,0,0,.34),
+    0 0 30px rgba(182,130,28,.055)!important;
+  backdrop-filter:blur(18px) saturate(1.08);
+  -webkit-backdrop-filter:blur(18px) saturate(1.08);
+}
+section.panel:has([data-action="inventory-grant"])::before{
+  content:"SUPER ADMIN";
+  position:absolute;
+  top:19px;
+  right:22px;
+  z-index:-1;
+  color:rgba(240,199,91,.20);
+  font:800 10px/1 system-ui,sans-serif;
+  letter-spacing:.24em;
+  pointer-events:none;
+}
+section.panel:has([data-action="inventory-grant"])::after{
+  content:"";
+  position:absolute;
+  z-index:-2;
+  width:340px;
+  height:340px;
+  top:-230px;
+  right:-90px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(231,181,53,.15),transparent 70%);
+  pointer-events:none;
+}
+section.panel:has([data-action="inventory-grant"])>.panel-title{
+  color:#f7dfa0!important;
+  font-weight:900!important;
+  letter-spacing:.055em!important;
+  text-shadow:0 0 22px rgba(220,166,39,.16);
+}
+section.panel:has([data-action="inventory-grant"])>.hint{
+  max-width:760px;
+  color:#929daf!important;
+  line-height:1.65!important;
+}
+section.panel:has([data-action="inventory-grant"]) .field label{
+  color:#d9cda8!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  letter-spacing:.055em;
+}
+section.panel:has([data-action="inventory-grant"]) input,
+section.panel:has([data-action="inventory-grant"]) select,
+section.panel:has([data-action="inventory-grant"]) textarea{
+  min-height:46px;
+  border:1px solid rgba(142,158,184,.16)!important;
+  border-radius:12px!important;
+  color:#f5f7fb!important;
+  caret-color:#f5cd69;
+  background:rgba(5,10,20,.68)!important;
+  box-shadow:
+    inset 0 2px 7px rgba(0,0,0,.34),
+    inset 0 1px 0 rgba(255,255,255,.025)!important;
+  outline:none!important;
+  transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease!important;
+}
+section.panel:has([data-action="inventory-grant"]) input::placeholder,
+section.panel:has([data-action="inventory-grant"]) textarea::placeholder{
+  color:#667186!important;
+  opacity:1;
+}
+section.panel:has([data-action="inventory-grant"]) input:hover:not(:disabled),
+section.panel:has([data-action="inventory-grant"]) select:hover:not(:disabled),
+section.panel:has([data-action="inventory-grant"]) textarea:hover:not(:disabled){
+  border-color:rgba(219,179,76,.34)!important;
+  background:rgba(7,13,24,.78)!important;
+}
+section.panel:has([data-action="inventory-grant"]) input:focus,
+section.panel:has([data-action="inventory-grant"]) select:focus,
+section.panel:has([data-action="inventory-grant"]) textarea:focus{
+  border-color:#e6bc55!important;
+  background:rgba(7,13,24,.88)!important;
+  box-shadow:
+    inset 0 2px 7px rgba(0,0,0,.32),
+    0 0 0 3px rgba(231,187,74,.105),
+    0 0 20px rgba(218,164,41,.13)!important;
+}
+section.panel:has([data-action="inventory-grant"]) input:disabled,
+section.panel:has([data-action="inventory-grant"]) select:disabled,
+section.panel:has([data-action="inventory-grant"]) textarea:disabled{
+  opacity:.56;
+  cursor:not-allowed;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-search"]{
+  border-color:rgba(222,185,87,.22)!important;
+  color:#dbc98f!important;
+  background:rgba(177,127,29,.075)!important;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-search"]:hover:not(:disabled){
+  border-color:rgba(239,199,96,.52)!important;
+  color:#ffeba9!important;
+  background:rgba(202,148,36,.13)!important;
+  box-shadow:0 0 18px rgba(219,166,40,.09)!important;
+}
+section.panel:has([data-action="inventory-grant"]) .inventory-recipient{
+  border-color:rgba(113,154,211,.22)!important;
+  background:rgba(37,69,111,.15)!important;
+}
+section.panel:has([data-action="inventory-grant"]) #inventory-selected{
+  padding:11px 13px;
+  border-radius:11px;
+  color:#aeb8c8!important;
+  background:rgba(3,8,16,.34);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+section.panel:has([data-action="inventory-grant"]) .inventory-grid{
+  gap:15px!important;
+  margin-top:16px!important;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]{
+  position:relative;
+  min-height:48px!important;
+  margin-top:20px!important;
+  padding:12px 24px!important;
+  border:1px solid rgba(255,233,159,.72)!important;
+  border-radius:13px!important;
+  color:#171006!important;
+  font-weight:900!important;
+  letter-spacing:.075em!important;
+  background:linear-gradient(135deg,#ffe79d,#e1b03b 52%,#c88d1d)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.62),
+    0 10px 26px rgba(205,148,26,.24),
+    0 0 22px rgba(230,179,49,.18)!important;
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]:hover:not(:disabled),
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]:focus-visible{
+  outline:none!important;
+  filter:brightness(1.07) saturate(1.05);
+  transform:translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.70),
+    0 13px 32px rgba(205,148,26,.31),
+    0 0 30px rgba(236,185,54,.27)!important;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]:active:not(:disabled){
+  transform:translateY(1px) scale(.992);
+  box-shadow:
+    inset 0 2px 5px rgba(92,56,3,.16),
+    0 6px 15px rgba(205,148,26,.21),
+    0 0 18px rgba(236,185,54,.18)!important;
+}
+section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]:disabled{
+  filter:saturate(.55);
+  opacity:.66;
+  cursor:wait;
+}
+@media(max-width:700px){
+  section.panel:has([data-action="inventory-grant"]){padding:19px!important;border-radius:17px!important}
+  section.panel:has([data-action="inventory-grant"])::before{display:none}
+  section.panel:has([data-action="inventory-grant"]) .inventory-grid{grid-template-columns:1fr!important;gap:12px!important}
+  section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+  section.panel:has([data-action="inventory-grant"]) input,
+  section.panel:has([data-action="inventory-grant"]) select,
+  section.panel:has([data-action="inventory-grant"]) textarea,
+  section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]{transition:none!important}
+}
