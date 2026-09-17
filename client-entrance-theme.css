@@ -432,3 +432,162 @@
 .raffle-winner,.raffle-winner-card,.winner-card{border:1px solid rgba(255,211,91,.55)!important;background:radial-gradient(circle at 50% 0,rgba(255,215,91,.24),transparent 48%),rgba(20,18,15,.94)!important;box-shadow:0 0 34px rgba(230,176,39,.20),inset 0 1px 0 rgba(255,247,207,.18)!important}
 @media(max-width:700px){.raffle-page{border-radius:20px!important}.raffle-page::before{display:none}.raffle-page .panel-title{align-items:stretch!important;gap:12px!important}.raffle-toolbar{width:100%;display:flex!important}.raffle-toolbar .raffle-filter{flex:1;padding-inline:10px!important}.raffle-card-grid{grid-template-columns:1fr!important}.raffle-game-card{min-height:138px}}
 @media(prefers-reduced-motion:reduce){.raffle-game-card,.raffle-filter{transition:none!important}}
+
+
+/* BXH ARENA player center launcher v1 */
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .auth-wm{
+  opacity:.05!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  pointer-events:none!important;
+  z-index:0!important;
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .auth-wm img{
+  width:clamp(430px,58vw,760px)!important;
+  max-width:76vw!important;
+  height:auto!important;
+  opacity:1!important;
+  filter:grayscale(.15) sepia(.25) saturate(.8) drop-shadow(0 0 54px rgba(230,178,58,.22))!important;
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .auth-content{
+  position:relative;
+  z-index:2;
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .auth-tagline{
+  color:#f5df9a!important;
+  letter-spacing:.2em!important;
+  text-shadow:0 0 24px rgba(224,176,55,.22);
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .role-cards{
+  gap:18px!important;
+  perspective:1000px;
+}
+.role-cards [data-action^="player-goto-"]{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-height:258px;
+  padding:28px 24px 24px!important;
+  border:1px solid transparent!important;
+  border-radius:22px!important;
+  color:#f7f9ff!important;
+  background:
+    linear-gradient(150deg,rgba(23,34,55,.88),rgba(8,15,29,.94)) padding-box,
+    linear-gradient(145deg,rgba(255,255,255,.10),rgba(117,146,186,.04),rgba(255,255,255,.07)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.065),
+    inset 0 0 34px rgba(95,133,188,.055),
+    0 18px 45px rgba(0,0,0,.28)!important;
+  backdrop-filter:blur(16px) saturate(1.08);
+  -webkit-backdrop-filter:blur(16px) saturate(1.08);
+  transform:translateY(0) scale(1);
+  transition:
+    transform .24s cubic-bezier(.2,.75,.25,1),
+    box-shadow .24s ease,
+    filter .24s ease,
+    background .24s ease!important;
+}
+.role-cards [data-action^="player-goto-"]::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-36% 16% auto;
+  height:68%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(92,139,207,.12),transparent 68%);
+  opacity:.66;
+  pointer-events:none;
+  transition:opacity .24s ease,transform .24s ease;
+}
+.role-cards [data-action^="player-goto-"]::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:15%;
+  right:15%;
+  bottom:-1px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(245,202,92,.16),transparent);
+  opacity:.7;
+  pointer-events:none;
+}
+.role-cards [data-action^="player-goto-"]:hover,
+.role-cards [data-action^="player-goto-"]:focus-visible{
+  outline:none!important;
+  transform:translateY(-7px) scale(1.012);
+  background:
+    linear-gradient(150deg,rgba(28,39,61,.95),rgba(9,16,29,.97)) padding-box,
+    linear-gradient(135deg,#ffe7a1,#d8a933 46%,#fff0ba) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,249,222,.12),
+    inset 0 0 38px rgba(239,193,76,.07),
+    0 22px 54px rgba(0,0,0,.38),
+    0 0 28px rgba(225,174,45,.22)!important;
+}
+.role-cards [data-action^="player-goto-"]:hover::before,
+.role-cards [data-action^="player-goto-"]:focus-visible::before{
+  opacity:1;
+  transform:scale(1.12);
+  background:radial-gradient(circle,rgba(242,199,89,.18),transparent 68%);
+}
+.role-cards [data-action^="player-goto-"] .role-card-icon{
+  width:72px!important;
+  height:72px!important;
+  margin-bottom:19px!important;
+  color:#f2ca67!important;
+  background:linear-gradient(145deg,rgba(250,210,108,.105),rgba(16,27,45,.30))!important;
+  border:1px solid rgba(248,211,111,.20)!important;
+  border-radius:20px!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 24px rgba(220,168,38,.08)!important;
+  transition:transform .24s ease,color .24s ease,box-shadow .24s ease!important;
+}
+.role-cards [data-action^="player-goto-"] .role-card-icon svg{
+  width:42px!important;
+  height:42px!important;
+  filter:drop-shadow(0 0 8px rgba(238,190,65,.20));
+}
+.role-cards [data-action^="player-goto-"]:hover .role-card-icon,
+.role-cards [data-action^="player-goto-"]:focus-visible .role-card-icon{
+  color:#ffe79c!important;
+  transform:translateY(-2px) scale(1.04);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 28px rgba(230,179,46,.18)!important;
+}
+.role-cards [data-action^="player-goto-"] .role-card-cn{
+  color:#fff!important;
+  font-weight:900!important;
+  letter-spacing:.07em!important;
+  text-shadow:0 2px 15px rgba(0,0,0,.36);
+}
+.role-cards [data-action^="player-goto-"] .role-card-en{
+  color:#e6bc55!important;
+  font-weight:850!important;
+  letter-spacing:.2em!important;
+}
+.role-cards [data-action^="player-goto-"] .role-card-desc{
+  color:#919caf!important;
+  line-height:1.68!important;
+}
+.role-cards [data-action^="player-goto-"] .role-card-enter{
+  color:#d9b75f!important;
+  font-weight:800!important;
+  transition:color .2s ease,transform .2s ease!important;
+}
+.role-cards [data-action^="player-goto-"]:hover .role-card-enter,
+.role-cards [data-action^="player-goto-"]:focus-visible .role-card-enter{
+  color:#ffe59b!important;
+  transform:translateX(5px);
+}
+@media(max-width:760px){
+  .auth-shell:has(.role-cards [data-action="player-goto-login"]) .role-cards{gap:13px!important}
+  .role-cards [data-action^="player-goto-"]{min-height:0;padding:22px 20px!important;border-radius:18px!important}
+  .role-cards [data-action^="player-goto-"] .role-card-icon{width:60px!important;height:60px!important;border-radius:17px!important}
+  .role-cards [data-action^="player-goto-"] .role-card-icon svg{width:34px!important;height:34px!important}
+  .auth-shell:has(.role-cards [data-action="player-goto-login"]) .auth-wm img{width:86vw!important;max-width:620px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .role-cards [data-action^="player-goto-"],
+  .role-cards [data-action^="player-goto-"] *{transition:none!important}
+  .role-cards [data-action^="player-goto-"]:hover,
+  .role-cards [data-action^="player-goto-"]:focus-visible{transform:none}
+}
