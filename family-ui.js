@@ -119,3 +119,42 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
   window.addEventListener('bxh-cloud-ready',install,{once:false});
   setTimeout(install,0);setTimeout(install,2000);
 })();
+
+
+// v13.40.4: switching the referee scoring mode must immediately update an
+// in-progress match while it is still scoreless. Matches with any recorded
+// score/result remain locked to their original mode.
+(function installLiveScorelessModeSwitch(){
+  function runtime(){
+    try{return Function('return {state:state,saveState:saveState,render:render,pendingModal:pendingModal}')()}catch(e){return null}
+  }
+  function applyScorelessActiveMode(){
+    const rt=runtime(),st=rt&&rt.state;
+    if(!st||!st.meta||!Array.isArray(st.matches))return;
+    const mode=st.meta.scoringMode==="quick"?"quick":"standard";
+    let changed=false;
+    st.matches.forEach(match=>{
+      if(!match||match.isBye||match.completed||match.status==="completed")return;
+      const hasScore=Number(match.scoreA||0)>0||Number(match.scoreB||0)>0||(Array.isArray(match.log)&&match.log.length>0);
+      if(match.status==="in_progress"&&!hasScore&&match.scoringMode!==mode){
+        match.scoringMode=mode;
+        changed=true;
+      }
+    });
+    if(changed){rt.saveState();rt.render()}
+  }
+  document.addEventListener("click",event=>{
+    const button=event.target&&event.target.closest?event.target.closest('[data-action="referee-set-scoring-mode"]'):null;
+    if(!button)return;
+    setTimeout(()=>{
+      const rt=runtime(),modal=rt&&rt.pendingModal;
+      if(!modal||modal.__liveScorelessModeSwitch||typeof modal.onConfirm!=="function")return;
+      modal.__liveScorelessModeSwitch=true;
+      const confirm=modal.onConfirm;
+      modal.onConfirm=async()=>{
+        await confirm();
+        applyScorelessActiveMode();
+      };
+    },0);
+  });
+})();
