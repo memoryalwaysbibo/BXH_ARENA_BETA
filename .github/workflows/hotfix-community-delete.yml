@@ -1,0 +1,57 @@
+name: Hotfix community room deletion
+
+on:
+  push:
+    paths:
+      - .github/workflows/hotfix-community-delete.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply atomic deletion hotfix
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+          old_ui = '''    openModal({type:"generic",title:"刪除一般賽事",message:"確定刪除「"+name+"」？完整房間與對戰詳細資料刪除後無法復原；已完成的主辦摘要及驗證場數仍保留。",danger:true,confirmLabel:"確定刪除",onConfirm:()=>{(async()=>{try{await window.cloudSync.deleteCommunityRoom(code); communityEventsCache=null; showToast("已刪除一般賽事"); handleAction("community-load-events",target);}catch(e){showToast("刪除失敗",true);}})();}}); return;'''
+          new_ui = '''    openModal({type:"generic",title:"刪除一般賽事",message:"確定刪除「"+name+"」？完整房間與對戰詳細資料刪除後無法復原；已完成的主辦摘要及驗證場數仍保留。",danger:true,confirmLabel:"確定刪除",onConfirm:()=>{(async()=>{try{await window.cloudSync.deleteCommunityRoom(code); communityEventsCache=null; publicTournamentsCache=null; showToast("已刪除一般賽事"); handleAction("community-load-events",target);}catch(e){const reason=String(e&&e.code||e&&e.message||e||"").replace(/^firestore\\//,""); console.error("[deleteCommunityRoom] failed",code,e); showToast(reason.includes("permission-denied")?"刪除失敗：目前帳號不是房主，或房間已被系統鎖定":reason.includes("unauthenticated")||reason.includes("auth-required")?"刪除失敗：登入狀態已失效，請重新登入":reason.includes("unavailable")||reason.includes("network")?"刪除失敗：網路連線異常，請稍後重試":"刪除失敗（"+(reason||"unknown")+"）",true);}})();}}); return;'''
+          old_delete = '''    async deleteCommunityRoom(code){
+      const uid=currentUserUidForWrites(); if(!uid||!code) throw new Error("auth-required");
+      const ref=fx.doc(dbHandle,"tournaments",String(code).toUpperCase()); const snap=await fx.getDoc(ref); if(!snap.exists()) return true; const d=snap.data();
+      if(d.eventAuthority!=="community"||d.createdBy!==uid) throw new Error("permission-denied");
+      if(d.archiveStatus==="completed")await window.engagementService.syncMyHostingProgress({});
+      await fx.deleteDoc(fx.doc(dbHandle,"publicTournaments",String(code).toUpperCase())); await fx.deleteDoc(ref); return true;
+    },'''
+          new_delete = '''    async deleteCommunityRoom(code){
+      const uid=currentUserUidForWrites(); if(!uid||!code) throw new Error("auth-required");
+      const normalized=String(code).trim().toUpperCase();
+      const ref=fx.doc(dbHandle,"tournaments",normalized),publicRef=fx.doc(dbHandle,"publicTournaments",normalized);
+      const [snap,publicSnap]=await Promise.all([fx.getDoc(ref),fx.getDoc(publicRef)]);
+      if(!snap.exists()&&!publicSnap.exists()) return true;
+      if(!snap.exists()) throw new Error("orphaned-public-room");
+      const d=snap.data();
+      if(d.eventAuthority!=="community"||d.createdBy!==uid) throw new Error("permission-denied");
+      if(d.archiveStatus==="completed")await window.engagementService.syncMyHostingProgress({});
+      const batch=fx.writeBatch(dbHandle);
+      if(publicSnap.exists()) batch.delete(publicRef);
+      batch.delete(ref);
+      await batch.commit();
+      return true;
+    },'''
+          assert text.count(old_ui) == 1, "delete UI target not unique"
+          assert text.count(old_delete) == 1, "delete method target not unique"
+          text = text.replace(old_ui, new_ui).replace(old_delete, new_delete)
+          path.write_text(text, encoding="utf-8")
+      - name: Commit hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: atomically delete community rooms"
+          git push
