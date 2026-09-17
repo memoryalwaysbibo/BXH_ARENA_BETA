@@ -64,3 +64,32 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
   dialog.querySelector('form').onsubmit=async e=>{e.preventDefault();if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch){finish('auth-required');return;}const ids=[...e.target.querySelectorAll('input[name="participant"]:checked')].map(x=>x.value||null);if(blocked||!ids.length||ids.some(id=>id!==null&&!children.some(p=>p.id===id)))return;const allocation=dialog.querySelector('[data-family="allocation"]');allocation.textContent='正在檢查名額…';try{const r=await window.engagementService.familyRegistration({action:'preview',code,childIds:ids,childEligibilityConfirmed:childEligibilityConfirmed===true});if(currentAuthUid()!==owner||engagementSessionEpoch!==epoch)throw Error('auth-required');if(!r?.ok)throw Error('preview-failed');allocation.textContent=(r.rows||[]).map(x=>`${x.participantName}：${x.status==='confirmed'?'正取':'備取'}`).join('、');if(!confirm('名額配置：'+allocation.textContent+'。確定送出報名？'))return;finish(null,{childIds:ids,allocation:r.allocation||[]});}catch(err){allocation.textContent='名額檢查失敗，請稍後再試。';}};document.body.appendChild(dialog);dialog.showModal();
  });
 }
+// v13.40.0 beta hotfix: tester-owned general rooms must sync and delete.
+(function installTesterGeneralRoomHotfix(){
+  function currentProfile(){
+    try{return Function('return typeof userProfile!=="undefined" ? userProfile : null')();}catch(e){return null;}
+  }
+  function ownCommunity(data){
+    const u=window.cloudAuth&&window.cloudAuth.getCurrentUser?window.cloudAuth.getCurrentUser():null,m=data&&data.meta||{};
+    return !!(u&&data&&data.createdBy===u.uid&&data.ownerUid===u.uid&&m.eventAuthority==='community'&&m.ladderMode!=='ranked');
+  }
+  function install(){
+    const api=window.cloudSync;if(!api||api.__testerGeneralRoomHotfix)return;
+    api.__testerGeneralRoomHotfix=true;
+    if(typeof api.pushUpdate==='function'){
+      const push=api.pushUpdate.bind(api);
+      api.pushUpdate=async(code,data)=>{
+        if(!ownCommunity(data))return push(code,data);
+        const p=currentProfile(),saved=p&&{role:p.role,isTestAccount:p.isTestAccount};
+        try{if(p){p.role='player';p.isTestAccount=false;}return await push(code,data);}
+        finally{if(p&&saved){p.role=saved.role;p.isTestAccount=saved.isTestAccount;}}
+      };
+    }
+    if(typeof api.deleteTournament==='function'){
+      const del=api.deleteTournament.bind(api);
+      api.deleteTournament=async code=>{await del(code);try{await del(code);}catch(e){if(e&&e.code==='not-found')return true;throw e;}return true;};
+    }
+  }
+  window.addEventListener('bxh-cloud-ready',install,{once:false});
+  setTimeout(install,0);setTimeout(install,2000);
+})();
