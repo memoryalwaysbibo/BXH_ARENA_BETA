@@ -165,7 +165,7 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
 (function loadActivityPointsUI(){
  if(document.querySelector('script[data-bxh-activity-points]'))return;
  const script=document.createElement('script');
- script.src='activity-points-ui.js?v=13.41.6';
+ script.src='activity-points-ui.js?v=13.41.7';
  script.defer=true;
  script.dataset.bxhActivityPoints='true';
  document.head.appendChild(script);
