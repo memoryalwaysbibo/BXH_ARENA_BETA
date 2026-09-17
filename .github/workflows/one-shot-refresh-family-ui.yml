@@ -1,0 +1,33 @@
+name: One-shot refresh family UI cache
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-refresh-family-ui.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update cache version and remove this workflow
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html")
+          s=p.read_text()
+          old='family-ui.js?v=13.37.0'
+          new='family-ui.js?v=13.41.6'
+          assert s.count(old)==1, f"expected exactly one cache tag, found {s.count(old)}"
+          p.write_text(s.replace(old,new))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/one-shot-refresh-family-ui.yml
+          git add index.html
+          git commit -m "fix: refresh family UI cache version"
+          git push
