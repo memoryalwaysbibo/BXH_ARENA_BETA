@@ -170,3 +170,13 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
  script.dataset.bxhActivityPoints='true';
  document.head.appendChild(script);
 })();
+
+// v13.42.0: tournament registration invitation UI.
+(function loadRegistrationInvitationsUI(){
+ if(document.querySelector('script[data-bxh-registration-invitations]'))return;
+ const script=document.createElement('script');
+ script.src='registration-invitations-ui.js?v=13.42.0';
+ script.defer=true;
+ script.dataset.bxhRegistrationInvitations='true';
+ document.head.appendChild(script);
+})();
