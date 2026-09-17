@@ -169,3 +169,67 @@
  .lobby-detail-grid{grid-template-columns:1fr!important}
 }
 @media(prefers-reduced-motion:reduce){.cloud-dot.connected,.cloud-dot-v2.green,.lobby-compact-card{animation:none!important}}
+
+
+/* BXH ARENA daily check-in client theme v1 */
+.checkin-page-back{margin:2px 0 12px}.checkin-page-back .btn{border:0!important;background:transparent!important;color:rgba(205,211,214,.55)!important;padding-left:2px!important;box-shadow:none!important}
+.engagement-panel:has(.checkin-heading){
+  position:relative;overflow:hidden;border:1px solid transparent!important;border-radius:24px!important;padding:clamp(18px,4vw,28px)!important;
+  background:linear-gradient(145deg,rgba(20,24,25,.78),rgba(6,9,10,.66)) padding-box,linear-gradient(145deg,rgba(239,220,145,.19),rgba(255,255,255,.025) 48%,rgba(210,240,0,.1)) border-box!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.07);backdrop-filter:blur(18px) saturate(1.07);
+  box-shadow:0 24px 60px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+.engagement-panel:has(.checkin-heading)::before{content:"";position:absolute;right:-70px;top:-80px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,rgba(220,255,0,.065),transparent 67%);pointer-events:none}
+.checkin-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.engagement-kicker{font-size:9px!important;letter-spacing:2.4px!important;color:rgba(228,203,113,.55)!important;font-weight:800}
+.engagement-title{margin-top:3px;font-size:clamp(26px,6vw,38px)!important;font-weight:900!important;line-height:1.05;color:#f5f6f2!important;letter-spacing:.3px}
+.checkin-description{margin-top:9px!important;font-size:11px!important;color:rgba(188,195,198,.45)!important}
+.checkin-status{
+  display:inline-flex!important;align-items:center;gap:7px;border:0!important;border-radius:999px!important;padding:7px 11px!important;
+  background:rgba(255,255,255,.045)!important;color:rgba(211,216,218,.62)!important;font-size:10px!important;white-space:nowrap;
+}
+.checkin-status::before{content:"";width:7px;height:7px;border-radius:50%;background:#7c8589;box-shadow:0 0 7px rgba(124,133,137,.45)}
+.checkin-status.badge-green{color:#9df1c8!important;background:rgba(63,220,142,.075)!important}
+.checkin-status.badge-green::before{background:#45ef98;box-shadow:0 0 9px rgba(69,239,152,.85);animation:bxh-checkin-breathe 2.4s ease-in-out infinite}
+.checkin-stats{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px!important;margin:20px 0 16px!important;
+  padding:0!important;border:0!important;background:transparent!important;
+}
+.checkin-stat{
+  min-width:0;padding:15px 9px 13px!important;border:0!important;border-radius:16px!important;text-align:center;
+  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 22px rgba(0,0,0,.12);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+}
+.checkin-stat strong{display:block;font-size:clamp(24px,7vw,36px)!important;line-height:1!important;color:#f2f4ef!important;font-weight:900!important;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(234,255,29,.06)}
+.checkin-stat span{display:block;margin-top:7px;font-size:9.5px!important;letter-spacing:.4px;color:rgba(190,198,201,.48)!important}
+.engagement-panel:has(.checkin-heading)>button[data-action="player-daily-checkin"]{width:100%;min-height:46px;border-radius:14px!important;margin:0 0 4px;font-weight:850}
+.checkin-calendar{
+  display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px!important;margin-top:9px!important;
+  padding:10px 0 0!important;border:0!important;background:transparent!important;
+}
+.checkin-calendar>b{padding:5px 0!important;border:0!important;background:transparent!important;color:rgba(190,197,200,.38)!important;font-size:9px!important;font-weight:700!important;text-align:center}
+.checkin-calendar>span{
+  display:flex!important;align-items:center;justify-content:center;min-width:0;aspect-ratio:1/1;max-height:52px;
+  border:1px solid transparent!important;border-radius:12px!important;background:rgba(255,255,255,.025)!important;
+  color:rgba(211,216,217,.57)!important;font-size:11px!important;font-variant-numeric:tabular-nums;
+  transition:background .18s,border-color .18s,box-shadow .18s,transform .15s;
+}
+.checkin-calendar>span:empty{background:transparent!important}
+.checkin-calendar>span.done{
+  color:#f5dc74!important;border-color:rgba(235,205,101,.32)!important;
+  background:linear-gradient(145deg,rgba(231,196,74,.12),rgba(202,238,0,.035))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 0 12px rgba(226,192,72,.07);
+}
+.checkin-calendar>span[aria-current="date"]{
+  color:#efff45!important;border-color:rgba(224,255,32,.62)!important;background:rgba(216,245,15,.075)!important;
+  box-shadow:0 0 0 1px rgba(224,255,32,.09),0 0 18px rgba(216,245,15,.14)!important;font-weight:900;transform:translateY(-1px);
+}
+@keyframes bxh-checkin-breathe{0%,100%{opacity:.62;transform:scale(.88)}50%{opacity:1;transform:scale(1.12)}}
+@media(max-width:420px){
+ .engagement-panel:has(.checkin-heading){padding:18px 14px!important;border-radius:20px!important}
+ .checkin-stats{gap:6px!important;margin-top:16px!important}.checkin-stat{padding:13px 5px 11px!important;border-radius:13px!important}
+ .checkin-stat strong{font-size:25px!important}.checkin-stat span{font-size:8.8px!important}
+ .checkin-calendar{gap:3px!important}.checkin-calendar>span{border-radius:9px!important;font-size:10px!important}
+}
+@media(prefers-reduced-motion:reduce){.checkin-status.badge-green::before{animation:none!important}}
