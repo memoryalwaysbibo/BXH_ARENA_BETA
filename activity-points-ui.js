@@ -18,9 +18,24 @@
   const table=state.mode==="records"?`<table class="ap-table"><thead><tr><th>日期</th><th>來源／原因</th><th>異動</th><th>餘額</th></tr></thead><tbody>${history||'<tr><td colspan="4">目前沒有積分紀錄</td></tr>'}</tbody></table>`:`<table class="ap-table"><thead><tr><th>名次</th><th>玩家</th><th>積分</th></tr></thead><tbody>${ranking||'<tr><td colspan="3">目前沒有排行資料</td></tr>'}</tbody></table>`;
   root.innerHTML=`<section class="ap-shell"><div class="ap-head"><div><div class="hint">玩家 ID｜${esc(playerId())}</div><h2>我的活躍積分</h2></div><button class="btn btn-ghost" data-activity="close">關閉</button></div><div class="ap-balance">${Number(w.balance||0)} <small>分</small></div><p class="hint">累積獲得 ${Number(w.lifetimeEarned||0)}｜累積扣除 ${Number(w.lifetimeDeducted||0)}</p>${state.error?`<p class="auth-error">${esc(state.error)}</p>`:""}<h3>我的任務</h3>${task("每日簽到","daily_checkin",15,"每日一次 +15")}${task("完成真實對戰","match_completed",30,"每場 +3")}${task("我是房主","host_completed",30,"每場完賽 +10")}${task("心情小棧留言","mood_message",15,"每則 +5")}<div class="ap-tabs"><button class="btn ${state.mode==='records'?'btn-primary':'btn-ghost'}" data-activity="records">我的積分紀錄</button><button class="btn ${state.mode==='daily'?'btn-primary':'btn-ghost'}" data-activity="daily">每日活躍榜</button><button class="btn ${state.mode==='cumulative'?'btn-primary':'btn-ghost'}" data-activity="cumulative">累積活躍榜</button><button class="btn btn-ghost" data-activity="refresh">重新整理</button></div>${state.loading?'<p>讀取中…</p>':table}</section>`;
  }
- function summary(){const main=document.querySelector(".player-main");if(!main)return;let box=document.getElementById("activity-points-summary");if(!box){box=document.createElement("section");box.id="activity-points-summary";box.className="panel";box.dataset.activity="open";main.prepend(box)}box.innerHTML=`<div><div class="hint">玩家 ID｜${esc(playerId())}</div><b>活躍積分</b></div><strong>${state.snapshot?Number(state.snapshot.wallet?.balance||0):"—"} 分</strong>`}
+ function signedIn(){try{return !!Function('return firebaseUser&&firebaseUser.uid&&userProfile&&currentRole==="player"')()}catch(e){return false}}
+ function summary(){
+  if(!signedIn())return;
+  const main=document.querySelector(".player-main");if(!main)return;
+  let box=document.getElementById("activity-points-summary");
+  if(!box){box=document.createElement("section");box.id="activity-points-summary";box.className="panel";box.dataset.activity="open";main.prepend(box)}
+  const key=playerId()+"|"+(state.snapshot?Number(state.snapshot.wallet?.balance||0):"—");
+  if(box.dataset.renderKey===key)return;
+  box.dataset.renderKey=key;
+  box.innerHTML=`<div><div class="hint">玩家 ID｜${esc(playerId())}</div><b>活躍積分</b></div><strong>${state.snapshot?Number(state.snapshot.wallet?.balance||0):"—"} 分</strong>`;
+ }
  document.addEventListener("click",e=>{const t=e.target.closest?.("[data-activity]");if(!t)return;const a=t.dataset.activity;if(a==="open"){state.open=true;state.mode="records";state.rows=[];paint();snapshot()}else if(a==="close"){state.open=false;paint()}else if(a==="refresh"){state.rows=[];snapshot()}else if(a==="records"){state.mode="records";state.rows=[];paint()}else if(a==="daily"||a==="cumulative")board(a)});
  const style=document.createElement("style");style.textContent=`#activity-points-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;border-color:#859400}#activity-points-summary strong,.ap-balance{color:#eaff16;font-weight:900}#activity-points-summary strong{font-size:26px}#activity-points-overlay{position:fixed;inset:0;z-index:2600;background:#000d;padding:14px;overflow:auto;color:#f4f4f4}#activity-points-overlay .ap-shell{max-width:760px;margin:auto;background:#15171a;border:1px solid #5c6678;border-radius:20px;padding:18px}.ap-head,.ap-task>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:center}.ap-balance{font-size:42px}.ap-task{background:#202329;border-radius:14px;padding:12px;margin:10px 0}.ap-task small,.ap-task span{color:#9ca3af}.ap-bar{height:8px;background:#343942;border-radius:9px;margin:8px 0}.ap-bar i{display:block;height:100%;background:#eaff16;border-radius:9px}.ap-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.ap-table{width:100%;border-collapse:collapse}.ap-table th,.ap-table td{padding:10px 6px;border-bottom:1px solid #30343b;text-align:left}.ap-table td small{display:block;color:#999}.ap-plus{color:#78df9b}.ap-minus{color:#ff7474}`;document.head.appendChild(style);
- new MutationObserver(()=>summary()).observe(document.documentElement,{childList:true,subtree:true});
- setInterval(()=>{if(document.querySelector(".player-main")){summary();if(!state.snapshot&&!state.loading)snapshot()}},3000);
+ let summaryQueued=false;
+ new MutationObserver(()=>{
+  if(summaryQueued)return;
+  summaryQueued=true;
+  requestAnimationFrame(()=>{summaryQueued=false;summary()});
+ }).observe(document.documentElement,{childList:true,subtree:true});
+ setInterval(()=>{if(signedIn()&&document.querySelector(".player-main")){summary();if(!state.snapshot&&!state.loading)snapshot()}},5000);
 })();
