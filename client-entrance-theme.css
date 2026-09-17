@@ -233,3 +233,79 @@
  .checkin-calendar{gap:3px!important}.checkin-calendar>span{border-radius:9px!important;font-size:10px!important}
 }
 @media(prefers-reduced-motion:reduce){.checkin-status.badge-green::before{animation:none!important}}
+
+/* BXH ARENA my schedule client theme v1 */
+.schedule-fold{
+  margin:12px 0!important;padding:0!important;border:0!important;border-radius:18px!important;
+  background:rgba(255,255,255,.012)!important;box-shadow:none!important;overflow:visible!important;
+}
+.schedule-fold[open]{background:linear-gradient(180deg,rgba(255,255,255,.018),transparent 78%)!important}
+.schedule-fold>summary{
+  display:flex!important;align-items:center;gap:9px;min-height:42px;padding:10px 5px 8px!important;
+  border:0!important;list-style:none;color:rgba(239,242,239,.9);font-size:15px;font-weight:850;cursor:pointer;
+}
+.schedule-fold>summary::-webkit-details-marker{display:none}
+.schedule-fold>summary .badge{
+  border:0!important;border-radius:999px!important;background:rgba(255,255,255,.05)!important;
+  color:rgba(202,208,211,.55)!important;font-size:9px!important;padding:3px 7px!important;
+}
+.schedule-fold .fold-arrow{margin-left:auto;color:rgba(191,198,201,.38)!important;font-size:9px!important;font-weight:650!important;letter-spacing:.2px}
+.schedule-fold-body{padding:0 0 4px!important}
+.schedule-fold-body>.hint{margin:2px 4px 7px!important;padding:12px 3px!important;color:rgba(185,192,195,.34)!important;font-size:11px!important}
+.schedule-fold .find-event-card{
+  position:relative;margin:7px 0 10px!important;padding:14px 15px!important;border:1px solid transparent!important;border-radius:18px!important;
+  background:linear-gradient(145deg,rgba(21,25,26,.78),rgba(7,10,11,.66)) padding-box,
+             linear-gradient(135deg,rgba(240,222,151,.17),rgba(255,255,255,.026) 48%,rgba(208,241,0,.09)) border-box!important;
+  -webkit-backdrop-filter:blur(15px) saturate(1.07);backdrop-filter:blur(15px) saturate(1.07);
+  box-shadow:0 16px 34px rgba(0,0,0,.21),inset 0 1px 0 rgba(255,255,255,.028)!important;
+  overflow:hidden;animation:bxh-schedule-rise .38s ease both;
+}
+.schedule-fold .find-event-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 15%,rgba(255,255,255,.018) 47%,transparent 72%);
+}
+.schedule-fold .fe-name{
+  position:relative;z-index:1;margin:0 0 7px!important;color:#fff!important;font-size:18px!important;
+  font-weight:900!important;line-height:1.25!important;letter-spacing:.15px;text-shadow:0 0 18px rgba(255,255,255,.035);
+}
+.schedule-fold .fe-meta{
+  position:relative;z-index:1;margin:2px 0!important;color:rgba(190,198,201,.49)!important;
+  font-size:10.5px!important;line-height:1.55!important;letter-spacing:.15px;
+}
+.schedule-fold .fe-name+.fe-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:rgba(202,208,211,.58)!important}
+.schedule-fold .fe-name+.fe-meta::before{
+  content:"◷";display:inline-grid;place-items:center;width:17px;height:17px;border-radius:6px;
+  background:rgba(224,205,126,.055);color:rgba(235,212,127,.7);font-size:10px;
+}
+.schedule-fold .fe-name+.fe-meta+.fe-meta{font-size:9px!important;color:rgba(180,188,191,.32)!important}
+.schedule-fold .fe-status-row{position:relative;z-index:1;margin:9px 0 4px!important;display:flex!important;gap:6px!important;flex-wrap:wrap}
+.schedule-fold .fe-status-chip{
+  border:0!important;border-radius:999px!important;padding:4px 8px!important;
+  background:rgba(255,255,255,.05)!important;font-size:9px!important;letter-spacing:.25px!important;
+}
+.schedule-fold .hint{position:relative;z-index:1;color:rgba(188,195,198,.43)!important;font-size:10px!important;line-height:1.55!important}
+.schedule-fold .fe-card-action{
+  position:relative;z-index:1;margin-top:10px!important;padding-top:10px!important;border-top:1px solid rgba(255,255,255,.045)!important;
+  display:flex!important;flex-direction:row!important;justify-content:flex-end!important;gap:7px!important;flex-wrap:wrap!important;
+}
+.schedule-fold .fe-card-action .btn{width:auto!important;min-height:36px!important;padding:8px 12px!important;border-radius:11px!important;font-size:10px!important}
+.schedule-light{
+  display:inline-block!important;width:8px!important;height:8px!important;flex:0 0 8px;border-radius:50%;
+  background:#7b8589;box-shadow:0 0 7px rgba(123,133,137,.5);
+}
+.schedule-light.live{background:#45ef98!important;color:#45ef98;animation:bxh-schedule-live 2.15s ease-in-out infinite}
+.schedule-light.waiting{background:#f1bd3d!important;color:#f1bd3d;box-shadow:0 0 8px rgba(241,189,61,.48)}
+.schedule-light.done{background:#6f86a0!important;color:#6f86a0;box-shadow:0 0 7px rgba(111,134,160,.35)}
+@keyframes bxh-schedule-live{
+  0%,100%{opacity:.58;transform:scale(.86);box-shadow:0 0 5px rgba(69,239,152,.5)}
+  50%{opacity:1;transform:scale(1.13);box-shadow:0 0 14px rgba(69,239,152,.92)}
+}
+@keyframes bxh-schedule-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:520px){
+  .schedule-fold{margin:9px 0!important}.schedule-fold>summary{min-height:38px;padding:8px 3px 7px!important;font-size:14px}
+  .schedule-fold .find-event-card{margin:5px 0 8px!important;padding:12px 12px!important;border-radius:16px!important}
+  .schedule-fold .fe-name{font-size:16px!important;margin-bottom:6px!important}
+  .schedule-fold .fe-meta{font-size:9.5px!important}.schedule-fold .fe-name+.fe-meta::before{width:15px;height:15px;font-size:9px}
+  .schedule-fold .fe-card-action{justify-content:stretch!important}.schedule-fold .fe-card-action .btn{flex:1 1 104px!important}
+}
+@media(prefers-reduced-motion:reduce){.schedule-light.live,.schedule-fold .find-event-card{animation:none!important}}
