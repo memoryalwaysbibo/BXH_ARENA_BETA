@@ -772,3 +772,316 @@ section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant
   section.panel:has([data-action="inventory-grant"]) textarea,
   section.panel:has([data-action="inventory-grant"]) [data-action="inventory-grant"]{transition:none!important}
 }
+
+
+/* BXH ARENA unified obsidian esports card system v1 */
+:root{
+  --bxh-card-radius:5px;
+  --bxh-obsidian-1:rgba(17,22,31,.96);
+  --bxh-obsidian-2:rgba(5,9,16,.985);
+  --bxh-gold-dim:rgba(177,128,31,.34);
+  --bxh-gold-line:rgba(225,181,67,.52);
+  --bxh-gold-electric:#ffd966;
+  --bxh-text-primary:#f7f8fb;
+  --bxh-text-muted:#8e98a9;
+  --bxh-card-shadow:0 18px 44px rgba(0,0,0,.34);
+}
+.panel,
+.auth-card,
+.engagement-panel,
+.account-tools-card,
+.account-management-panel,
+.settings-flow-panel,
+.registration-list-panel,
+.side-panel,
+.referee-workstation,
+.live-ranking-panel,
+.share-summary-box,
+.mgmt-test-box,
+.mgmt-active-box,
+.test-roster-box,
+.registration-inline-qr-box,
+.modal-box,
+section.panel:has([data-action="inventory-grant"]){
+  border:1px solid transparent!important;
+  border-radius:var(--bxh-card-radius)!important;
+  background:
+    linear-gradient(150deg,var(--bxh-obsidian-1),var(--bxh-obsidian-2)) padding-box,
+    linear-gradient(135deg,rgba(226,182,70,.46),rgba(113,80,20,.13) 48%,rgba(215,174,67,.30)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,236,180,.045),
+    inset 0 0 28px rgba(143,103,28,.035),
+    var(--bxh-card-shadow)!important;
+  backdrop-filter:blur(14px) saturate(1.04);
+  -webkit-backdrop-filter:blur(14px) saturate(1.04);
+}
+.panel-title,
+.auth-card-title,
+.title-card-name,
+.community-event-name,
+.event-title-name{
+  color:var(--bxh-text-primary)!important;
+  font-weight:900!important;
+  letter-spacing:.045em!important;
+  text-shadow:0 2px 14px rgba(0,0,0,.42);
+}
+.auth-card-sub,
+.hint,
+.role-card-desc,
+.title-card-desc,
+.title-card-details,
+.mailbox-item-meta,
+.fe-status-row{
+  color:var(--bxh-text-muted)!important;
+}
+.role-card,
+.role-cards [data-action^="player-goto-"],
+.scoring-mode-card,
+.find-event-card,
+.community-event-card,
+.community-history-card,
+.community-create-card,
+.lobby-compact-card,
+.mailbox-item,
+.title-card,
+.account-user-card,
+.court-card,
+.live-court-card,
+.registration-mobile-card,
+.inventory-card,
+.hoc-rank-card,
+.match-box,
+.stat-box,
+.checkin-stat,
+.claim-item{
+  position:relative;
+  overflow:hidden;
+  border:1px solid transparent!important;
+  border-radius:var(--bxh-card-radius)!important;
+  color:var(--bxh-text-primary)!important;
+  background:
+    linear-gradient(145deg,rgba(18,24,34,.97),rgba(6,10,17,.99)) padding-box,
+    linear-gradient(135deg,rgba(221,177,65,.44),rgba(101,72,19,.10) 50%,rgba(207,163,55,.26)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,235,175,.04),
+    inset 0 0 24px rgba(130,91,20,.03),
+    0 14px 32px rgba(0,0,0,.30)!important;
+  transition:
+    transform .18s cubic-bezier(.2,.72,.25,1),
+    box-shadow .18s ease,
+    filter .18s ease,
+    background .18s ease!important;
+}
+.role-card::after,
+.role-cards [data-action^="player-goto-"]::after,
+.scoring-mode-card::after,
+.find-event-card::after,
+.community-event-card::after,
+.community-history-card::after,
+.community-create-card::after,
+.lobby-compact-card::after,
+.mailbox-item::after,
+.title-card::after,
+.account-user-card::after,
+.court-card::after,
+.live-court-card::after,
+.registration-mobile-card::after,
+.inventory-card::after,
+.hoc-rank-card::after,
+.match-box::after,
+.stat-box::after,
+.checkin-stat::after,
+.claim-item::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(232,188,73,.26),transparent);
+  opacity:.62;
+  pointer-events:none;
+}
+.role-card:hover,
+.role-card:focus-visible,
+.role-card.is-active,
+.role-card.active,
+.role-card[aria-selected="true"],
+.role-cards [data-action^="player-goto-"]:hover,
+.role-cards [data-action^="player-goto-"]:focus-visible,
+.scoring-mode-card:hover,
+.scoring-mode-card:focus-within,
+.scoring-mode-card.is-active,
+.scoring-mode-card.selected,
+.find-event-card:hover,
+.find-event-card:focus-within,
+.community-event-card:hover,
+.community-event-card:focus-within,
+.community-history-card:hover,
+.community-history-card:focus-within,
+.community-create-card:hover,
+.community-create-card:focus-within,
+.lobby-compact-card:hover,
+.lobby-compact-card:focus-within,
+.mailbox-item:hover,
+.mailbox-item:focus-visible,
+.mailbox-item.is-active,
+.title-card:hover,
+.title-card:focus-within,
+.title-card.is-active,
+.account-user-card:hover,
+.account-user-card:focus-within,
+.account-user-card.is-active,
+.court-card:hover,
+.court-card:focus-within,
+.live-court-card:hover,
+.live-court-card:focus-within,
+.registration-mobile-card:hover,
+.registration-mobile-card:focus-within,
+.inventory-card:hover,
+.inventory-card:focus-within,
+.hoc-rank-card:hover,
+.match-box:hover,
+.match-box:focus-within,
+.claim-item:hover,
+.claim-item:focus-within{
+  outline:none!important;
+  transform:translateY(-3px);
+  background:
+    linear-gradient(145deg,rgba(23,29,39,.985),rgba(7,11,18,.995)) padding-box,
+    linear-gradient(135deg,#ffe28a,#e0ad35 45%,#fff0ad) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,246,210,.08),
+    inset 0 0 28px rgba(232,181,52,.045),
+    0 18px 42px rgba(0,0,0,.38),
+    0 0 24px rgba(238,186,50,.22)!important;
+}
+.role-card:active,
+.role-cards [data-action^="player-goto-"]:active,
+.mailbox-item:active,
+.inventory-card:active,
+.lobby-compact-card:active{
+  transform:translateY(0) scale(.995);
+}
+.role-card-icon,
+.card-icon,
+.account-user-card svg,
+.scoring-mode-card svg,
+.find-event-card svg,
+.community-event-card svg,
+.title-card svg{
+  color:var(--bxh-gold-electric)!important;
+  stroke:currentColor;
+  filter:drop-shadow(0 0 7px rgba(239,190,59,.18));
+}
+.role-card-icon{
+  border:0!important;
+  border-radius:2px!important;
+  color:var(--bxh-gold-electric)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.role-card-icon svg{
+  stroke-width:1.75!important;
+}
+.role-card-cn{
+  color:var(--bxh-text-primary)!important;
+  font-weight:950!important;
+  letter-spacing:.075em!important;
+}
+.role-card-en{
+  color:#d7b354!important;
+  font-family:Inter,"Arial Narrow",Arial,sans-serif!important;
+  font-weight:800!important;
+  letter-spacing:.22em!important;
+}
+.role-card-desc{
+  color:var(--bxh-text-muted)!important;
+  line-height:1.65!important;
+}
+.role-card-enter{
+  color:#e3bd5b!important;
+  font-weight:850!important;
+  letter-spacing:.055em!important;
+}
+.role-card:hover .role-card-enter,
+.role-card:focus-visible .role-card-enter,
+.role-cards [data-action^="player-goto-"]:hover .role-card-enter,
+.role-cards [data-action^="player-goto-"]:focus-visible .role-card-enter{
+  color:#ffe68d!important;
+}
+.account-detail-item,
+.legend-item,
+.mb-row,
+.claim-history-row,
+.registration-promote-row,
+.switch-preview-row,
+.settings-choice-row,
+.settings-time-row{
+  border-radius:3px!important;
+  border-color:rgba(203,160,54,.20)!important;
+  background:rgba(6,10,17,.55)!important;
+}
+.status-pill,
+.fe-status-chip,
+.board-status-chip,
+.ref-station-status,
+.checkin-status{
+  border-radius:2px!important;
+}
+.btn:not(.btn-primary),
+.link-btn{
+  border-radius:3px!important;
+}
+input,
+select,
+textarea{
+  border-radius:3px!important;
+}
+@media(max-width:760px){
+  :root{--bxh-card-radius:4px}
+  .panel,
+  .auth-card,
+  .engagement-panel,
+  .account-tools-card,
+  .account-management-panel,
+  .settings-flow-panel,
+  .registration-list-panel,
+  .side-panel,
+  .referee-workstation,
+  .live-ranking-panel,
+  .modal-box{border-radius:var(--bxh-card-radius)!important}
+  .role-card,
+  .role-cards [data-action^="player-goto-"],
+  .scoring-mode-card,
+  .find-event-card,
+  .community-event-card,
+  .lobby-compact-card,
+  .mailbox-item,
+  .title-card,
+  .account-user-card,
+  .court-card,
+  .registration-mobile-card,
+  .inventory-card{border-radius:var(--bxh-card-radius)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .role-card,
+  .role-cards [data-action^="player-goto-"],
+  .scoring-mode-card,
+  .find-event-card,
+  .community-event-card,
+  .lobby-compact-card,
+  .mailbox-item,
+  .title-card,
+  .account-user-card,
+  .court-card,
+  .registration-mobile-card,
+  .inventory-card,
+  .claim-item{transition:none!important}
+  .role-card:hover,
+  .role-card:focus-visible,
+  .role-cards [data-action^="player-goto-"]:hover,
+  .role-cards [data-action^="player-goto-"]:focus-visible,
+  .mailbox-item:hover,
+  .inventory-card:hover{transform:none}
+}
