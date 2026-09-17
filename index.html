@@ -11558,14 +11558,14 @@ let bxhRememberPlayerAccount=!!bxhRememberedPlayerIdentifier;
 let bxhPlayerLoginIdentifierDraft=bxhRememberedPlayerIdentifier;
 document.addEventListener("input",(e)=>{
   if(e.target?.id==="player-login-email")bxhPlayerLoginIdentifierDraft=e.target.value;
-});
+},true);
 document.addEventListener("change",(e)=>{
   if(e.target?.id!=="player-remember-account")return;
   bxhRememberPlayerAccount=!!e.target.checked;
   const emailEl=document.getElementById("player-login-email");
   if(emailEl)bxhPlayerLoginIdentifierDraft=emailEl.value;
   if(!bxhRememberPlayerAccount)saveRememberedPlayerAccount("");
-});
+},true);
 
 function renderPlayerLoginScreen(){
   const verifying=playerLoginBusy||authVerifying;
