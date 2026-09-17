@@ -1,4 +1,4 @@
-/* v13.40.1 Family profiles, ordinary-event registration and atomic community-room deletion. */
+/* v13.40.2 Community-room atomic deletion and Firestore diagnostics. */
 function openFamilyPlayers(){
  document.getElementById('bxh-family-dialog')?.close();
  const uid=currentAuthUid(),epoch=engagementSessionEpoch,previous=document.activeElement,dialog=document.createElement('dialog');dialog.id='bxh-family-dialog';dialog.className='raffle-claim-dialog';
@@ -73,31 +73,42 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
     const p=currentProfile(),saved=p&&{role:p.role,isTestAccount:p.isTestAccount};
     try{if(p){p.role='player';p.isTestAccount=false}return await fn()}finally{if(p&&saved){p.role=saved.role;p.isTestAccount=saved.isTestAccount}}
   }
+  async function communityDiagnostic(code,label,error){
+    try{
+      const u=window.cloudAuth&&window.cloudAuth.getCurrentUser?window.cloudAuth.getCurrentUser():null;
+      const fs=await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js'),db=fs.getFirestore();
+      const snap=await fs.getDoc(fs.doc(db,'tournaments',String(code||'').trim().toUpperCase())),d=snap.exists()?snap.data():{};
+      const errorCode=String(error?.code||error?.message||window.__BXH_LAST_CLOUD_ERROR_CODE||'unknown').replace(/^firestore\//,'');
+      alert(label+'失敗診斷｜'+errorCode+'\n房間存在：'+snap.exists()+'\n系統鎖定：'+(d.systemClosed===true)+'\n類型：'+(d.eventAuthority||'缺少')+'\n建立者符合：'+(!!u&&d.createdBy===u.uid)+'\n房主符合：'+(!!u&&d.ownerUid===u.uid)+'\n測試欄位：'+(d.testMode===true)+'\n建立角色：'+(d.createdByRole||'缺少'));
+    }catch(diagError){alert(label+'失敗｜'+String(error?.code||error?.message||window.__BXH_LAST_CLOUD_ERROR_CODE||diagError?.message||'unknown'))}
+  }
   function install(){
     const api=window.cloudSync;if(!api||api.__testerGeneralRoomHotfix)return;
     api.__testerGeneralRoomHotfix=true;
     if(typeof api.pushUpdate==='function'){
       const push=api.pushUpdate.bind(api);
-      api.pushUpdate=async(code,data)=>{if(!ownCommunity(data))return push(code,data);return asCommunityOwner(()=>push(code,data))};
+      api.pushUpdate=async(code,data)=>{if(!ownCommunity(data))return push(code,data);const result=await asCommunityOwner(()=>push(code,data));if(result===false)await communityDiagnostic(code,'雲端同步');return result};
     }
     if(typeof api.deleteCommunityRoom==='function'){
       api.deleteCommunityRoom=async code=>asCommunityOwner(async()=>{
-        const u=window.cloudAuth&&window.cloudAuth.getCurrentUser?window.cloudAuth.getCurrentUser():null;
-        if(!u||!code)throw Error('auth-required');
-        const fs=await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
-        const db=fs.getFirestore(),normalized=String(code).trim().toUpperCase();
-        const privateRef=fs.doc(db,'tournaments',normalized),publicRef=fs.doc(db,'publicTournaments',normalized);
-        const [privateSnap,publicSnap]=await Promise.all([fs.getDoc(privateRef),fs.getDoc(publicRef)]);
-        if(!privateSnap.exists()&&!publicSnap.exists())return true;
-        if(!privateSnap.exists())throw Error('orphaned-public-room');
-        const d=privateSnap.data()||{};
-        if(d.eventAuthority!=='community'||d.createdBy!==u.uid)throw Error('permission-denied');
-        if(d.archiveStatus==='completed'&&window.engagementService?.syncMyHostingProgress)await window.engagementService.syncMyHostingProgress({});
-        const batch=fs.writeBatch(db);
-        if(publicSnap.exists())batch.delete(publicRef);
-        batch.delete(privateRef);
-        await batch.commit();
-        return true;
+        try{
+          const u=window.cloudAuth&&window.cloudAuth.getCurrentUser?window.cloudAuth.getCurrentUser():null;
+          if(!u||!code)throw Error('auth-required');
+          const fs=await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+          const db=fs.getFirestore(),normalized=String(code).trim().toUpperCase();
+          const privateRef=fs.doc(db,'tournaments',normalized),publicRef=fs.doc(db,'publicTournaments',normalized);
+          const [privateSnap,publicSnap]=await Promise.all([fs.getDoc(privateRef),fs.getDoc(publicRef)]);
+          if(!privateSnap.exists()&&!publicSnap.exists())return true;
+          if(!privateSnap.exists())throw Error('orphaned-public-room');
+          const d=privateSnap.data()||{};
+          if(d.eventAuthority!=='community'||d.createdBy!==u.uid)throw Error('permission-denied');
+          if(d.archiveStatus==='completed'&&window.engagementService?.syncMyHostingProgress)await window.engagementService.syncMyHostingProgress({});
+          const batch=fs.writeBatch(db);
+          if(publicSnap.exists())batch.delete(publicRef);
+          batch.delete(privateRef);
+          await batch.commit();
+          return true;
+        }catch(error){await communityDiagnostic(code,'刪除房間',error);throw error}
       });
     }
     if(typeof api.deleteTournament==='function'){
