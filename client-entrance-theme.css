@@ -406,3 +406,29 @@
 @keyframes bxh-raffle-winner-glow{0%,100%{box-shadow:0 0 9px rgba(255,205,61,.1)}50%{box-shadow:0 0 22px rgba(255,205,61,.27)}}
 @media(max-width:640px){.bxh-lobby-fold{margin:8px 0 10px!important;border-radius:16px!important}.bxh-lobby-fold-head{min-height:44px;padding:9px 10px!important}.bxh-lobby-fold-content{padding:0 8px 9px!important}.raffle-toolbar{width:100%}.raffle-filter{flex:1 1 auto!important;min-height:38px!important;padding:6px 11px!important}.raffle-card-grid{grid-template-columns:1fr!important}.raffle-game-card{min-height:112px;padding:14px!important;border-radius:16px!important}.raffle-card-head{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){.raffle-winner-badge{animation:none!important}.raffle-game-card,.raffle-filter,.bxh-lobby-fold-toggle::after{transition:none!important}}
+
+
+/* BXH ARENA raffle live selectors v2 */
+.raffle-page{position:relative;overflow:hidden;border:1px solid rgba(244,193,74,.34)!important;background:radial-gradient(circle at 88% -10%,rgba(250,204,92,.20),transparent 34%),linear-gradient(155deg,rgba(15,27,49,.96),rgba(6,12,25,.98))!important;box-shadow:0 24px 70px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.07)!important}
+.raffle-page::before{content:"MEMBER RAFFLE";position:absolute;right:18px;top:14px;color:rgba(255,218,122,.45);font:800 11px/1 system-ui,sans-serif;letter-spacing:.22em;pointer-events:none}
+.raffle-page .panel-title{position:relative;z-index:1;margin-bottom:18px!important;padding-bottom:15px!important;border-bottom:1px solid rgba(255,255,255,.10)}
+.raffle-page .panel-title>div:first-child,.raffle-page .panel-title>h2,.raffle-page .panel-title>h3{color:#fff4c4!important;text-shadow:0 0 22px rgba(246,198,77,.28)}
+.raffle-toolbar{padding:5px!important;border:1px solid rgba(255,255,255,.10);border-radius:999px!important;background:rgba(5,12,25,.62)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);gap:6px!important}
+.raffle-toolbar .raffle-filter{min-height:38px!important;padding:8px 16px!important;border:0!important;border-radius:999px!important;color:#b9c7dc!important;background:transparent!important;transition:transform .18s ease,color .18s ease,background .18s ease,box-shadow .18s ease!important}
+.raffle-toolbar .raffle-filter:hover{color:#fff!important;transform:translateY(-1px)}
+.raffle-toolbar .raffle-filter.is-active{color:#171007!important;background:linear-gradient(135deg,#ffe596,#d9a932)!important;box-shadow:0 8px 22px rgba(214,166,43,.28),inset 0 1px 0 rgba(255,255,255,.65)!important}
+.raffle-card-grid{gap:14px!important}
+.raffle-game-card{position:relative;overflow:hidden;min-height:148px;padding:20px 20px 18px!important;border:1px solid rgba(128,165,218,.22)!important;border-radius:18px!important;text-align:left!important;background:linear-gradient(145deg,rgba(29,47,75,.90),rgba(10,19,35,.95))!important;box-shadow:0 14px 34px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.055)!important;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease!important}
+.raffle-game-card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:linear-gradient(#ffe597,#b9871e);box-shadow:0 0 18px rgba(255,210,92,.55)}
+.raffle-game-card::after{content:"進入活動  ›";position:absolute;right:17px;bottom:15px;color:#e8c86e;font:800 12px/1 system-ui,sans-serif;letter-spacing:.05em}
+.raffle-game-card:hover{transform:translateY(-4px);border-color:rgba(245,202,94,.52)!important;box-shadow:0 20px 46px rgba(0,0,0,.38),0 0 0 1px rgba(245,202,94,.08)!important}
+.raffle-game-card h3{margin:0 0 12px!important;padding-right:82px;color:#fff!important;font-size:18px!important;letter-spacing:.02em}
+.raffle-game-card p:not(.hint){display:inline-flex;align-items:center;min-height:26px;margin:0 0 12px!important;padding:5px 10px;border:1px solid rgba(255,211,99,.26);border-radius:999px;color:#ffe398!important;background:rgba(223,170,39,.10);font-size:12px;font-weight:800}
+.raffle-game-card .hint{max-width:calc(100% - 92px);color:#9eabc0!important}
+.raffle-game-card.is-raffle-drawn{border-color:rgba(241,195,74,.34)!important;background:radial-gradient(circle at 100% 0,rgba(246,197,66,.15),transparent 42%),linear-gradient(145deg,rgba(38,45,59,.94),rgba(14,19,29,.98))!important}
+.raffle-game-card.is-raffle-drawn::after{content:"查看得獎結果  ›";color:#ffe08a}
+.raffle-game-card.is-raffle-pending::before{background:linear-gradient(#60a5fa,#295cb8);box-shadow:0 0 18px rgba(80,150,255,.48)}
+.raffle-game-card.is-raffle-pending p:not(.hint){color:#9cc8ff!important;border-color:rgba(96,165,250,.30);background:rgba(54,122,216,.12)}
+.raffle-winner,.raffle-winner-card,.winner-card{border:1px solid rgba(255,211,91,.55)!important;background:radial-gradient(circle at 50% 0,rgba(255,215,91,.24),transparent 48%),rgba(20,18,15,.94)!important;box-shadow:0 0 34px rgba(230,176,39,.20),inset 0 1px 0 rgba(255,247,207,.18)!important}
+@media(max-width:700px){.raffle-page{border-radius:20px!important}.raffle-page::before{display:none}.raffle-page .panel-title{align-items:stretch!important;gap:12px!important}.raffle-toolbar{width:100%;display:flex!important}.raffle-toolbar .raffle-filter{flex:1;padding-inline:10px!important}.raffle-card-grid{grid-template-columns:1fr!important}.raffle-game-card{min-height:138px}}
+@media(prefers-reduced-motion:reduce){.raffle-game-card,.raffle-filter{transition:none!important}}
