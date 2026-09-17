@@ -1,4 +1,4 @@
-/* v13.37.0 Family profiles, ordinary-event registration and private history. */
+/* v13.40.1 Family profiles, ordinary-event registration and atomic community-room deletion. */
 function openFamilyPlayers(){
  document.getElementById('bxh-family-dialog')?.close();
  const uid=currentAuthUid(),epoch=engagementSessionEpoch,previous=document.activeElement,dialog=document.createElement('dialog');dialog.id='bxh-family-dialog';dialog.className='raffle-claim-dialog';
@@ -81,8 +81,24 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
       api.pushUpdate=async(code,data)=>{if(!ownCommunity(data))return push(code,data);return asCommunityOwner(()=>push(code,data))};
     }
     if(typeof api.deleteCommunityRoom==='function'){
-      const delCommunity=api.deleteCommunityRoom.bind(api);
-      api.deleteCommunityRoom=async code=>asCommunityOwner(()=>delCommunity(code));
+      api.deleteCommunityRoom=async code=>asCommunityOwner(async()=>{
+        const u=window.cloudAuth&&window.cloudAuth.getCurrentUser?window.cloudAuth.getCurrentUser():null;
+        if(!u||!code)throw Error('auth-required');
+        const fs=await import('https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js');
+        const db=fs.getFirestore(),normalized=String(code).trim().toUpperCase();
+        const privateRef=fs.doc(db,'tournaments',normalized),publicRef=fs.doc(db,'publicTournaments',normalized);
+        const [privateSnap,publicSnap]=await Promise.all([fs.getDoc(privateRef),fs.getDoc(publicRef)]);
+        if(!privateSnap.exists()&&!publicSnap.exists())return true;
+        if(!privateSnap.exists())throw Error('orphaned-public-room');
+        const d=privateSnap.data()||{};
+        if(d.eventAuthority!=='community'||d.createdBy!==u.uid)throw Error('permission-denied');
+        if(d.archiveStatus==='completed'&&window.engagementService?.syncMyHostingProgress)await window.engagementService.syncMyHostingProgress({});
+        const batch=fs.writeBatch(db);
+        if(publicSnap.exists())batch.delete(publicRef);
+        batch.delete(privateRef);
+        await batch.commit();
+        return true;
+      });
     }
     if(typeof api.deleteTournament==='function'){
       const del=api.deleteTournament.bind(api);
