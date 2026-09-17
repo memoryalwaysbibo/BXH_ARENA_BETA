@@ -8763,8 +8763,10 @@ function regCheckinDisplayLabel(reg){
 
 function participantDisplayName(p){
   if(!p) return "—";
-  const name=String(p.name||"未命名選手").replace(/（現場）$/,"");
-  return p.participantType==="onsite_guest"||p.source==="onsite"||p.ladderEligible===false ? name+"（現場）" : name;
+  const original=p.id?state.players.find(x=>x.id===p.id):null;
+  const data=original||p;
+  const name=String(p.name||data.name||"未命名選手").replace(/（現場）$/,"");
+  return data.participantType==="onsite_guest"||data.source==="onsite"||data.ladderEligible===false ? name+"（現場）" : name;
 }
 function playerName(id){
   const p = state.players.find(pl=>pl.id===id);
@@ -11970,7 +11972,7 @@ function buildLadderSettlementPayload(st){
   const participants=(st.players||[]).filter(p=>actualIds.has(p.id)).map(p=>{
     const placement=placementMap[p.id]||null;
     const pointsEarned=placement===1?10:placement===2?7:placement===3?5:placement===4?3:1;
-    return { localPlayerId:p.id, testPlayerKey:p.testPlayerKey||null, playerUid:p.familyPlayerId||p.registrationUid||p.accountUid||p.uid||null, playerName:p.name, source:p.familyPlayerId?"family":p.source||"onsite", placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };
+    return { localPlayerId:p.id, testPlayerKey:p.testPlayerKey||null, playerUid:p.familyPlayerId||p.registrationUid||p.accountUid||p.uid||null, playerId:p.playerId||null, playerName:p.name, source:p.familyPlayerId?"family":p.source||"onsite", participantType:p.participantType||null, accountLinked:p.accountLinked===true, ladderEligible:p.ladderEligible!==false, activityEligible:p.activityEligible!==false, placement, pointsEarned, wins:wins[p.id]||0, losses:losses[p.id]||0 };
   });
   return { eventCode:st.cloudCode, eventName:(st.meta&&st.meta.name)||"", eventDate:(st.meta&&st.meta.date)||"", formatType:(st.meta&&st.meta.formatType)||"single", participants };
 }
