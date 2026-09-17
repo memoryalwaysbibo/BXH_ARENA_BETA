@@ -31,11 +31,12 @@
  }
  document.addEventListener("click",e=>{const t=e.target.closest?.("[data-activity]");if(!t)return;const a=t.dataset.activity;if(a==="open"){state.open=true;state.mode="records";state.rows=[];paint();snapshot()}else if(a==="close"){state.open=false;paint()}else if(a==="refresh"){state.rows=[];snapshot()}else if(a==="records"){state.mode="records";state.rows=[];paint()}else if(a==="daily"||a==="cumulative")board(a)});
  const style=document.createElement("style");style.textContent=`#activity-points-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;border-color:#859400}#activity-points-summary strong,.ap-balance{color:#eaff16;font-weight:900}#activity-points-summary strong{font-size:26px}#activity-points-overlay{position:fixed;inset:0;z-index:2600;background:#000d;padding:14px;overflow:auto;color:#f4f4f4}#activity-points-overlay .ap-shell{max-width:760px;margin:auto;background:#15171a;border:1px solid #5c6678;border-radius:20px;padding:18px}.ap-head,.ap-task>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:center}.ap-balance{font-size:42px}.ap-task{background:#202329;border-radius:14px;padding:12px;margin:10px 0}.ap-task small,.ap-task span{color:#9ca3af}.ap-bar{height:8px;background:#343942;border-radius:9px;margin:8px 0}.ap-bar i{display:block;height:100%;background:#eaff16;border-radius:9px}.ap-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.ap-table{width:100%;border-collapse:collapse}.ap-table th,.ap-table td{padding:10px 6px;border-bottom:1px solid #30343b;text-align:left}.ap-table td small{display:block;color:#999}.ap-plus{color:#78df9b}.ap-minus{color:#ff7474}`;document.head.appendChild(style);
- let summaryQueued=false;
- new MutationObserver(()=>{
-  if(summaryQueued)return;
-  summaryQueued=true;
-  requestAnimationFrame(()=>{summaryQueued=false;summary()});
- }).observe(document.documentElement,{childList:true,subtree:true});
- setInterval(()=>{if(signedIn()&&document.querySelector(".player-main")){summary();if(!state.snapshot&&!state.loading)snapshot()}},5000);
+ // Do not observe the whole application DOM: that can compete with the login renderer.
+ // A low-frequency, post-authentication check is sufficient because the player shell is persistent.
+ setInterval(()=>{
+  if(!signedIn())return;
+  if(!document.querySelector(".player-main"))return;
+  summary();
+  if(!state.snapshot&&!state.loading)snapshot();
+ },5000);
 })();
