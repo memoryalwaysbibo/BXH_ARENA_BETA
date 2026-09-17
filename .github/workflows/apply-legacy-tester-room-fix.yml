@@ -1,0 +1,64 @@
+name: Apply legacy tester room compatibility fix
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-legacy-tester-room-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch legacy tester room permissions
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          replacements = [
+            (
+              'function isCommunityRoom(){ return !!(state && state.meta && state.meta.eventAuthority==="community"); }\nfunction isCommunityRoomOwner(){ return !!(isCommunityRoom() && firebaseUser && state.ownerUid===firebaseUser.uid && (currentRole==="player" || currentRole==="tester")); }',
+              '''function isCommunityRoom(){ return !!(state && state.meta && state.meta.eventAuthority==="community"); }
+          function isOwnTesterSandboxRoom(st=state){
+            const uid=currentAuthUid(),m=st&&st.meta||{};
+            if(!isTester()||!uid||!st) return false;
+            const owned=st.createdBy===uid||st.ownerUid===uid;
+            const tagged=st.testMode===true||st.testLabel==="（測試）"||st.createdByRole==="tester"||m.eventAuthority==="test";
+            return !!(owned&&tagged&&m.ladderMode!=="ranked");
+          }
+          function isCommunityRoomOwner(){ return !!(isCommunityRoom() && firebaseUser && state.ownerUid===firebaseUser.uid && (currentRole==="player" || currentRole==="tester")); }'''
+            ),
+            (
+              '''function isOwnTestTournament(st=state){
+            const uid=currentAuthUid();
+            return !!(isTester() && uid && isTestTournament(st) && st.createdBy===uid && st.ownerUid===uid);
+          }''',
+              '''function isOwnTestTournament(st=state){
+            const uid=currentAuthUid();
+            return !!(isOwnTesterSandboxRoom(st) && uid && (st.createdBy===uid||st.ownerUid===uid));
+          }'''
+            ),
+            (
+              '        const testerSession=!!(userProfile&&userProfile.active!==false&&(userProfile.role==="tester"||userProfile.isTestAccount===true)&&actorUid);\n        if(testerSession){\n          if(!data.testMode || !data.meta || data.meta.eventAuthority!=="test" || data.createdBy!==actorUid || data.ownerUid!==actorUid) throw new Error("tester-official-write-blocked");',
+              '''        const testerSession=!!(userProfile&&userProfile.active!==false&&(userProfile.role==="tester"||userProfile.isTestAccount===true)&&actorUid);
+        const legacyTesterSandbox=!!(testerSession&&data&&data.createdBy===actorUid&&data.ownerUid===actorUid&&data.createdByRole==="tester"&&data.meta&&data.meta.ladderMode!=="ranked");
+        if(testerSession){
+          if(!legacyTesterSandbox && (!data.testMode || !data.meta || data.meta.eventAuthority!=="test" || data.createdBy!==actorUid || data.ownerUid!==actorUid)) throw new Error("tester-official-write-blocked");
+          if(legacyTesterSandbox) markTesterSandboxState(data);'''
+            )
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit("target compatibility block not found")
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding="utf-8")
+      - name: Commit and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm .github/workflows/apply-legacy-tester-room-fix.yml
+          git commit -m "Fix legacy tester general room player creation"
+          git push
