@@ -34,16 +34,23 @@
  function signedIn(){try{return !!Function('return firebaseUser&&firebaseUser.uid&&userProfile&&appPhase==="player-center"')()}catch(e){return false}}
  function summary(){
   if(!signedIn())return;
-  const main=document.querySelector(".player-main");if(!main)return;
+  const controls=document.querySelector(".header-account-controls");if(!controls)return;
   let box=document.getElementById("activity-points-summary");
-  if(!box){box=document.createElement("section");box.id="activity-points-summary";box.className="panel";box.dataset.activity="open";main.prepend(box)}
+  if(!box){
+   box=document.createElement("button");
+   box.type="button";
+   box.id="activity-points-summary";
+   box.dataset.activity="open";
+   box.setAttribute("aria-label","查看我的活躍積分");
+   controls.appendChild(box);
+  }else if(box.parentElement!==controls){controls.appendChild(box)}
   const key=playerId()+"|"+(state.snapshot?Number(state.snapshot.wallet?.balance||0):"—");
   if(box.dataset.renderKey===key)return;
   box.dataset.renderKey=key;
-  box.innerHTML=`<div><div class="hint">玩家 ID｜${esc(playerId())}</div><b>活躍積分</b></div><strong>${state.snapshot?Number(state.snapshot.wallet?.balance||0):"—"} 分</strong>`;
+  box.innerHTML=`<span>活躍積分</span><strong>${state.snapshot?Number(state.snapshot.wallet?.balance||0):"—"} 分</strong>`;
  }
  document.addEventListener("click",e=>{const t=e.target.closest?.("[data-activity]");if(!t)return;const a=t.dataset.activity;if(a==="open"){state.open=true;state.mode="records";state.rows=[];paint();snapshot()}else if(a==="close"){state.open=false;paint()}else if(a==="refresh"){state.rows=[];snapshot()}else if(a==="records"){state.mode="records";state.rows=[];paint()}else if(a==="daily"||a==="cumulative")board(a)});
- const style=document.createElement("style");style.textContent=`#activity-points-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;border-color:#859400}#activity-points-summary strong,.ap-balance{color:#eaff16;font-weight:900}#activity-points-summary strong{font-size:26px}#activity-points-overlay{position:fixed;inset:0;z-index:2600;background:#000d;padding:14px;overflow:auto;color:#f4f4f4}#activity-points-overlay .ap-shell{max-width:760px;margin:auto;background:#15171a;border:1px solid #5c6678;border-radius:20px;padding:18px}.ap-head,.ap-task>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:center}.ap-balance{font-size:42px}.ap-task{background:#202329;border-radius:14px;padding:12px;margin:10px 0}.ap-task small,.ap-task span{color:#9ca3af}.ap-bar{height:8px;background:#343942;border-radius:9px;margin:8px 0}.ap-bar i{display:block;height:100%;background:#eaff16;border-radius:9px}.ap-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.ap-table{width:100%;border-collapse:collapse}.ap-table th,.ap-table td{padding:10px 6px;border-bottom:1px solid #30343b;text-align:left}.ap-table td small{display:block;color:#999}.ap-plus{color:#78df9b}.ap-minus{color:#ff7474}`;document.head.appendChild(style);
+ const style=document.createElement("style");style.textContent=`.header-account-controls{align-self:flex-start!important;display:flex!important;flex-wrap:wrap!important;justify-content:flex-end!important;align-items:flex-start!important;gap:8px!important}.header-account-controls #activity-points-summary{order:20;flex:0 0 auto;margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;min-height:34px;padding:5px 12px;border:1px solid #879500;border-radius:999px;background:#171a12;color:#d7d9d0;font:inherit;cursor:pointer}.header-account-controls #activity-points-summary span{font-size:13px}.header-account-controls #activity-points-summary strong,.ap-balance{color:#eaff16;font-weight:900}.header-account-controls #activity-points-summary strong{font-size:18px;white-space:nowrap}@media(max-width:640px){.header-account-controls{max-width:55%;}.header-account-controls #activity-points-summary{flex-basis:100%;width:max-content}}#activity-points-overlay{position:fixed;inset:0;z-index:2600;background:#000d;padding:14px;overflow:auto;color:#f4f4f4}#activity-points-overlay .ap-shell{max-width:760px;margin:auto;background:#15171a;border:1px solid #5c6678;border-radius:20px;padding:18px}.ap-head,.ap-task>div:first-child{display:flex;justify-content:space-between;gap:12px;align-items:center}.ap-balance{font-size:42px}.ap-task{background:#202329;border-radius:14px;padding:12px;margin:10px 0}.ap-task small,.ap-task span{color:#9ca3af}.ap-bar{height:8px;background:#343942;border-radius:9px;margin:8px 0}.ap-bar i{display:block;height:100%;background:#eaff16;border-radius:9px}.ap-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.ap-table{width:100%;border-collapse:collapse}.ap-table th,.ap-table td{padding:10px 6px;border-bottom:1px solid #30343b;text-align:left}.ap-table td small{display:block;color:#999}.ap-plus{color:#78df9b}.ap-minus{color:#ff7474}`;document.head.appendChild(style);
  // Do not observe the whole application DOM: that can compete with the login renderer.
  // A low-frequency, post-authentication check is sufficient because the player shell is persistent.
  setInterval(()=>{
