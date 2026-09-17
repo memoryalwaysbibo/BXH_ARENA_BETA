@@ -1132,3 +1132,62 @@ textarea{
     filter:brightness(1.045) drop-shadow(0 0 10px rgba(239,188,55,.20))!important;
   }
 }
+
+
+/* Player login remembered account option v1 */
+.player-remember-row{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin:-2px 0 16px;
+  padding:10px 11px;
+  border:1px solid rgba(218,174,63,.16);
+  border-radius:3px;
+  color:#d9dde5;
+  background:rgba(5,10,18,.42);
+  cursor:pointer;
+  user-select:none;
+  transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease;
+}
+.player-remember-row:hover{
+  border-color:rgba(233,190,79,.36);
+  background:rgba(9,15,25,.60);
+}
+.player-remember-row:focus-within{
+  border-color:rgba(255,216,102,.64);
+  box-shadow:0 0 0 3px rgba(231,185,65,.08),0 0 16px rgba(226,174,41,.10);
+}
+.player-remember-row>input[type="checkbox"]{
+  flex:0 0 auto;
+  width:18px!important;
+  height:18px!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:2px!important;
+  accent-color:#e3b542;
+  cursor:pointer;
+}
+.player-remember-copy{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  line-height:1.25;
+}
+.player-remember-copy strong{
+  color:#f4e4b4;
+  font-size:13px;
+  letter-spacing:.035em;
+}
+.player-remember-copy small{
+  color:#7f8999;
+  font-size:11px;
+}
+.player-remember-row:has(input:checked){
+  border-color:rgba(236,190,76,.42);
+  background:linear-gradient(135deg,rgba(201,148,32,.10),rgba(7,13,23,.56));
+}
+.player-remember-row:has(input:disabled){
+  opacity:.56;
+  cursor:not-allowed;
+}

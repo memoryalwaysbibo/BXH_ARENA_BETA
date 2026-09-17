@@ -2518,7 +2518,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=1.9.1">
+<link rel="stylesheet" href="client-entrance-theme.css?v=1.9.2">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -11542,6 +11542,31 @@ function renderPlayerHomeScreen(){
   ` + authShellClose();
 }
 
+
+const PLAYER_REMEMBER_ACCOUNT_KEY="bxh.player.remembered_account.v1";
+function loadRememberedPlayerAccount(){
+  try{return String(localStorage.getItem(PLAYER_REMEMBER_ACCOUNT_KEY)||"").trim();}catch(e){return "";}
+}
+function saveRememberedPlayerAccount(identifier){
+  try{
+    if(bxhRememberPlayerAccount&&identifier)localStorage.setItem(PLAYER_REMEMBER_ACCOUNT_KEY,identifier);
+    else localStorage.removeItem(PLAYER_REMEMBER_ACCOUNT_KEY);
+  }catch(e){}
+}
+let bxhRememberedPlayerIdentifier=loadRememberedPlayerAccount();
+let bxhRememberPlayerAccount=!!bxhRememberedPlayerIdentifier;
+let bxhPlayerLoginIdentifierDraft=bxhRememberedPlayerIdentifier;
+document.addEventListener("input",(e)=>{
+  if(e.target?.id==="player-login-email")bxhPlayerLoginIdentifierDraft=e.target.value;
+});
+document.addEventListener("change",(e)=>{
+  if(e.target?.id!=="player-remember-account")return;
+  bxhRememberPlayerAccount=!!e.target.checked;
+  const emailEl=document.getElementById("player-login-email");
+  if(emailEl)bxhPlayerLoginIdentifierDraft=emailEl.value;
+  if(!bxhRememberPlayerAccount)saveRememberedPlayerAccount("");
+});
+
 function renderPlayerLoginScreen(){
   const verifying=playerLoginBusy||authVerifying;
   return authShellOpen()+`
@@ -11550,7 +11575,11 @@ function renderPlayerLoginScreen(){
       <div class="auth-card-title">玩家登入</div>
       ${playerLoginError ? `<div class="auth-error">${esc(playerLoginError)}${(!verifying)?`<div class="hint" style="margin-top:6px;">請重新點擊下方按鈕再試一次。</div>`:""}</div>`:""}
       ${verifying ? `<div class="auth-verifying">正在驗證帳號權限……<button class="link-btn" data-action="cancel-verifying" style="margin-left:8px;">取消並重試</button></div>`:""}
-      <div class="field"><label>Gmail 帳號或完整 Email</label><input type="text" inputmode="email" id="player-login-email" placeholder="例如：bxhplayer" ${verifying?'disabled':''} autocomplete="username" autocapitalize="none" spellcheck="false"><div class="hint" style="margin-top:5px;">只輸入 @ 前的帳號即可；完整 Email 也能登入</div></div>
+      <div class="field"><label>Gmail 帳號或完整 Email</label><input type="text" inputmode="email" id="player-login-email" value="${esc(bxhPlayerLoginIdentifierDraft)}" placeholder="例如：bxhplayer" ${verifying?'disabled':''} autocomplete="username" autocapitalize="none" spellcheck="false"><div class="hint" style="margin-top:5px;">只輸入 @ 前的帳號即可；完整 Email 也能登入</div></div>
+      <label class="player-remember-row" for="player-remember-account">
+        <input type="checkbox" id="player-remember-account" ${bxhRememberPlayerAccount?'checked':''} ${verifying?'disabled':''}>
+        <span class="player-remember-copy"><strong>記憶帳號</strong><small>僅儲存帳號，不會儲存密碼</small></span>
+      </label>
       <div class="field">
         <label>密碼</label>
         <div style="position:relative;">
@@ -15468,6 +15497,8 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     const password = pwEl?pwEl.value:"";
     if(!identifier){ playerLoginError="請輸入 Gmail 帳號或完整 Email"; render(); return; }
     if(!password){ playerLoginError="請輸入密碼"; render(); return; }
+    bxhPlayerLoginIdentifierDraft=identifier;
+    saveRememberedPlayerAccount(identifier);
     playerLoginBusy = true; playerLoginError=""; pendingLoginIntent="player"; render();
     const myLoginGen2 = ++loginAttemptGeneration;
     (async ()=>{
