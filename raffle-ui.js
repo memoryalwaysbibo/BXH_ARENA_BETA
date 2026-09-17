@@ -157,3 +157,51 @@ function playRaffleReplay(detail){
 let raffleAnnouncementsState={loaded:false,loading:false,rows:[]};
 function renderRaffleAnnouncements(){const a=raffleAnnouncementsState;if(!a.loaded&&!a.loading){a.loading=true;setTimeout(async()=>{try{const r=await window.engagementService.raffle({action:'announcements'});a.rows=r.announcements||[];}catch{}finally{a.loaded=true;a.loading=false;render();}},0);}const visible=a.rows.filter(x=>x.expiresAt>Date.now());return visible.length?`<div class="raffle-announcement-window" aria-label="系統開獎公告"><div class="mood-track"><div class="mood-group">${visible.map(x=>`<span class="mood-item"><b>系統公告</b> ${esc(x.text)}</span>`).join('')}</div></div></div>`:'';}
 
+
+
+/* BXH lobby fold + raffle store enhancer v1 */
+(function(){
+ 'use strict';
+ if(window.__bxhLobbyRaffleEnhancer)return;window.__bxhLobbyRaffleEnhancer=true;
+ var queued=false;
+ function textOf(el){return String(el&&el.textContent||'').replace(/\s+/g,' ').trim();}
+ function keyOf(label){if(label.indexOf('比賽中')>=0)return'live';if(label.indexOf('結算中')>=0)return'settling';if(label.indexOf('報名中')>=0)return'registration';if(label.indexOf('等待開始')>=0)return'waiting';return'ended';}
+ function saved(key){try{return sessionStorage.getItem('bxh.ui.lobby-fold.'+key);}catch(e){return null;}}
+ function setClosed(section,toggle,key,closed){section.classList.toggle('is-collapsed',closed);toggle.setAttribute('aria-expanded',closed?'false':'true');toggle.firstChild.textContent=closed?'展開':'收合';try{sessionStorage.setItem('bxh.ui.lobby-fold.'+key,closed?'closed':'open');}catch(e){}}
+ function enhanceLobby(){
+  document.querySelectorAll('.lobby-section').forEach(function(section){
+   if(section.dataset.bxhLobbyFoldReady==='1')return;
+   var head=section.querySelector(':scope > .panel-title');if(!head)return;
+   var label=textOf(head),key=keyOf(label),body=document.createElement('div');body.className='bxh-lobby-fold-content';
+   Array.from(section.children).forEach(function(child){if(child!==head)body.appendChild(child);});
+   section.appendChild(body);section.dataset.bxhLobbyFoldReady='1';section.classList.add('bxh-lobby-fold');head.classList.add('bxh-lobby-fold-head');
+   var toggle=document.createElement('button');toggle.type='button';toggle.className='bxh-lobby-fold-toggle';toggle.setAttribute('aria-label',label+' 展開或收合');toggle.appendChild(document.createTextNode('收合'));head.appendChild(toggle);
+   var state=saved(key),closed=state==='closed'?true:state==='open'?false:key==='ended';setClosed(section,toggle,key,closed);
+   function flip(event){event.preventDefault();event.stopPropagation();setClosed(section,toggle,key,!section.classList.contains('is-collapsed'));}
+   toggle.addEventListener('click',flip);head.addEventListener('click',function(event){if(event.target.closest('button,a,input,select,textarea,label'))return;flip(event);});
+  });
+ }
+ function awardLabel(status){return{pending:'已中獎・待領獎',claimed:'已中獎・已領獎',forfeited:'中獎紀錄・已棄領',replaced:'原中獎獎項已補抽'}[status]||'中獎';}
+ function enhanceRaffles(){
+  document.querySelectorAll('[data-action="raffle-list"]').forEach(function(listButton){
+   var page=listButton.closest('section.panel');if(!page)return;page.classList.add('raffle-page');
+   var toolbar=listButton.closest('.btn-row');if(toolbar)toolbar.classList.add('raffle-toolbar');
+   var mine=page.querySelector('[data-action="raffle-mine"]'),refresh=page.querySelector('[data-action="raffle-refresh"]');
+   listButton.classList.add('raffle-filter');if(mine)mine.classList.add('raffle-filter');if(refresh)refresh.classList.add('raffle-filter','raffle-filter-refresh');
+   var view='list',events=[];try{var state=raffleContext();view=state&&state.view||'list';events=state&&state.events||[];}catch(e){}
+   listButton.classList.toggle('is-active',view!=='mine');if(mine)mine.classList.toggle('is-active',view==='mine');
+   var byId=new Map(events.map(function(event){return[String(event.id),event];}));
+   page.querySelectorAll('.panel.mailbox-item[data-action="raffle-open"]').forEach(function(card){
+    var event=byId.get(String(card.getAttribute('data-id')||''));if(!event)return;
+    var status=event.myAward&&event.myAward.status||'',drawn=['drawn','archived','cancelled'].indexOf(event.state)>=0;
+    if(card.parentElement)card.parentElement.classList.add('raffle-card-grid');
+    card.classList.add('raffle-game-card',drawn?'is-raffle-drawn':'is-raffle-pending');
+    if(!status)return;card.classList.add('is-raffle-winner');if(status==='claimed')card.classList.add('is-raffle-claimed');
+    var title=card.querySelector('h3');if(title&&!card.querySelector('.raffle-winner-badge')){var head=document.createElement('span');head.className='raffle-card-head';title.before(head);head.appendChild(title);var badge=document.createElement('span');badge.className='raffle-winner-badge';badge.textContent=awardLabel(status);head.appendChild(badge);}
+   });
+  });
+ }
+ function run(){queued=false;enhanceLobby();enhanceRaffles();}function schedule(){if(queued)return;queued=true;requestAnimationFrame(run);}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
+ new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});
+})();
