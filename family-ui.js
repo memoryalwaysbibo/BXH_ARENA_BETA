@@ -158,3 +158,14 @@ async function chooseFamilyParticipant(event,code,childEligibilityConfirmed){
     },0);
   });
 })();
+
+
+// v13.41.0: isolated active-points UI loader.
+(function loadActivityPointsUI(){
+ if(document.querySelector('script[data-bxh-activity-points]'))return;
+ const script=document.createElement('script');
+ script.src='activity-points-ui.js?v=13.41.0';
+ script.defer=true;
+ script.dataset.bxhActivityPoints='true';
+ document.head.appendChild(script);
+})();
