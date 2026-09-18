@@ -517,9 +517,12 @@ table.rank-table tr:last-child td{border-bottom:none;}
 .rsr-label{font-size:13px;color:var(--white);min-width:80px;font-weight:600;}
 
 /* ==== bracket view mode toggle + board (kiosk) mode ==== */
-.bracket-view-toggle{display:flex;gap:8px;margin-bottom:14px;}
-.bvt-btn{flex:1;max-width:220px;padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--metal);font-family:var(--font-d);font-weight:600;font-size:13px;}
-.bvt-btn.active{border-color:var(--gold);color:var(--gold);background:linear-gradient(160deg, rgba(217,185,92,0.12), var(--panel-2));}
+.bracket-view-toggle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;margin:0 0 14px;padding:3px;border:1px solid rgba(217,185,92,.24);border-radius:12px;background:rgba(8,9,10,.72);box-shadow:inset 0 1px 0 rgba(255,255,255,.025);}
+.bvt-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:9px 14px;border:0;border-radius:9px;background:transparent;color:var(--metal);font-family:var(--font-d);font-weight:700;font-size:13px;letter-spacing:.35px;cursor:pointer;transition:color .18s ease,background .18s ease,box-shadow .18s ease,transform .18s ease;}
+.bvt-btn svg{width:17px;height:17px;flex:0 0 auto;}
+.bvt-btn:hover{color:var(--white);background:rgba(255,255,255,.035);}
+.bvt-btn.active{color:#171307;background:linear-gradient(180deg,#f3d878,#c89c2b);box-shadow:0 5px 18px rgba(217,185,92,.22),inset 0 1px 0 rgba(255,255,255,.48);}
+.bvt-btn:active{transform:translateY(1px);}
 .single-bracket-layout-toggle{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px;}
 .single-bracket-layout-toggle .btn.active{border-color:var(--gold);color:var(--gold);background:rgba(217,185,92,0.1);}
 .match-box.bye-placeholder{visibility:hidden;pointer-events:none;}
@@ -531,6 +534,8 @@ table.rank-table tr:last-child td{border-bottom:none;}
 .compact-round-matches{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;padding:12px;}
 .compact-round .match-box{min-width:0;}
 @media (max-width:640px){
+  .bracket-view-toggle{position:sticky;top:calc(var(--sticky-header-h, 0px) + 6px);z-index:12;margin-bottom:10px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+  .bvt-btn{min-height:42px;padding:8px 6px;font-size:12px;}
   .single-bracket-layout-toggle{display:grid;grid-template-columns:1fr 1fr;}
   .single-bracket-layout-toggle .btn{width:100%;}
   .compact-bracket{gap:12px;}
@@ -5301,7 +5306,7 @@ const CHANGELOG_TEXT = "" +
 
 
 /* ==== board (kiosk) mode: display-only wrapper around existing bracket data ==== */
-let bracketViewMode = "standard"; // 'standard' | 'board'
+let bracketViewMode = "board"; // 'board' = 樹狀總覽；'standard' = 賽事清單
 let singleBracketLayoutMode = "auto"; // 'auto' | 'compact' | 'full'
 let boardZoom = 1; // 0.5 - 1.5
 let boardPanX = 0, boardPanY = 0;
@@ -9199,20 +9204,43 @@ function renderBracket(){
     <div style="margin-top:16px;"><button class="btn btn-primary" data-action="goto-settings">前往賽事設定</button></div>
     </div></div>`;
   }
-  const modeToggle = `<div class="bracket-view-toggle">
-    <button class="bvt-btn ${bracketViewMode==='standard'?'active':''}" data-action="set-bracket-view-mode" data-mode="standard">標準對戰表</button>
-    <button class="bvt-btn ${bracketViewMode==='board'?'active':''}" data-action="set-bracket-view-mode" data-mode="board">賽事看板模式</button>
+  const treeIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M5 7h5M5 17h5M10 7v4h5M10 17v-4h5"/><rect x="15" y="8.5" width="5" height="7" rx="1.2"/></svg>';
+  const listIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>';
+  const modeToggle = `<div class="bracket-view-toggle" role="group" aria-label="對戰表檢視模式">
+    <button class="bvt-btn ${bracketViewMode==='board'?'active':''}" data-action="set-bracket-view-mode" data-mode="board" aria-pressed="${bracketViewMode==='board'}">${treeIcon}<span>樹狀總覽</span></button>
+    <button class="bvt-btn ${bracketViewMode==='standard'?'active':''}" data-action="set-bracket-view-mode" data-mode="standard" aria-pressed="${bracketViewMode==='standard'}">${listIcon}<span>賽事清單</span></button>
   </div>`;
   if(bracketViewMode==="board"){
     return modeToggle + renderBoardMode();
   }
-  const fmt = state.meta.formatType || "single";
-  let inner;
-  if(fmt==="double") inner = renderDoubleElimBracket();
-  else if(fmt==="roundrobin") inner = renderRoundRobinBracket();
-  else inner = renderSingleElimBracket();
-  const layoutToggle=fmt==="single" ? singleBracketLayoutToggle() : "";
-  return modeToggle + layoutToggle + matchLegendHtml() + inner;
+  return modeToggle + matchLegendHtml() + renderTournamentMatchList();
+}
+
+function tournamentMatchListGroup(m, fmt){
+  if(m.id===state.bronzeMatchId) return "季軍賽";
+  if(fmt==="single") return singleRoundTitle(Number(m.round)||0);
+  if(fmt==="roundrobin") return `第 ${Math.max(1,(Number(m.round)||0)+1)} 輪`;
+  const side=m.bracket==="L"?"敗部":(m.bracket==="GF"?"總決賽":"勝部");
+  return `${side}・第 ${Math.max(1,(Number(m.round)||0)+1)} 輪`;
+}
+
+function renderTournamentMatchList(){
+  const fmt=state.meta.formatType||"single";
+  const groups=new Map();
+  state.matches.filter(m=>!m.isBye).forEach(m=>{
+    const label=tournamentMatchListGroup(m,fmt);
+    if(!groups.has(label)) groups.set(label,[]);
+    groups.get(label).push(m);
+  });
+  const sections=[...groups.entries()].map(([label,matches])=>`<section class="compact-round">
+    <div class="compact-round-head"><span class="compact-round-title">${esc(label)}</span><span class="compact-round-count">${matches.length} 場比賽</span></div>
+    <div class="compact-round-matches">${matches.map(m=>matchBoxHtml(m,displayMatchLabel(m))).join("")}</div>
+  </section>`).join("");
+  return `<div class="panel tournament-match-list">
+    ${eventTitleBar('<button class="btn btn-ghost btn-sm" data-action="print-bracket">列印 / 另存 PDF</button>')}
+    <div class="hint" style="margin-bottom:12px;">依賽程階段列出實際出賽場次、選手、狀態與戰鬥台；輪空不占用場次。</div>
+    ${wrapBracketWatermark(`<div class="compact-bracket">${sections||'<div class="empty-state">目前沒有需要對戰的場次</div>'}</div>`)}
+  </div>`;
 }
 
 function seMatchBoxHtml(m, roundIdx, boxIdx, headLabel){
