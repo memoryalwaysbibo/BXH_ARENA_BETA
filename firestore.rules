@@ -1008,7 +1008,7 @@ isAdminOrAbove()
       allow create: if !request.resource.data.keys().hasAny(['registrationSelection','registeredCount']) && noOperationsCreate(request.resource.data) && tournamentExistsAfterFor(code) && (
 (
         isTournamentAdminEquivalent()
-        && tournamentExistsFor(code)
+        && tournamentExistsAfterFor(code)
         && request.resource.data.keys().hasOnly([
              'bracketView','updatedAt','visibility',
              'registrationEnabled','registrationOpenAt','registrationCloseAt','registrationStatus',
@@ -1027,8 +1027,8 @@ isAdminOrAbove()
         && (!('participantNameMode' in request.resource.data) || request.resource.data.participantNameMode in ['realName','gameId'])
       ) || (
         isSignedIn()
-        && tournamentExistsFor(code)
-        && isStaffOfficialCreatorData(tournamentDataFor(code))
+        && tournamentExistsAfterFor(code)
+        && isStaffOfficialCreatorData(tournamentDataAfterFor(code))
         && request.resource.data.eventAuthority == 'official'
         && request.resource.data.bracketView is string
         && request.resource.data.visibility == 'public'
