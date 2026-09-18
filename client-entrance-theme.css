@@ -1191,3 +1191,406 @@ textarea{
   opacity:.56;
   cursor:not-allowed;
 }
+
+
+/* BXH ARENA Glassmorphism Theme System v2.0 */
+:root,
+:root[data-bxh-theme="gold"]{
+  color-scheme:dark;
+  --accent-color:#ffd700;
+  --accent-rgb:255,215,0;
+  --accent-glow:rgba(255,215,0,.28);
+  --accent-soft:rgba(255,215,0,.10);
+  --accent-border:rgba(255,215,0,.46);
+  --accent-contrast:#0a0b0d;
+  --glass-surface:rgba(15,17,23,.45);
+  --glass-surface-strong:rgba(15,17,23,.62);
+  --glass-surface-soft:rgba(15,17,23,.32);
+  --glass-border-neutral:rgba(255,255,255,.075);
+  --gold:var(--accent-color);
+  --imperial-gold:var(--accent-color);
+  --neon:var(--accent-color);
+  --gold-glow:var(--accent-glow);
+  --neon-glow:var(--accent-glow);
+}
+:root[data-bxh-theme="blue"]{
+  --accent-color:#00f3ff;
+  --accent-rgb:0,243,255;
+  --accent-glow:rgba(0,243,255,.28);
+  --accent-soft:rgba(0,243,255,.10);
+  --accent-border:rgba(0,243,255,.48);
+  --accent-contrast:#031012;
+}
+:root[data-bxh-theme="red"]{
+  --accent-color:#ff3366;
+  --accent-rgb:255,51,102;
+  --accent-glow:rgba(255,51,102,.28);
+  --accent-soft:rgba(255,51,102,.10);
+  --accent-border:rgba(255,51,102,.48);
+  --accent-contrast:#160309;
+}
+:root[data-bxh-theme="green"]{
+  --accent-color:#00ff66;
+  --accent-rgb:0,255,102;
+  --accent-glow:rgba(0,255,102,.27);
+  --accent-soft:rgba(0,255,102,.095);
+  --accent-border:rgba(0,255,102,.46);
+  --accent-contrast:#031109;
+}
+::selection{color:var(--accent-contrast);background:var(--accent-color)}
+body{
+  background:
+    radial-gradient(circle at 50% 18%,rgba(var(--accent-rgb),.055),transparent 38%),
+    radial-gradient(circle at 12% 76%,rgba(var(--accent-rgb),.025),transparent 34%),
+    #07090e!important;
+}
+#watermark{opacity:.065!important}
+.auth-wm{opacity:.055!important}
+#watermark img,
+.auth-wm img{
+  filter:grayscale(.18) saturate(.72) drop-shadow(0 0 42px rgba(var(--accent-rgb),.12))!important;
+}
+header.topbar,
+.player-topbar,
+.player-tabs,
+.guest-tabs,
+.subnav,
+.account-menu,
+.modal-box,
+.auth-card,
+.panel,
+.engagement-panel,
+.account-tools-card,
+.account-management-panel,
+.settings-flow-panel,
+.registration-list-panel,
+.side-panel,
+.referee-workstation,
+.live-ranking-panel,
+.share-summary-box,
+.mgmt-test-box,
+.mgmt-active-box,
+.test-roster-box,
+.registration-inline-qr-box,
+.raffle-page,
+section.panel:has([data-action="inventory-grant"]){
+  border:1px solid transparent!important;
+  border-radius:4px!important;
+  background:
+    linear-gradient(145deg,rgba(15,17,23,.48),rgba(15,17,23,.38)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.46),rgba(255,255,255,.08) 48%,rgba(var(--accent-rgb),.20)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    inset 0 0 28px rgba(var(--accent-rgb),.025),
+    0 16px 38px rgba(0,0,0,.28)!important;
+  backdrop-filter:blur(12px) saturate(1.10)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(1.10)!important;
+}
+header.topbar{
+  border-width:0 0 1px!important;
+  border-radius:0!important;
+  background:linear-gradient(180deg,rgba(12,14,19,.64),rgba(8,10,14,.42))!important;
+}
+header.topbar::after{background:var(--accent-color)!important;box-shadow:0 0 14px var(--accent-glow)}
+.account-badge{
+  border:1px solid rgba(var(--accent-rgb),.26)!important;
+  border-radius:3px!important;
+  background:rgba(15,17,23,.40)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
+  backdrop-filter:blur(12px) saturate(1.08);
+  -webkit-backdrop-filter:blur(12px) saturate(1.08);
+}
+.account-badge:hover,
+.account-badge[aria-expanded="true"]{
+  border-color:var(--accent-color)!important;
+  box-shadow:0 0 18px var(--accent-glow),inset 0 0 14px var(--accent-soft)!important;
+}
+.account-role-dot{
+  background:var(--accent-color)!important;
+  box-shadow:0 0 10px var(--accent-glow)!important;
+}
+.account-role-label,
+.account-menu-caret{color:var(--accent-color)!important}
+.account-menu{
+  overflow:hidden;
+  min-width:238px!important;
+  padding:7px!important;
+  border-color:transparent!important;
+  background:
+    linear-gradient(145deg,rgba(15,17,23,.72),rgba(9,11,16,.60)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.52),rgba(255,255,255,.08),rgba(var(--accent-rgb),.20)) border-box!important;
+  box-shadow:0 22px 55px rgba(0,0,0,.48),0 0 24px rgba(var(--accent-rgb),.10)!important;
+  backdrop-filter:blur(16px) saturate(1.12)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.12)!important;
+}
+.account-menu>button{
+  border:1px solid transparent!important;
+  border-radius:2px!important;
+  background:transparent!important;
+}
+.account-menu>button:hover,
+.account-menu>button:focus-visible{
+  outline:none!important;
+  color:var(--accent-color)!important;
+  border-color:rgba(var(--accent-rgb),.28)!important;
+  background:rgba(var(--accent-rgb),.075)!important;
+  box-shadow:inset 0 0 12px rgba(var(--accent-rgb),.055)!important;
+}
+.account-theme-picker{
+  margin:6px 0;
+  padding:10px;
+  border:1px solid rgba(var(--accent-rgb),.20);
+  border-radius:3px;
+  background:rgba(4,6,10,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.account-theme-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:9px;
+  color:#e8ebf2;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.055em;
+}
+.account-theme-title small{
+  color:var(--accent-color);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.account-theme-swatches{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+}
+.account-menu .account-theme-swatch{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-width:0!important;
+  height:32px!important;
+  min-height:32px!important;
+  margin:0!important;
+  padding:0!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  border-radius:2px!important;
+  background:rgba(255,255,255,.025)!important;
+  box-shadow:none!important;
+}
+.account-menu .account-theme-swatch>span{
+  width:14px;
+  height:14px;
+  border-radius:2px;
+  background:var(--swatch-color);
+  box-shadow:0 0 10px color-mix(in srgb,var(--swatch-color) 48%,transparent);
+  transition:transform .16s ease,box-shadow .16s ease;
+}
+.account-menu .account-theme-swatch:hover,
+.account-menu .account-theme-swatch:focus-visible{
+  outline:none!important;
+  border-color:var(--swatch-color)!important;
+  background:color-mix(in srgb,var(--swatch-color) 8%,transparent)!important;
+  box-shadow:0 0 12px color-mix(in srgb,var(--swatch-color) 26%,transparent)!important;
+}
+.account-menu .account-theme-swatch:hover>span{transform:scale(1.13)}
+.account-menu .account-theme-swatch.is-active{
+  border-color:var(--swatch-color)!important;
+  background:color-mix(in srgb,var(--swatch-color) 11%,transparent)!important;
+  box-shadow:inset 0 0 10px color-mix(in srgb,var(--swatch-color) 15%,transparent),0 0 12px color-mix(in srgb,var(--swatch-color) 28%,transparent)!important;
+}
+.account-menu .account-theme-swatch.is-active>span{
+  transform:scale(1.12);
+  box-shadow:0 0 13px color-mix(in srgb,var(--swatch-color) 70%,transparent);
+}
+.role-card,
+.role-cards [data-action^="player-goto-"],
+.scoring-mode-card,
+.find-event-card,
+.community-event-card,
+.community-history-card,
+.community-create-card,
+.lobby-compact-card,
+.mailbox-item,
+.title-card,
+.account-user-card,
+.court-card,
+.live-court-card,
+.registration-mobile-card,
+.inventory-card,
+.raffle-game-card,
+.hoc-rank-card,
+.match-box,
+.stat-box,
+.checkin-stat,
+.claim-item,
+.account-detail-item,
+.registration-promote-row,
+.settings-choice-row,
+.settings-time-row,
+.switch-preview-row,
+.claim-history-row{
+  border:1px solid transparent!important;
+  border-radius:3px!important;
+  background:
+    linear-gradient(145deg,rgba(15,17,23,.46),rgba(15,17,23,.34)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.40),rgba(255,255,255,.065) 50%,rgba(var(--accent-rgb),.17)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    inset 0 0 22px rgba(var(--accent-rgb),.018),
+    0 13px 30px rgba(0,0,0,.24)!important;
+  backdrop-filter:blur(12px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(1.08)!important;
+}
+.role-card:hover,
+.role-card:focus-visible,
+.role-card.is-active,
+.role-card[aria-selected="true"],
+.role-cards [data-action^="player-goto-"]:hover,
+.role-cards [data-action^="player-goto-"]:focus-visible,
+.scoring-mode-card:hover,
+.scoring-mode-card:focus-within,
+.scoring-mode-card.is-active,
+.scoring-mode-card.selected,
+.find-event-card:hover,
+.find-event-card:focus-within,
+.community-event-card:hover,
+.community-event-card:focus-within,
+.community-history-card:hover,
+.community-create-card:hover,
+.lobby-compact-card:hover,
+.mailbox-item:hover,
+.mailbox-item:focus-visible,
+.mailbox-item.is-active,
+.title-card:hover,
+.title-card.is-active,
+.account-user-card:hover,
+.account-user-card.is-active,
+.court-card:hover,
+.live-court-card:hover,
+.registration-mobile-card:hover,
+.inventory-card:hover,
+.raffle-game-card:hover,
+.hoc-rank-card:hover,
+.match-box:hover,
+.claim-item:hover{
+  outline:none!important;
+  border-color:transparent!important;
+  background:
+    linear-gradient(145deg,rgba(15,17,23,.55),rgba(15,17,23,.42)) padding-box,
+    linear-gradient(135deg,var(--accent-color),rgba(var(--accent-rgb),.72) 48%,rgba(255,255,255,.72)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 0 20px rgba(var(--accent-rgb),.09),
+    0 17px 38px rgba(0,0,0,.34),
+    0 0 24px var(--accent-glow)!important;
+  filter:brightness(1.035) drop-shadow(0 0 10px rgba(var(--accent-rgb),.20))!important;
+}
+.role-card-icon,
+.role-card-icon svg,
+.card-icon,
+.account-user-card svg,
+.scoring-mode-card svg,
+.find-event-card svg,
+.community-event-card svg,
+.title-card svg{
+  color:var(--accent-color)!important;
+  stroke:currentColor!important;
+  filter:drop-shadow(0 0 7px rgba(var(--accent-rgb),.24))!important;
+}
+.role-card-en,
+.role-card-enter,
+.panel-title,
+.account-theme-title small{
+  color:var(--accent-color)!important;
+}
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea{
+  border:1px solid rgba(var(--accent-rgb),.18)!important;
+  border-radius:3px!important;
+  color:#f2f4f8!important;
+  background:rgba(15,17,23,.38)!important;
+  box-shadow:inset 0 2px 7px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.025)!important;
+  backdrop-filter:blur(12px) saturate(1.06);
+  -webkit-backdrop-filter:blur(12px) saturate(1.06);
+}
+input:not([type="checkbox"]):not([type="radio"]):hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled){
+  border-color:rgba(var(--accent-rgb),.42)!important;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus{
+  outline:none!important;
+  border-color:var(--accent-color)!important;
+  background:rgba(15,17,23,.52)!important;
+  box-shadow:
+    inset 0 2px 7px rgba(0,0,0,.24),
+    0 0 0 3px rgba(var(--accent-rgb),.09),
+    0 0 20px var(--accent-glow)!important;
+}
+input[type="checkbox"],
+input[type="radio"]{accent-color:var(--accent-color)}
+.btn-primary,
+.hoc-btn-primary,
+button.btn-primary,
+[data-action="inventory-grant"]{
+  border-color:rgba(var(--accent-rgb),.72)!important;
+  color:var(--accent-contrast)!important;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent-color) 82%,white),var(--accent-color))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.48),0 10px 25px var(--accent-glow)!important;
+}
+.btn-primary:hover:not(:disabled),
+.hoc-btn-primary:hover:not(:disabled),
+button.btn-primary:hover:not(:disabled),
+[data-action="inventory-grant"]:hover:not(:disabled),
+.btn-primary:focus-visible,
+.hoc-btn-primary:focus-visible{
+  outline:none!important;
+  filter:brightness(1.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 13px 31px var(--accent-glow),0 0 24px var(--accent-glow)!important;
+}
+.modal-backdrop,
+.account-menu-overlay{
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+}
+.toast,
+.auth-error,
+.empty-state{
+  border-color:rgba(var(--accent-rgb),.22)!important;
+  background:rgba(15,17,23,.56)!important;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.status-pill,
+.fe-status-chip,
+.board-status-chip,
+.ref-station-status,
+.checkin-status{
+  border-color:rgba(var(--accent-rgb),.28)!important;
+  color:var(--accent-color)!important;
+  background:rgba(var(--accent-rgb),.065)!important;
+}
+a:focus-visible,
+button:focus-visible{
+  outline:1px solid var(--accent-color);
+  outline-offset:2px;
+}
+@supports not ((backdrop-filter:blur(12px)) or (-webkit-backdrop-filter:blur(12px))){
+  .panel,.auth-card,.account-menu,.modal-box,.role-card,.inventory-card,.raffle-game-card{background:rgba(15,17,23,.86)!important}
+}
+@media(max-width:700px){
+  .account-menu{min-width:min(260px,calc(100vw - 24px))!important}
+  .account-theme-picker{padding:9px}
+  .account-theme-swatches{gap:6px}
+}
+@media(prefers-reduced-motion:reduce){
+  .account-theme-swatch,
+  .account-theme-swatch>span{transition:none!important}
+}

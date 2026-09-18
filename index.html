@@ -32,6 +32,15 @@ EZPage 使用本完整 HTML。Firebase Rules 與 Cloud Functions 使用同批交
 <meta name="twitter:title" content="BXH ARENA｜對戰系統">
 <meta name="twitter:description" content="查看 BXH 賽事、即時對戰、天梯排行與最終排名。">
 <meta name="twitter:image" content="https://memoryalwaysbibo.github.io/index.html/bxh-arena-og-image.png">
+<script>
+(function(){
+  var key="bxh.interface.theme.v1";
+  var allowed={gold:true,blue:true,red:true,green:true};
+  var theme="gold";
+  try{var saved=localStorage.getItem(key);if(allowed[saved])theme=saved;}catch(e){}
+  document.documentElement.setAttribute("data-bxh-theme",theme);
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -2518,7 +2527,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=1.9.2">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.0">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -14133,18 +14142,45 @@ function renderWatchErrorScreen(){
   ` + authShellClose();
 }
 
+const BXH_INTERFACE_THEME_KEY="bxh.interface.theme.v1";
+const BXH_INTERFACE_THEME_OPTIONS=[
+  {id:"gold",label:"經典金",color:"#ffd700"},
+  {id:"blue",label:"霓虹藍",color:"#00f3ff"},
+  {id:"red",label:"烈焰紅",color:"#ff3366"},
+  {id:"green",label:"螢光綠",color:"#00ff66"}
+];
+function normalizeInterfaceTheme(value){
+  return BXH_INTERFACE_THEME_OPTIONS.some(item=>item.id===value)?value:"gold";
+}
+let interfaceTheme=normalizeInterfaceTheme(document.documentElement.getAttribute("data-bxh-theme"));
+function applyInterfaceTheme(value,persist=true){
+  interfaceTheme=normalizeInterfaceTheme(value);
+  document.documentElement.setAttribute("data-bxh-theme",interfaceTheme);
+  if(persist){try{localStorage.setItem(BXH_INTERFACE_THEME_KEY,interfaceTheme);}catch(e){}}
+}
+function themePickerHtml(){
+  return `<div class="account-theme-picker" role="group" aria-label="介面主題">
+    <div class="account-theme-title"><span>介面主題</span><small>${esc(BXH_INTERFACE_THEME_OPTIONS.find(item=>item.id===interfaceTheme)?.label||"經典金")}</small></div>
+    <div class="account-theme-swatches">
+      ${BXH_INTERFACE_THEME_OPTIONS.map(item=>`<button type="button" class="account-theme-swatch ${interfaceTheme===item.id?"is-active":""}" data-action="set-interface-theme" data-theme="${item.id}" aria-label="${item.label}" title="${item.label}" aria-pressed="${interfaceTheme===item.id?"true":"false"}" style="--swatch-color:${item.color}"><span aria-hidden="true"></span></button>`).join("")}
+    </div>
+  </div>`;
+}
+
 function accountMenuItemsHtml(){
   if(currentRole!=="admin" && currentRole!=="player") return "";
   const isPlayerMode=currentRole==="player";
   return isPlayerMode ? `
     <button data-action="player-switch-tab" data-tab="profile">會員資料</button>
     ${(userProfile && roleAllowsMode(userProfile.role,"admin",userProfile)) ? `<button data-action="switch-to-admin-mode">切換至管理模式</button>` : ""}
+    ${themePickerHtml()}
     <button data-action="account-back-to-role">返回系統首頁</button>
     <button data-action="account-logout" class="danger">登出系統</button>
   ` : `
     <button data-action="account-goto-home">返回系統首頁</button>
     ${isSuperAdmin() ? `<button data-action="open-account-management">帳號管理</button>` : ""}
     ${(userProfile && roleAllowsMode(userProfile.role,"player")) ? `<button data-action="switch-to-player-mode">切換至玩家模式</button>` : ""}
+    ${themePickerHtml()}
     <button data-action="account-change-password">變更密碼</button>
     <button data-action="account-back-to-role">返回身分選擇</button>
     <button data-action="account-logout" class="danger">登出系統</button>
@@ -16440,6 +16476,11 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         render();
       }
     })();
+    return;
+  }
+  if(action==="set-interface-theme"){
+    applyInterfaceTheme(target.getAttribute("data-theme"),true);
+    render();
     return;
   }
   if(action==="toggle-account-menu"){ accountMenuOpen=!accountMenuOpen; render(); return; }
