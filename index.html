@@ -15848,7 +15848,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   if(action==="toggle-lobby-section"){
     const section=target.getAttribute("data-section");
     if(Object.prototype.hasOwnProperty.call(lobbySectionExpanded,section)){
-      const current=lobbySectionExpanded[section]===null?(section==="live"):lobbySectionExpanded[section]===true;
+      const current=target.getAttribute("aria-expanded")==="true";
       lobbySectionExpanded[section]=!current;
       renderPreservingScroll();
     }
