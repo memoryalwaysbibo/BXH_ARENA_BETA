@@ -7320,6 +7320,54 @@ function seedOrder(size){
   return order;
 }
 
+// Challonge-style single-elimination order for brackets with opening-round
+// byes.  Within the same round, matches whose two players advanced directly
+// are called before matches that depend on a played feeder match.  This gives
+// preliminary-round winners a proper break instead of calling them again
+// immediately.
+function singleElimScheduleTier(match, matches=state.matches){
+  if(!match || match.bracket!=="SE" || Number(match.round||0)===0) return 0;
+  const feederRound=Number(match.round)-1;
+  const feederStart=Number(match.indexInRound||0)*2;
+  let playedFeeders=0;
+  for(let i=0;i<2;i++){
+    const feeder=matches.find(x=>x.bracket==="SE" && Number(x.round)===feederRound && Number(x.indexInRound)===feederStart+i);
+    if(feeder && !feeder.isBye) playedFeeders++;
+  }
+  return playedFeeders;
+}
+
+function applyChallongeSingleElimOrder(matches, stationCount){
+  const courts=Math.max(1,Number(stationCount)||1);
+  const se=matches.filter(m=>m.bracket==="SE");
+  const rounds=[...new Set(se.map(m=>Number(m.round)||0))].sort((a,b)=>a-b);
+  let seq=0, playableIndex=0;
+  rounds.forEach(round=>{
+    se.filter(m=>Number(m.round||0)===round)
+      .sort((a,b)=>singleElimScheduleTier(a,matches)-singleElimScheduleTier(b,matches) || Number(a.indexInRound||0)-Number(b.indexInRound||0))
+      .forEach(m=>{
+        m.seq=seq++;
+        m.scheduleTier=singleElimScheduleTier(m,matches);
+        if(!m.isBye){ m.station=(playableIndex % courts)+1; playableIndex++; }
+      });
+  });
+  return matches;
+}
+
+function activeSingleElimSchedulePhase(matches=state.matches){
+  const unfinished=matches.filter(m=>m.bracket==="SE" && !m.isBye && !m.completed);
+  if(!unfinished.length) return null;
+  const round=Math.min(...unfinished.map(m=>Number(m.round)||0));
+  const inRound=unfinished.filter(m=>Number(m.round||0)===round);
+  const tier=Math.min(...inRound.map(m=>singleElimScheduleTier(m,matches)));
+  return {round,tier};
+}
+
+function isInActiveSingleElimPhase(match, phase, matches=state.matches){
+  if(!phase) return true;
+  return match.bracket==="SE" && Number(match.round||0)===phase.round && singleElimScheduleTier(match,matches)===phase.tier;
+}
+
 function shuffle(arr){
   const a=arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -7652,7 +7700,11 @@ function courtKey(n){ return "court"+n; }
 
 // Stable skip dependencies survive reloads and completed predecessors naturally disappear.
 function stationExecutionQueue(stationNum){
-  const available=refereeMatches().filter(m=>m.station===stationNum&&!m.completed&&m.a&&m.b&&m.status!=="paused");
+  let available=refereeMatches().filter(m=>m.station===stationNum&&!m.completed&&m.a&&m.b&&m.status!=="paused");
+  if((state.meta.formatType||"single")==="single"){
+    const phase=activeSingleElimSchedulePhase();
+    if(phase) available=available.filter(m=>isInActiveSingleElimPhase(m,phase));
+  }
   const normal=available.filter(m=>!m.skippedAt);
   const skipped=available.filter(m=>m.skippedAt&&!m.resumeQueuedAt&&!m.skipManualOnly).sort((a,b)=>a.skippedAt-b.skippedAt || String(a.id).localeCompare(String(b.id)));
   for(const m of skipped){
@@ -7818,6 +7870,8 @@ function generateSingleElim(){
       matchCounter++;
     }
   }
+
+  applyChallongeSingleElimOrder(matches,state.meta.stations);
 
   state.bracketSize = size;
   state.matches = matches;

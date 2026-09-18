@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),script=fs.readFileSync(path.join(__dirname,'../court-call-ui.js'),'utf8');
-const s={matches:['A','B','C','D'].map((id,i)=>({id,seq:i+1,station:1,round:0,bracket:'WB',a:{playerId:'p'+i},b:{playerId:'q'+i},status:'pending',completed:false})),meta:{stations:1},courtAssignments:{court1:{currentMatchId:'B'}}};
+const s={matches:['A','B','C','D'].map((id,i)=>({id,seq:i+1,station:1,round:0,bracket:'WB',a:{playerId:'p'+i},b:{playerId:'q'+i},status:'pending',completed:false})),meta:{stations:1,formatType:'double'},courtAssignments:{court1:{currentMatchId:'B'}}};
 const a=s.matches[0];Object.assign(a,{skippedAt:100,skipWaitFor:['B','C'],callPass:{waitFor:['B','C']}});
 const box={Map,setTimeout:()=>1,sessionStorage:{getItem:()=>null},currentAuthUid:()=> 'u',engagementSessionEpoch:1,state:s,refereeMatches:()=>s.matches,getMatch:id=>s.matches.find(x=>x.id===id),esc:String};vm.createContext(box);vm.runInContext(script,box);
 vm.runInContext(html.slice(html.indexOf('function stationExecutionQueue('),html.indexOf('// Regenerates state.courtAssignments')),box);
