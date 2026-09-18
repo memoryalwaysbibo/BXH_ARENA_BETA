@@ -1848,3 +1848,178 @@ button.btn-primary,
   .lobby-collapse-reveal,
   .lobby-collapse-body{transition:none!important}
 }
+
+
+/* BXH ARENA quick decision confirmation v2.0.3 */
+.modal-box.quick-confirm-modal{
+  width:min(520px,calc(100vw - 28px))!important;
+  padding:clamp(20px,4vw,28px)!important;
+  border:1px solid transparent!important;
+  border-radius:4px!important;
+  background:
+    linear-gradient(150deg,rgba(15,17,23,.72),rgba(10,12,18,.58)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.38),rgba(255,255,255,.065) 48%,rgba(var(--accent-rgb),.16)) border-box!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    inset 0 0 34px rgba(var(--accent-rgb),.025),
+    0 24px 65px rgba(0,0,0,.52),
+    0 0 18px rgba(var(--accent-rgb),.07)!important;
+  backdrop-filter:blur(18px) saturate(1.06)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(1.06)!important;
+}
+.quick-confirm-modal h3{
+  margin:0 0 12px!important;
+  color:#f0f1f4!important;
+  font-size:clamp(22px,5.5vw,28px)!important;
+  font-weight:950!important;
+  letter-spacing:.035em!important;
+  text-shadow:0 2px 18px rgba(0,0,0,.5)!important;
+}
+.quick-confirm-modal .quick-confirm-meta{
+  margin:0 0 18px!important;
+  color:rgba(222,226,234,.58)!important;
+  font-size:13px!important;
+  letter-spacing:.025em;
+}
+.quick-confirm-modal .quick-winner-row{
+  margin:0 0 18px!important;
+}
+.quick-confirm-modal .radio-opt.result-winner.quick-winner-card{
+  position:relative;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+  min-height:190px;
+  padding:26px 18px!important;
+  overflow:hidden;
+  border:1px solid rgba(var(--accent-rgb),.66)!important;
+  border-radius:4px!important;
+  color:var(--accent-color)!important;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(var(--accent-rgb),.14),transparent 38%),
+    linear-gradient(155deg,rgba(var(--accent-rgb),.10),rgba(10,12,17,.36) 68%)!important;
+  box-shadow:
+    inset 0 0 28px rgba(var(--accent-rgb),.07),
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 0 18px rgba(var(--accent-rgb),.11)!important;
+}
+.quick-confirm-modal .quick-winner-card::before{
+  content:"";
+  position:absolute;
+  inset:-45% 18%;
+  pointer-events:none;
+  background:radial-gradient(circle,rgba(var(--accent-rgb),.09),transparent 66%);
+  filter:blur(12px);
+}
+.quick-confirm-modal .quick-winner-crown{
+  position:relative;
+  z-index:1;
+  display:grid!important;
+  place-items:center;
+  margin:0!important;
+  color:var(--accent-color)!important;
+  filter:drop-shadow(0 0 9px rgba(var(--accent-rgb),.35));
+}
+.quick-confirm-modal .quick-winner-crown svg{
+  width:42px!important;
+  height:42px!important;
+  stroke-width:1.8!important;
+}
+.quick-confirm-modal .quick-winner-name{
+  position:relative;
+  z-index:1;
+  display:block;
+  max-width:100%;
+  color:color-mix(in srgb,var(--accent-color) 76%,#fff)!important;
+  font-size:clamp(30px,8vw,42px)!important;
+  font-weight:950!important;
+  line-height:1.12!important;
+  letter-spacing:.025em!important;
+  overflow-wrap:anywhere;
+  text-shadow:0 0 12px rgba(var(--accent-rgb),.28),0 3px 18px rgba(0,0,0,.65)!important;
+}
+.quick-confirm-modal .quick-winner-tag{
+  position:relative;
+  z-index:1;
+  margin:1px 0 0!important;
+  padding:6px 14px!important;
+  border:1px solid rgba(var(--accent-rgb),.52);
+  border-radius:999px!important;
+  color:var(--accent-contrast)!important;
+  background:color-mix(in srgb,var(--accent-color) 82%,#e7e9ef)!important;
+  font-size:14px!important;
+  font-weight:950!important;
+  letter-spacing:.055em!important;
+  box-shadow:0 0 10px rgba(var(--accent-rgb),.13)!important;
+}
+.quick-confirm-modal .quick-confirm-note{
+  margin:0 0 18px!important;
+  color:rgba(214,218,228,.52)!important;
+  font-size:13px!important;
+  line-height:1.7!important;
+}
+.quick-confirm-modal .result-confirm-actions{
+  gap:9px!important;
+  margin-top:0!important;
+  padding:0!important;
+  background:transparent!important;
+}
+.quick-confirm-modal #modal-confirm-btn{
+  min-height:58px!important;
+  border:1px solid color-mix(in srgb,var(--accent-color) 78%,#fff)!important;
+  border-radius:3px!important;
+  color:var(--accent-contrast)!important;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb,var(--accent-color) 82%,#f2f4f7),
+      var(--accent-color) 54%,
+      color-mix(in srgb,var(--accent-color) 82%,#07090d)
+    )!important;
+  font-size:16px!important;
+  font-weight:950!important;
+  letter-spacing:.045em!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.40),
+    0 10px 24px rgba(var(--accent-rgb),.19),
+    0 0 17px rgba(var(--accent-rgb),.15)!important;
+  transition:transform .16s ease,filter .18s ease,box-shadow .18s ease!important;
+}
+.quick-confirm-modal #modal-confirm-btn:hover,
+.quick-confirm-modal #modal-confirm-btn:focus-visible{
+  filter:brightness(1.08) saturate(1.04);
+  transform:translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.44),
+    0 13px 28px rgba(var(--accent-rgb),.23),
+    0 0 20px rgba(var(--accent-rgb),.18)!important;
+}
+.quick-confirm-modal #modal-confirm-btn:active{
+  transform:translateY(0) scale(.99);
+}
+.quick-confirm-modal #modal-cancel-btn{
+  min-height:46px!important;
+  border:1px solid rgba(222,226,235,.11)!important;
+  border-radius:3px!important;
+  color:rgba(220,224,232,.56)!important;
+  background:rgba(255,255,255,.012)!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+.quick-confirm-modal #modal-cancel-btn:hover,
+.quick-confirm-modal #modal-cancel-btn:focus-visible{
+  border-color:rgba(var(--accent-rgb),.24)!important;
+  color:rgba(235,237,242,.76)!important;
+  background:rgba(var(--accent-rgb),.025)!important;
+}
+@media(max-width:520px){
+  .modal-box.quick-confirm-modal{padding:20px 16px!important}
+  .quick-confirm-modal .radio-opt.result-winner.quick-winner-card{min-height:174px;padding:22px 14px!important}
+  .quick-confirm-modal .quick-winner-crown svg{width:38px!important;height:38px!important}
+  .quick-confirm-modal #modal-confirm-btn{min-height:56px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .quick-confirm-modal #modal-confirm-btn{transition:none!important}
+}

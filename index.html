@@ -2527,7 +2527,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.2">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.3">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -13655,15 +13655,15 @@ function renderModal(){
       const aWins = mm.selectedWinnerId===m.a.playerId;
       const winName = aWins ? playerName(m.a.playerId) : playerName(m.b.playerId);
       const loseName = aWins ? playerName(m.b.playerId) : playerName(m.a.playerId);
-      body = `<p>比賽輪次：${refereeStageLabel(m)} · 第 ${m.indexInRound+1} 場　比賽台：台${m.station}</p>
-      <div class="radio-row">
-        <div class="radio-opt result-winner" aria-disabled="false">
-          <span class="result-crown">${WINNER_CROWN_SVG}</span><br>
-          ${esc(winName)}<br>
-          <span class="result-tag result-tag-win">本場獲勝</span>
+      body = `<p class="quick-confirm-meta">比賽輪次：${refereeStageLabel(m)} · 第 ${m.indexInRound+1} 場　比賽台：台${m.station}</p>
+      <div class="radio-row quick-winner-row">
+        <div class="radio-opt result-winner quick-winner-card" aria-disabled="false">
+          <span class="result-crown quick-winner-crown">${WINNER_CROWN_SVG}</span>
+          <span class="quick-winner-name">${esc(winName)}</span>
+          <span class="result-tag result-tag-win quick-winner-tag">本場獲勝</span>
         </div>
       </div>
-      <p class="hint" style="margin-top:10px;">簡易判定模式不記錄比分。確認後，獲勝選手將直接晉級下一輪。</p>`;
+      <p class="hint quick-confirm-note">簡易判定模式不記錄比分。確認後，獲勝選手將直接晉級下一輪。</p>`;
       mm.confirmDisabled = false;
     }
   }
@@ -13675,7 +13675,7 @@ function renderModal(){
     mm.confirmDisabled = false;
   }
   return `<div class="modal-overlay confirmation-overlay" data-action="modal-overlay" role="dialog" aria-modal="true">
-    <div class="modal-box">
+    <div class="modal-box ${mm.type==="confirm-quick"?"quick-confirm-modal":""}">
       <h3>${esc(mm.title)}</h3>
       ${body}
       <div class="btn-row ${(mm.type==="confirm-result"||mm.type==="confirm-quick")?"result-confirm-actions":""}">
