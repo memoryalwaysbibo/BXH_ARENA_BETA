@@ -2527,7 +2527,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.1">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.2">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -6234,7 +6234,8 @@ let findEventsFilters = { keyword:"", date:"", region:"", format:"all" };
 // 預設收合"). Each category's expand/collapse is fully independent.
 let findEventsExpanded = { ongoing:false, open:false, upcoming:false };
 let findEventsFiltersOpen = false;
-const PLAYER_TABS = [["home","賽事大廳"],["checkin","每日簽到"],["registered","我的賽程"],["host","我的房間"],["raffles","會員抽獎"],["items","我的道具"],["stats","戰績"],["ladder","天梯排行"],["profile","會員資料"]];
+let lobbySectionExpanded = { live:null, settling:false, registration:false, waiting:false, ended:false };
+const PLAYER_TABS = [["home","賽事大廳"],["registered","我的賽程"],["host","我的房間"],["raffles","會員抽獎"],["items","我的道具"],["stats","戰績"],["ladder","天梯排行"],["profile","會員資料"]];
 let engagementSnapshot=null;
 let engagementSnapshotUid="";
 let engagementLoading=false;
@@ -12224,7 +12225,7 @@ document.addEventListener('input',e=>{if(e.target?.id==='mood-text'){const c=moo
 setInterval(()=>{if(appPhase==='player-center'&&playerActiveTab==='home'&&firebaseUser?.uid&&!guestReadOnlyMode){const c=moodContext();if(!c.loading&&!c.busy)loadMood();}},60000);
 
 function renderPlayerHomeTab(p){
-  return `${renderMoodStation()}${safeEngagementRender(renderDailyCheckInEntry)}${renderTournamentLobby({ loggedIn:true, profile:p })}`;
+  return `${renderMoodStation()}${renderTournamentLobby({ loggedIn:true, profile:p })}`;
 }
 
 let hostAchievementCount=null;
@@ -12553,7 +12554,7 @@ function publicEventLifecycleStatus(t){
   return {key:d.key,label:d.label,dot:d.dot,phase};
 }
 
-function lobbyCard(t, kind, loggedIn){
+function lobbyCard(t, kind, loggedIn, expanded=false){
   const life=publicEventLifecycleStatus(t);
   const displayPhase=(t.phase==="waiting" && (t.authority==="community" || !(t.regStatus==="open" || t.regStatus==="full"))) ? "prestart" : life.phase;
   const authorityLabel=t.authority==="community"?"COMMUNITY":"BXH OFFICIAL";
@@ -12568,7 +12569,7 @@ function lobbyCard(t, kind, loggedIn){
     t.closeAt?`報名截止｜${esc(new Date(t.closeAt).toLocaleString())}`:"",
     `房間代碼｜${esc(t.code)}`
   ].filter(Boolean);
-  return `<details class="lobby-compact-card ${authorityClass}">
+  return `<details class="lobby-compact-card ${authorityClass}" ${expanded?"open":""}>
     <summary>
       <div class="lobby-card-main">
         <div class="lobby-room">
@@ -12623,6 +12624,18 @@ function lobbyFilterPanelHtml(){
   </div>`;
 }
 
+function lobbySectionHtml(key,title,count,body,defaultOpen=false){
+  const stored=lobbySectionExpanded[key];
+  const open=stored===null?defaultOpen:stored===true;
+  return `<section class="panel lobby-section lobby-collapse-section ${open?"is-open":""}">
+    <button type="button" class="lobby-collapse-toggle" data-action="toggle-lobby-section" data-section="${esc(key)}" aria-expanded="${open?"true":"false"}">
+      <span class="lobby-collapse-title">${title} <span class="badge badge-metal">${Number(count||0)}</span></span>
+      <span class="lobby-collapse-control">${open?"收合":"展開"} <i aria-hidden="true">${open?"∧":"∨"}</i></span>
+    </button>
+    <div class="lobby-collapse-reveal" aria-hidden="${open?"false":"true"}"><div class="lobby-collapse-body">${body}</div></div>
+  </section>`;
+}
+
 function renderTournamentLobby(opts={}){
   const loggedIn=!!opts.loggedIn;
   if(publicTournamentsCache===null){
@@ -12635,30 +12648,24 @@ function renderTournamentLobby(opts={}){
   if(publicTournamentsError) return `<div class="panel"><div class="empty-state">${esc(publicTournamentsError)}</div><div class="btn-row" style="justify-content:center;margin-top:12px;"><button class="btn btn-ghost" data-action="refresh-public-tournaments">重新整理</button></div></div>`;
   const {live,settling,registration,waiting,ended,total}=lobbyLists(publicTournamentsCache);
   const filtered=!!(findEventsFilters.keyword||findEventsFilters.date||findEventsFilters.region||(findEventsFilters.format&&findEventsFilters.format!=="all"));
+  const liveBody=live.length?live.map((t,index)=>lobbyCard(t,"live",loggedIn,index===0)).join(""):`<div class="empty-state fe-empty-line">目前沒有比賽中的房間</div>`;
+  const settlingBody=settling.length?settling.map(t=>lobbyCard(t,"settling",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有結算中的房間</div>`;
+  const registrationBody=registration.length?registration.map(t=>lobbyCard(t,"registration",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有開放報名的房間</div>`;
+  const waitingBody=waiting.length?waiting.map(t=>lobbyCard(t,"waiting",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有等待開始的房間</div>`;
+  const endedBody=ended.length?ended.map(t=>lobbyCard(t,"ended",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有近期已結束房間</div>`;
   return `
     <div class="lobby-page-head">
-      <div><div class="settings-page-title">賽事大廳</div><div class="settings-page-sub">搜尋、報名、觀看與賽事狀態統一在這裡完成。</div></div>
+      <div><div class="settings-page-title">賽事大廳</div><div class="settings-page-sub">即時賽事優先，其餘資訊按需展開。</div></div>
       <button class="btn btn-ghost btn-sm" data-action="refresh-public-tournaments">重新整理</button>
     </div>
     ${lobbyFilterPanelHtml()}
     ${filtered?`<div class="lobby-filter-summary">目前篩選結果 ${total} 場 <button class="link-btn" data-action="clear-find-events-filter">清除篩選</button></div>`:""}
-    <div class="panel lobby-section">
-      <div class="panel-title">🟡 比賽中 <span class="badge badge-metal">${live.length}</span></div>
-      ${live.length?live.map(t=>lobbyCard(t,"live",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有比賽中的房間</div>`}
-    </div>
-    ${settling.length?`<div class="panel lobby-section"><div class="panel-title">🟠 結算中 <span class="badge badge-metal">${settling.length}</span></div>${settling.map(t=>lobbyCard(t,"settling",loggedIn)).join("")}</div>`:""}
-    <div class="panel lobby-section">
-      <div class="panel-title">🟢 報名中 <span class="badge badge-metal">${registration.length}</span></div>
-      ${registration.length?registration.map(t=>lobbyCard(t,"registration",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有開放報名的房間</div>`}
-    </div>
-    <div class="panel lobby-section">
-      <div class="panel-title">⚔️ 等待開始 <span class="badge badge-metal">${waiting.length}</span></div>
-      ${waiting.length?waiting.map(t=>lobbyCard(t,"waiting",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有等待開始的房間</div>`}
-    </div>
-    <div class="panel lobby-section">
-      <div class="panel-title">⚪ 已結束 / 已取消 <span class="badge badge-metal">${ended.length}</span></div>
-      ${ended.length?ended.map(t=>lobbyCard(t,"ended",loggedIn)).join(""):`<div class="empty-state fe-empty-line">目前沒有近期已結束房間</div>`}
-    </div>`;
+    ${lobbySectionHtml("live","🟡 比賽中",live.length,liveBody,live.length>0)}
+    ${lobbySectionHtml("settling","🟠 結算中",settling.length,settlingBody,false)}
+    ${lobbySectionHtml("registration","🟢 報名中",registration.length,registrationBody,false)}
+    ${lobbySectionHtml("waiting","⚔️ 等待開始",waiting.length,waitingBody,false)}
+    ${lobbySectionHtml("ended","⚪ 已結束 / 已取消",ended.length,endedBody,false)}
+  `;
 }
 
 let guestActiveTab = "events";
@@ -14174,13 +14181,14 @@ function accountMenuItemsHtml(){
   return isPlayerMode ? `
     <button data-action="player-switch-tab" data-tab="profile">會員資料</button>
     ${(userProfile && roleAllowsMode(userProfile.role,"admin",userProfile)) ? `<button data-action="switch-to-admin-mode">切換至管理模式</button>` : ""}
+    <button data-action="account-open-checkin">每日簽到</button>
     ${themePickerHtml()}
     <button data-action="account-back-to-role">返回系統首頁</button>
     <button data-action="account-logout" class="danger">登出系統</button>
   ` : `
     <button data-action="account-goto-home">返回系統首頁</button>
     ${isSuperAdmin() ? `<button data-action="open-account-management">帳號管理</button>` : ""}
-    ${(userProfile && roleAllowsMode(userProfile.role,"player")) ? `<button data-action="switch-to-player-mode">切換至玩家模式</button>` : ""}
+    ${(userProfile && roleAllowsMode(userProfile.role,"player")) ? `<button data-action="switch-to-player-mode">切換至玩家模式</button><button data-action="account-open-checkin">每日簽到</button>` : ""}
     ${themePickerHtml()}
     <button data-action="account-change-password">變更密碼</button>
     <button data-action="account-back-to-role">返回身分選擇</button>
@@ -15836,6 +15844,28 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     if(state.matches.length && formatType!==state.meta.formatType){showToast("已產生對戰表後不能直接更換賽制，請先清除／重建房間",true);return;}
     state.meta.name=name; state.meta.date=date; state.meta.location=location; state.meta.startTime=startTime; state.meta.formatType=formatType; state.meta.format=FORMAT_LABELS[formatType]||"單淘汰賽"; state.meta.stations=stations;
     state.meta.eventAuthority="community"; state.meta.ladderMode="general"; state.meta.registrationEnabled=false; touchCommunityActivity(); saveState(); render(); showToast("一般賽事設定已儲存"); return;
+  }
+  if(action==="toggle-lobby-section"){
+    const section=target.getAttribute("data-section");
+    if(Object.prototype.hasOwnProperty.call(lobbySectionExpanded,section)){
+      const current=lobbySectionExpanded[section]===null?(section==="live"):lobbySectionExpanded[section]===true;
+      lobbySectionExpanded[section]=!current;
+      renderPreservingScroll();
+    }
+    return;
+  }
+  if(action==="account-open-checkin"){
+    accountMenuOpen=false;
+    if(!userProfile || !roleAllowsMode(userProfile.role,"player")) return;
+    playerActiveTab="checkin";
+    (async ()=>{
+      await saveActiveMode("player");
+      currentRole="player";
+      appPhase=userProfile.realName?"player-center":"player-complete-profile";
+      render();
+      window.scrollTo(0,0);
+    })();
+    return;
   }
   if(action==="player-switch-tab"){
     accountMenuOpen=false;
