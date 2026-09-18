@@ -5,6 +5,10 @@ let present=true;
 const shell={classList:{toggle(k,on){on?classes.add(k):classes.delete(k)}},querySelector:()=>button};
 const state={id:'local',cloudCode:'BXH-ABCDEF',meta:{name:'真實賽事 <測試>',formatType:'single'},matches:[{id:'m',scoreA:2,scoreB:1}],bracketSize:32};
 const original=JSON.stringify(state),box={state,document:{body:{style:{overflow:'auto'}},getElementById:()=>present?shell:null,addEventListener:(name,fn)=>listeners[name]=fn},showToast:m=>messages.push(m)};
+assert(html.includes('<span>樹狀總覽</span>'),'two-mode toolbar exposes the tree overview');
+assert(html.includes('<span>賽事清單</span>'),'two-mode toolbar exposes the match list');
+assert(!html.includes('>標準對戰表</button>')&&!html.includes('>賽事看板模式</button>'),'legacy duplicate mode labels are removed');
+assert(html.includes('renderTournamentMatchList()'),'list mode uses the real-match list renderer');
 vm.createContext(box);vm.runInContext(html.slice(html.indexOf('let boardExpanded=false'),html.indexOf('function setBoardZoom(')),box);
 (async()=>{
  await box.toggleBoardFullscreen();assert(classes.has('board-expanded'));assert.equal(button.textContent,'退出全螢幕');assert.equal(box.document.body.style.overflow,'hidden');
