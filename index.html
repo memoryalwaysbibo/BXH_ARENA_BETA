@@ -1585,12 +1585,12 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 /* ==== v13.28.9 compact account management ==== */
 .account-management-main{width:min(1180px,100%);margin:0 auto;padding:22px 16px 80px;box-sizing:border-box;}
 .account-management-panel{min-width:0;}
-.account-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px;}
+.account-overview-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:14px;}
 .account-role-filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding:12px;border:1px solid rgba(217,185,92,.16);border-radius:12px;background:rgba(255,255,255,.018);}
 .account-filter-chip{appearance:none;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(8,10,13,.78);color:var(--metal);padding:8px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease;}
 .account-filter-chip:hover{border-color:var(--gold-dim);color:var(--ivory);}
 .account-filter-chip.active{border-color:var(--gold);background:rgba(217,178,73,.16);color:#f4d977;box-shadow:0 0 0 1px rgba(217,178,73,.08) inset;}
-.account-filter-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,minmax(130px,auto)) auto;gap:8px;align-items:end;margin-top:10px;}
+.account-filter-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(4,minmax(125px,auto)) auto;gap:8px;align-items:end;margin-top:10px;}
 .account-filter-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;}
 .account-filter-toolbar .field{margin:0;min-width:0;}
 .account-filter-toolbar input,.account-filter-toolbar select{width:100%;min-width:0;}
@@ -1620,6 +1620,7 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 .account-tools-card>summary::-webkit-details-marker{display:none;}
 .account-tools-body{padding:14px 15px 15px;border-top:1px solid rgba(255,255,255,.07);}
 @media(max-width:900px){
+  .account-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .account-filter-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));}
   .account-filter-search{grid-column:1/-1;}
   .account-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -5899,8 +5900,12 @@ let accountMgmtUsers = null;
 let superAdminManagementPage = "accounts"; // accounts | checkin | titles
 let accountMgmtBusy = false;
 let accountDeleteBusyUid = "";
+let accountRealNameScanBusy = false;
+let accountRealNameScanSummary = null;
+let accountRealNameScanError = "";
 let accountMgmtRoleFilter = "all";
 let accountMgmtStatusFilter = "all";
+let accountMgmtNameFilter = "all";
 let accountMgmtActivityFilter = "all";
 let accountMgmtSort = "created-desc";
 let accountMgmtQuery = "";
@@ -6562,7 +6567,7 @@ const COMMUNITY_OWNER_ACTIONS = new Set([
 ]);
 const COMMUNITY_OWNER_TIER_ACTIONS = new Set(["set-round-scoring-mode","correct-quick-result","board-reshuffle"]);
 const SUPER_ADMIN_ONLY_ACTIONS = new Set([
-  "open-account-management","super-admin-page","create-managed-user-submit","delete-managed-account","set-user-role","toggle-user-active",
+  "open-account-management","super-admin-page","create-managed-user-submit","delete-managed-account","verify-player-realname","recheck-player-realname","scan-player-realnames","set-user-role","toggle-user-active",
   "account-role-filter","account-search-apply","account-clear-filters",
   "unarchive-record","preview-cleanup-public-mirrors","run-cleanup-public-mirrors","ladder-new-season",
   "admin-refresh-engagement","admin-seed-initial-titles","admin-save-engagement-settings","admin-grant-title","admin-revoke-title",
@@ -11051,7 +11056,8 @@ function accountActivitySummary(users, now=Date.now()){
   const enabled=(users||[]).filter(u=>u&&u.active!==false);
   const daily=enabled.filter(u=>{ const ts=accountTimestampValue(u.lastLoginAt); return ts>0&&now-ts<=24*60*60*1000; }).length;
   const weekly=enabled.filter(u=>{ const ts=accountTimestampValue(u.lastLoginAt); return ts>0&&now-ts<=7*24*60*60*1000; }).length;
-  return {total:(users||[]).length,enabled:enabled.length,daily,weekly,testers:enabled.filter(u=>(u.role==="tester"||u.isTestAccount===true)).length};
+  const review=(users||[]).filter(u=>accountNameVerificationInfo(u).key==="review").length;
+  return {total:(users||[]).length,enabled:enabled.length,daily,weekly,testers:enabled.filter(u=>(u.role==="tester"||u.isTestAccount===true)).length,nameReview:review};
 }
 
 const ACCOUNT_ROLE_FILTERS = [
@@ -11076,6 +11082,43 @@ function accountPrimaryName(user){
 function accountGameId(user){
   if(!user) return "";
   return String(user.gameId||user.nickname||((user.displayName&&user.displayName!==user.realName)?user.displayName:"")||"");
+}
+function realNameVerificationReasonLabel(reason){
+ const map={
+  "missing-name":"尚未填寫本名",
+  "name-too-short":"姓名長度過短",
+  "name-too-long":"姓名長度過長",
+  "contains-number":"姓名含有數字",
+  "contains-contact-or-url":"姓名含網址或帳號字樣",
+  "placeholder-or-test-name":"疑似測試資料、暱稱或佔位名稱",
+  "unusual-characters":"含不常見的姓名字元",
+  "repeated-characters":"姓名出現可疑重複字元",
+  "unusual-name-length":"姓名長度需要人工確認",
+  "latin-single-token":"英文姓名只有單一詞，需要人工確認",
+  "mixed-script-name":"姓名使用混合字元格式",
+  "history-name-mismatch":"與既有正式賽事姓名不一致",
+  "history-check-unavailable":"歷史賽事姓名暫時無法核對",
+  "format-valid":"格式檢核通過",
+  "format-and-history-consistent":"與既有正式賽事姓名一致",
+  "manual-approved":"最高管理員人工確認",
+  "legacy-manual-confirmation":"舊版人工確認紀錄"
+ };
+ return map[String(reason||"")]||"等待系統檢核";
+}
+function accountNameVerificationInfo(user){
+ if(!user||!String(user.realName||"").trim())return {key:"missing",label:"尚無本名",badge:"badge-metal",reason:"尚未填寫本名"};
+ if(user.realNameVerified===true){
+  const method=String(user.realNameVerificationMethod||"");
+  if(method==="system")return {key:"verified",label:"系統檢核通過",badge:"badge-neon",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+  return {key:"verified",label:"人工已確認",badge:"badge-neon",reason:realNameVerificationReasonLabel(user.realNameVerificationReason||"legacy-manual-confirmation")};
+ }
+ if(user.realNameVerificationStatus==="review")return {key:"review",label:"待人工確認",badge:"badge-danger",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+ if(user.realNameVerificationStatus==="missing")return {key:"missing",label:"尚無本名",badge:"badge-metal",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+ return {key:"unchecked",label:"等待系統檢核",badge:"badge-gold",reason:"系統尚未完成本名資料一致性檢核"};
+}
+function accountMatchesNameVerification(user,filter){
+ if(filter==="all")return true;
+ return accountNameVerificationInfo(user).key===filter;
 }
 function accountRoleMatches(user,filter){
   if(filter==="all") return true;
@@ -11104,6 +11147,7 @@ function getVisibleAccountUsers(users,now=Date.now()){
     if(!accountRoleMatches(user,accountMgmtRoleFilter)) return false;
     if(accountMgmtStatusFilter==="active"&&user.active===false) return false;
     if(accountMgmtStatusFilter==="inactive"&&user.active!==false) return false;
+    if(!accountMatchesNameVerification(user,accountMgmtNameFilter)) return false;
     if(!accountMatchesActivity(user,accountMgmtActivityFilter,now)) return false;
     if(keyword){
       const haystack=[accountPrimaryName(user),accountGameId(user),user.email,user.role].join(" ").toLowerCase();
@@ -11315,7 +11359,7 @@ document.addEventListener('change',e=>{if(isSuperAdmin()&&e.target.id==='engagem
 
 let accountBatch={key:'',selected:new Set(),busy:false,result:null,error:''};
 function accountBatchContext(){
- const key=[currentAuthUid(),accountMgmtRoleFilter,accountMgmtQuery,accountMgmtStatusFilter,accountMgmtActivityFilter,accountMgmtSort].join('|');
+ const key=[currentAuthUid(),accountMgmtRoleFilter,accountMgmtQuery,accountMgmtStatusFilter,accountMgmtNameFilter,accountMgmtActivityFilter,accountMgmtSort].join('|');
  if(key!==accountBatch.key)accountBatch={key,selected:new Set(),busy:false,result:null,error:''};return accountBatch;
 }
 function accountBatchPendingKey(){return 'bxh-account-batch:'+currentAuthUid();}
@@ -11546,6 +11590,28 @@ async function handleTitleEditor(action){
  finally{if(uid===currentAuthUid()){c.busy=false;render();}}
 }
 
+async function runAccountRealNameAutoScan(manual=false){
+ if(accountRealNameScanBusy||!isSuperAdmin()||!window.engagementService||!window.engagementService.realNameVerification)return;
+ accountRealNameScanBusy=true;accountRealNameScanError="";accountRealNameScanSummary={verified:0,review:0,missing:0,changed:0,failed:0};render();
+ let cursor="",batches=0,done=false;
+ try{
+  while(!done&&batches<12){
+   const result=await window.engagementService.realNameVerification({action:"scan",cursor,limit:40});
+   if(!result||result.ok!==true)throw Error("verification-scan-failed");
+   for(const key of ["verified","review","missing","changed","failed"])accountRealNameScanSummary[key]+=Number(result.counts&&result.counts[key]||0);
+   done=result.done===true;cursor=result.nextCursor||"";batches++;
+   if(!cursor)done=true;
+  }
+  if(!done)accountRealNameScanError="帳號數量超過單次自動檢核範圍，請再按一次「重新檢核本名」繼續。";
+  accountMgmtUsers=await window.cloudAuth.listUsers();
+  if(manual&&!accountRealNameScanError)showToast("本名系統檢核完成");
+ }catch(error){
+  console.warn("[real-name verification scan]",error);
+  accountRealNameScanError="本名自動檢核暫時無法完成；既有確認狀態不受影響，稍後可重新檢核。";
+ }finally{
+  accountRealNameScanBusy=false;render();
+ }
+}
 function renderAccountManagementScreen(){
   const page=["accounts","checkin","titles"].includes(superAdminManagementPage)?superAdminManagementPage:"accounts";
   const loading=accountMgmtUsers===null;
@@ -11569,14 +11635,18 @@ function renderAccountManagementScreen(){
           <div class="stat-box"><div class="label">啟用帳號</div><div class="value">${activity.enabled}</div></div>
           <div class="stat-box"><div class="label">日活躍｜近 24 小時</div><div class="value">${activity.daily}</div></div>
           <div class="stat-box"><div class="label">週活躍｜近 7 天</div><div class="value">${activity.weekly}</div></div>
+          <div class="stat-box"><div class="label">待人工確認本名</div><div class="value">${activity.nameReview}</div></div>
         </div>
-        <div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>
+        <div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜本名由系統做資料一致性檢核，不代表法定身分驗證；只有疑問案例才需要人工覆核。</div>
+        <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost btn-sm" data-action="scan-player-realnames" ${accountRealNameScanBusy?'disabled':''}>${accountRealNameScanBusy?'系統檢核中……':'重新檢核本名'}</button>${accountRealNameScanSummary?('<span class="hint">本輪：通過 '+Number(accountRealNameScanSummary.verified||0)+'｜待確認 '+Number(accountRealNameScanSummary.review||0)+'｜無本名 '+Number(accountRealNameScanSummary.missing||0)+'</span>'):''}</div>
+        ${accountRealNameScanError?`<div class="auth-error" style="margin-top:8px;">${esc(accountRealNameScanError)}</div>`:''}
         <div class="account-role-filter-bar" aria-label="帳號角色快速分類">
           ${ACCOUNT_ROLE_FILTERS.map(([key,label])=>`<button class="account-filter-chip ${accountMgmtRoleFilter===key?'active':''}" data-action="account-role-filter" data-role="${key}" aria-pressed="${accountMgmtRoleFilter===key?'true':'false'}">${label} ${accountRoleCount(users,key)}</button>`).join("")}
         </div>
         <div class="account-filter-toolbar">
           <div class="field"><label>搜尋姓名／帳號</label><div class="account-filter-search"><input id="account-mgmt-search" value="${esc(accountMgmtQuery)}" placeholder="姓名、遊戲 ID 或 Email"><button class="btn btn-ghost" data-action="account-search-apply">搜尋</button></div></div>
           <div class="field"><label>帳號狀態</label><select class="account-filter-select" data-filter-key="status"><option value="all" ${accountMgmtStatusFilter==='all'?'selected':''}>全部狀態</option><option value="active" ${accountMgmtStatusFilter==='active'?'selected':''}>啟用中</option><option value="inactive" ${accountMgmtStatusFilter==='inactive'?'selected':''}>已停用</option></select></div>
+          <div class="field"><label>本名檢核</label><select class="account-filter-select" data-filter-key="nameVerification"><option value="all" ${accountMgmtNameFilter==='all'?'selected':''}>全部</option><option value="review" ${accountMgmtNameFilter==='review'?'selected':''}>待人工確認</option><option value="verified" ${accountMgmtNameFilter==='verified'?'selected':''}>已確認</option><option value="unchecked" ${accountMgmtNameFilter==='unchecked'?'selected':''}>等待系統檢核</option><option value="missing" ${accountMgmtNameFilter==='missing'?'selected':''}>尚無本名</option></select></div>
           <div class="field"><label>活躍度</label><select class="account-filter-select" data-filter-key="activity"><option value="all" ${accountMgmtActivityFilter==='all'?'selected':''}>全部活躍度</option><option value="daily" ${accountMgmtActivityFilter==='daily'?'selected':''}>今日活躍</option><option value="weekly" ${accountMgmtActivityFilter==='weekly'?'selected':''}>近 7 天活躍</option><option value="stale" ${accountMgmtActivityFilter==='stale'?'selected':''}>逾 7 天</option><option value="never" ${accountMgmtActivityFilter==='never'?'selected':''}>從未登入</option></select></div>
           <div class="field"><label>排序</label><select class="account-filter-select" data-filter-key="sort"><option value="created-desc" ${accountMgmtSort==='created-desc'?'selected':''}>申辦時間｜最新</option><option value="created-asc" ${accountMgmtSort==='created-asc'?'selected':''}>申辦時間｜最早</option><option value="activity-desc" ${accountMgmtSort==='activity-desc'?'selected':''}>最近登入</option><option value="name" ${accountMgmtSort==='name'?'selected':''}>姓名筆畫</option></select></div>
           <button class="btn btn-ghost" data-action="account-clear-filters">清除條件</button>
@@ -11585,7 +11655,7 @@ function renderAccountManagementScreen(){
         <div class="account-result-line"><span>${loading?'正在讀取帳號……':`顯示 ${visibleUsers.length}／${users.length} 筆`}</span><span>點擊帳號查看詳細資料⌄</span></div>
         ${loading?'<div class="empty-state">正在讀取帳號資料……</div>':visibleUsers.length===0?'<div class="empty-state">沒有符合目前條件的帳號</div>':`
         <div class="account-user-list">
-          ${visibleUsers.map(user=>{const status=accountActivityStatus(user);const gameId=accountGameId(user);const active=user.active!==false;return `<details class="account-user-card">
+          ${visibleUsers.map(user=>{const status=accountActivityStatus(user);const gameId=accountGameId(user);const active=user.active!==false;const nameInfo=accountNameVerificationInfo(user);return `<details class="account-user-card">
             <summary>
               <label><input class="account-batch-checkbox" type="checkbox" aria-label="選取此帳號" data-uid="${esc(user.uid)}" ${accountBatchContext().selected.has(user.uid)?'checked':''} ${accountBatchContext().busy?'disabled':''}></label><div class="account-user-identity"><div class="account-user-name">${esc(accountPrimaryName(user))}</div><div class="account-user-gameid">${gameId?`遊戲 ID｜${esc(gameId)}`:'尚未設定遊戲 ID'}</div></div>
               <div class="account-user-email">${esc(user.email||"未提供 Email")}</div>
@@ -11597,14 +11667,14 @@ function renderAccountManagementScreen(){
                 <div class="account-detail-item"><div class="label">遊戲 ID</div><div class="value">${esc(gameId||"—")}</div></div>
                 <div class="account-detail-item"><div class="label">申辦時間</div><div class="value">${esc(formatAccountTimestamp(user.createdAt))}</div></div>
                 <div class="account-detail-item"><div class="label">最後登入</div><div class="value">${esc(formatAccountTimestamp(user.lastLoginAt))}</div></div>
-                <div class="account-detail-item"><div class="label">本名確認</div><div class="value">${user.realNameVerified===true?'已確認':'尚未確認'}</div></div>
+                <div class="account-detail-item"><div class="label">本名檢核</div><div class="value"><span class="badge ${nameInfo.badge}">${esc(nameInfo.label)}</span><div class="hint" style="margin-top:5px;">${esc(nameInfo.reason)}</div></div></div>
                 <div class="account-detail-item"><div class="label">帳號 UID</div><div class="value">${esc(user.uid||"—")}</div></div>
               </div>
               <div class="account-user-controls">
                 <div class="field"><label>帳號分類</label><select class="mgmt-role-select" data-uid="${esc(user.uid)}">${["super_admin","admin","staff","tester","player","viewer"].map(role=>`<option value="${role}" ${user.role===role?'selected':''}>${roleDisplayLabel(role)}</option>`).join("")}</select></div>
                 <label class="account-active-control"><input type="checkbox" class="mgmt-test-box" data-uid="${esc(user.uid)}" ${user.role==='tester'||user.isTestAccount===true?'checked':''} style="width:20px;height:20px;">測試身分</label>
                 <label class="account-active-control"><input type="checkbox" class="mgmt-active-box" data-uid="${esc(user.uid)}" ${active?'checked':''} style="width:20px;height:20px;">帳號啟用</label>
-                ${user.role==="player"||user.realName?(user.realNameVerified===true?'<span class="badge badge-neon">本名已確認</span>':`<button class="btn btn-ghost btn-sm" data-action="verify-player-realname" data-uid="${esc(user.uid)}">確認玩家本名</button>`):""}
+                ${user.role==="player"||user.realName?(nameInfo.key==="review"?`<span class="badge badge-danger">待人工確認</span><button class="btn btn-ghost btn-sm" data-action="verify-player-realname" data-uid="${esc(user.uid)}">人工確認本名</button><button class="btn btn-ghost btn-sm" data-action="recheck-player-realname" data-uid="${esc(user.uid)}">重新檢核</button>`:nameInfo.key==="unchecked"?`<span class="badge badge-gold">等待系統檢核</span><button class="btn btn-ghost btn-sm" data-action="recheck-player-realname" data-uid="${esc(user.uid)}">立即檢核</button>`:nameInfo.key==="verified"?`<span class="badge badge-neon">${esc(nameInfo.label)}</span>`:'<span class="badge badge-metal">尚無本名</span>'):""}
                 ${user.uid===currentAuthUid()
                   ? '<button class="btn btn-danger btn-sm" disabled title="不能刪除目前登入中的最高管理員帳號">刪除帳號</button>'
                   : `<button class="btn btn-danger btn-sm" data-action="delete-managed-account" data-uid="${esc(user.uid)}" ${accountDeleteBusyUid===user.uid?'disabled':''}>${accountDeleteBusyUid===user.uid?'刪除中……':'刪除帳號'}</button>`}
@@ -15030,6 +15100,7 @@ function bindAuthInputs(){
         el.addEventListener("change",()=>{
           const key=el.getAttribute("data-filter-key");
           if(key==="status") accountMgmtStatusFilter=el.value;
+          else if(key==="nameVerification") accountMgmtNameFilter=el.value;
           else if(key==="activity") accountMgmtActivityFilter=el.value;
           else if(key==="sort") accountMgmtSort=el.value;
           render();
@@ -16305,19 +16376,35 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     }});
     return;
   }
-  if(action==="verify-player-realname"){
-    if(!isSuperAdmin()){ showToast("只有最高管理員可以確認玩家本名",true); return; }
-    const uid=target.getAttribute("data-uid");
-    if(!uid || !window.cloudAuth || !window.cloudAuth.verifyPlayerRealName) return;
+  if(action==="scan-player-realnames"){runAccountRealNameAutoScan(true);return;}
+  if(action==="recheck-player-realname"){
+    if(!isSuperAdmin())return;
+    const uid=target.getAttribute("data-uid")||"";
+    if(!uid||!window.engagementService||!window.engagementService.realNameVerification)return;
     target.disabled=true;
-    (async()=>{
-      const r=await window.cloudAuth.verifyPlayerRealName(uid);
-      if(r&&r.ok){
-        showToast("已確認玩家本名");
+    (async()=>{try{
+      const r=await window.engagementService.realNameVerification({action:"recheck",targetUid:uid});
+      if(!r||r.ok!==true)throw Error("recheck-failed");
+      accountMgmtUsers=await window.cloudAuth.listUsers();
+      const row=(accountMgmtUsers||[]).find(x=>x.uid===uid),info=accountNameVerificationInfo(row);
+      showToast(info.key==="review"?"系統仍有疑問，已保留待人工確認":"本名重新檢核完成",info.key==="review");
+    }catch(e){showToast("本名重新檢核失敗，請稍後再試",true);}finally{render();}})();return;
+  }
+  if(action==="verify-player-realname"){
+    if(!isSuperAdmin()){showToast("只有最高管理員可以人工確認玩家本名",true);return;}
+    const uid=target.getAttribute("data-uid")||"";
+    if(!uid||!window.engagementService||!window.engagementService.realNameVerification)return;
+    const user=(accountMgmtUsers||[]).find(x=>x.uid===uid);
+    if(!user)return;
+    const info=accountNameVerificationInfo(user);
+    openModal({type:"generic",title:"人工確認玩家本名",message:"玩家："+accountPrimaryName(user)+"\n本名："+String(user.realName||"—")+"\n系統疑問："+info.reason+"\n\n確認後會記錄為最高管理員人工覆核。",confirmLabel:"確認本名",onConfirm:()=>{
+      (async()=>{try{
+        const r=await window.engagementService.realNameVerification({action:"manual-approve",targetUid:uid});
+        if(!r||r.ok!==true)throw Error("manual-approve-failed");
+        showToast("已人工確認玩家本名");
         accountMgmtUsers=await window.cloudAuth.listUsers();
-      }else showToast((r&&r.error)||"本名確認失敗",true);
-      render();
-    })();
+      }catch(e){showToast("本名人工確認失敗，請稍後再試",true);}finally{render();}})();
+    }});
     return;
   }
   if(action==="player-select-avatar"){
@@ -16421,7 +16508,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
       playerProfileEditOpen=false;
       publicTournamentsCache=null; myRegistrationsCache=null;
       engagementRequestGeneration++;engagementLoading=false;engagementSnapshot=null;requestEngagementSnapshot(true);
-      showToast(oldRealName!==realName?"資料已更新；本名修改後需重新由後台確認":"會員資料已更新");
+      showToast(oldRealName!==realName?"資料已更新；系統將自動重新檢核本名，如有疑問才交由管理員確認":"會員資料已更新");
       render();
     })();
     return;
@@ -16697,6 +16784,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   if(action==="account-clear-filters"){
     accountMgmtRoleFilter="all";
     accountMgmtStatusFilter="all";
+    accountMgmtNameFilter="all";
     accountMgmtActivityFilter="all";
     accountMgmtSort="created-desc";
     accountMgmtQuery="";
@@ -16786,15 +16874,19 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     accountMgmtUsers = null;
     accountMgmtRoleFilter="all";
     accountMgmtStatusFilter="all";
+    accountMgmtNameFilter="all";
     accountMgmtActivityFilter="all";
     accountMgmtSort="created-desc";
     accountMgmtQuery="";
+    accountRealNameScanSummary=null;
+    accountRealNameScanError="";
     legacyPublicDocsPreview = null;
     legacyCleanupResult = null;
     render();
     (async ()=>{
       accountMgmtUsers = await window.cloudAuth.listUsers();
       render();
+      runAccountRealNameAutoScan(false);
     })();
     return;
   }
@@ -19466,6 +19558,13 @@ init();
           payload.realNameVerified=false;
           payload.realNameVerifiedAt=null;
           payload.realNameVerifiedBy=null;
+          payload.realNameVerificationStatus="pending";
+          payload.realNameVerificationMethod=null;
+          payload.realNameVerificationReason="name-changed";
+          payload.realNameVerificationWarnings=[];
+          payload.realNameVerificationCheckedAt=null;
+          payload.realNameVerificationVersion=0;
+          payload.realNameVerificationName="";
         }
         await fx.updateDoc(ref,payload);
         await fx.setDoc(fx.doc(dbHandle,"publicPlayers",uid),{
@@ -19482,20 +19581,8 @@ init();
 
     async verifyPlayerRealName(uid){
       if(!authReady || !uid) return {ok:false};
-      try{
-        const verifier=(authHandle&&authHandle.currentUser&&authHandle.currentUser.uid)||null;
-        if(!verifier) return {ok:false};
-        await fx.updateDoc(fx.doc(dbHandle,USERS_COLLECTION,uid),{
-          realNameVerified:true,
-          realNameVerifiedAt:Date.now(),
-          realNameVerifiedBy:verifier,
-          updatedAt:Date.now()
-        });
-        return {ok:true};
-      }catch(e){
-        console.warn("確認玩家本名失敗",e);
-        return {ok:false,error:friendlyAuthError(e)};
-      }
+      try{return await callEngagementFunction("realNameVerificationService",{action:"manual-approve",targetUid:uid},120000);}
+      catch(e){console.warn("確認玩家本名失敗",e);return {ok:false,error:friendlyAuthError(e)};}
     },
 
     async updatePlayerAvatar(uid, avatarUrl){
@@ -19655,6 +19742,7 @@ init();
     connectionInfo(){return {projectId:FIREBASE_CONFIG.projectId||'未設定',region:'asia-east1',signedIn:!!(authHandle&&authHandle.currentUser),sdkReady:!!fnx};},
     async changeManagedAccounts(payload){return callEngagementFunction("changeManagedAccounts",payload,30000);},
     async deleteManagedAccount(payload){return callEngagementFunction("deleteManagedAccount",payload,120000);},
+    async realNameVerification(payload){return callEngagementFunction("realNameVerificationService",payload,120000);},
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
