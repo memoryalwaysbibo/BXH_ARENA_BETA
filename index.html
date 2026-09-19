@@ -13652,7 +13652,12 @@ function scheduleSmartCallAutoRefresh(){
     if(smartCallRefreshBusy || appPhase!=="player-center" || playerActiveTab!=="registered") return;
     smartCallRefreshBusy=true;
     try{
-      for(const r of enabled){ try{ const info=await window.cloudSync.getPublicTournamentSummary(r.tournamentCode); if(info) myRegistrationsTournamentInfo[r.tournamentCode]=info; }catch(e){} }
+      await Promise.all(enabled.map(async r=>{
+        try{
+          const info=await window.cloudSync.getPublicTournamentSummary(r.tournamentCode);
+          if(info) myRegistrationsTournamentInfo[r.tournamentCode]=info;
+        }catch(e){}
+      }));
     }finally{ smartCallRefreshBusy=false; if(appPhase==="player-center"&&playerActiveTab==="registered"){ renderPreservingScroll(); } }
   },20000);
 }
