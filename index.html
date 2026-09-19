@@ -11699,7 +11699,7 @@ function renderTitleEditor(inline=false){
  ${c.message?`<p class="hint" role="status">${esc(c.message)}</p>`:''}</div></details>`;
  if(inline){
    const fields=html.slice(html.indexOf('<div class="field"><label>稱號名稱'),html.indexOf('<div class="hint">已有稱號'));
-   return '<div class="title-inline-editor">'+fields+'<button class="btn btn-ghost" data-action="title-editor-cancel" '+(c.busy?'disabled':'')+'>取消／收合</button>'+(c.message?'<p role="status">'+esc(c.message)+'</p>':'')+'</div>';
+   return '<div class="title-inline-editor">'+fields+'<button class="btn btn-ghost" data-action="title-editor-cancel" '+(c.busy?'disabled':'')+'>取消編輯</button>'+(c.message?'<p role="status">'+esc(c.message)+'</p>':'')+'</div>';
  }
  return html;
 
