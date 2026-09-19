@@ -2563,7 +2563,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.6">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.7">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -13300,7 +13300,10 @@ function renderTournamentDetailScreen(){
   let actionHtml;
   if(publicTournamentRegistrationLocked(t)){
     actionHtml = `<div class="banner warn"><span>賽事已開始，報名、備取與取消報名功能均已鎖定。</span></div>
-      <button class="btn btn-primary" data-action="switch-to-player-watch" data-code="${esc(code)}">${t.tournamentPhase==="done"?"查看比賽結果":"查看即時賽況"}</button>`;
+      <div class="btn-row tournament-live-view-actions">
+        <button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">${t.tournamentPhase==="done"?"查看比賽結果":"查看即時賽況"}</button>
+        <button class="btn btn-ghost player-bracket-progress-btn" data-action="switch-to-player-watch" data-view="bracket" data-code="${esc(code)}">查看對戰表／賽程進度</button>
+      </div>`;
   } else if(isGuestMode){
     actionHtml = `<div class="hint">遊客模式僅供瀏覽公開賽事資訊，不提供報名／取消報名操作。</div>
       <button class="btn btn-primary" data-action="select-role-player">切換至玩家模式</button>`;
@@ -13550,6 +13553,9 @@ function renderPlayerRegisteredTab(){
       ${r.status==='confirmed' && schedulePhase(info)==='live' && smartCallModel(r,info).kind!=='done' ? smartCallCardHtml(r,info) : (schedulePhase(info)==='live'&&smartCallModel(r,info).kind==='done'?'<p class="hint">本次參賽已結束｜賽事進行中，名次待結算</p>':'')}
       <div class="fe-card-action">
         <button class="btn btn-ghost btn-sm" data-action="view-public-tournament" data-code="${esc(r.tournamentCode)}">查看詳情</button>
+        ${r.status==='confirmed' && ['live','done'].includes(schedulePhase(info))
+          ? `<button class="btn btn-primary btn-sm player-bracket-progress-btn" data-action="switch-to-player-watch" data-view="bracket" data-code="${esc(r.tournamentCode)}">查看對戰表／賽程進度</button>`
+          : ""}
         ${(['confirmed','waitlist','pending_draw'].includes(r.status)) && !publicTournamentRegistrationLocked(info)
           ? `<button class="btn btn-ghost btn-sm" data-action="cancel-my-registration" data-code="${esc(r.tournamentCode)}">取消報名</button>`
           : ((r.status==='confirmed'||r.status==='waitlist'||r.status==='pending_draw') ? `<span class="fe-status-chip status-closed">賽事已開始｜報名鎖定</span>` : "")}
@@ -16433,13 +16439,14 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   }
   if(action==="switch-to-player-watch"){
     const code=target.getAttribute("data-code");
+    const requestedView=target.getAttribute("data-view")==="bracket"?"bracket":"live";
     if(!code) return;
     publicWatchReturnContext = currentRole==="guest" ? "guest-lobby" : "player-center";
     (async()=>{
       const result=await resolveAndJoinTournamentByCode(code,{forcePublic:true});
       if(!result.ok){ publicWatchReturnContext=null; showToast(CODE_ENTRY_ERROR_MESSAGES[result.reason]||"無法開啟賽事",true); return; }
       if(currentRole==="guest") await saveGuestSession(state.cloudCode);
-      appPhase="app"; activeTab="live"; render();
+      appPhase="app"; activeTab=requestedView; render();
     })();
     return;
   }
