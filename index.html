@@ -6567,7 +6567,7 @@ const COMMUNITY_OWNER_ACTIONS = new Set([
 ]);
 const COMMUNITY_OWNER_TIER_ACTIONS = new Set(["set-round-scoring-mode","correct-quick-result","board-reshuffle"]);
 const SUPER_ADMIN_ONLY_ACTIONS = new Set([
-  "open-account-management","super-admin-page","create-managed-user-submit","delete-managed-account","set-user-role","toggle-user-active",
+  "open-account-management","super-admin-page","create-managed-user-submit","delete-managed-account","verify-player-realname","recheck-player-realname","scan-player-realnames","set-user-role","toggle-user-active",
   "account-role-filter","account-search-apply","account-clear-filters",
   "unarchive-record","preview-cleanup-public-mirrors","run-cleanup-public-mirrors","ladder-new-season",
   "admin-refresh-engagement","admin-seed-initial-titles","admin-save-engagement-settings","admin-grant-title","admin-revoke-title",
@@ -11359,7 +11359,7 @@ document.addEventListener('change',e=>{if(isSuperAdmin()&&e.target.id==='engagem
 
 let accountBatch={key:'',selected:new Set(),busy:false,result:null,error:''};
 function accountBatchContext(){
- const key=[currentAuthUid(),accountMgmtRoleFilter,accountMgmtQuery,accountMgmtStatusFilter,accountMgmtActivityFilter,accountMgmtSort].join('|');
+ const key=[currentAuthUid(),accountMgmtRoleFilter,accountMgmtQuery,accountMgmtStatusFilter,accountMgmtNameFilter,accountMgmtActivityFilter,accountMgmtSort].join('|');
  if(key!==accountBatch.key)accountBatch={key,selected:new Set(),busy:false,result:null,error:''};return accountBatch;
 }
 function accountBatchPendingKey(){return 'bxh-account-batch:'+currentAuthUid();}
@@ -11590,6 +11590,28 @@ async function handleTitleEditor(action){
  finally{if(uid===currentAuthUid()){c.busy=false;render();}}
 }
 
+async function runAccountRealNameAutoScan(manual=false){
+ if(accountRealNameScanBusy||!isSuperAdmin()||!window.engagementService||!window.engagementService.realNameVerification)return;
+ accountRealNameScanBusy=true;accountRealNameScanError="";accountRealNameScanSummary={verified:0,review:0,missing:0,changed:0,failed:0};render();
+ let cursor="",batches=0,done=false;
+ try{
+  while(!done&&batches<12){
+   const result=await window.engagementService.realNameVerification({action:"scan",cursor,limit:40});
+   if(!result||result.ok!==true)throw Error("verification-scan-failed");
+   for(const key of ["verified","review","missing","changed","failed"])accountRealNameScanSummary[key]+=Number(result.counts&&result.counts[key]||0);
+   done=result.done===true;cursor=result.nextCursor||"";batches++;
+   if(!cursor)done=true;
+  }
+  if(!done)accountRealNameScanError="帳號數量超過單次自動檢核範圍，請再按一次「重新檢核本名」繼續。";
+  accountMgmtUsers=await window.cloudAuth.listUsers();
+  if(manual&&!accountRealNameScanError)showToast("本名系統檢核完成");
+ }catch(error){
+  console.warn("[real-name verification scan]",error);
+  accountRealNameScanError="本名自動檢核暫時無法完成；既有確認狀態不受影響，稍後可重新檢核。";
+ }finally{
+  accountRealNameScanBusy=false;render();
+ }
+}
 function renderAccountManagementScreen(){
   const page=["accounts","checkin","titles"].includes(superAdminManagementPage)?superAdminManagementPage:"accounts";
   const loading=accountMgmtUsers===null;
@@ -15078,6 +15100,7 @@ function bindAuthInputs(){
         el.addEventListener("change",()=>{
           const key=el.getAttribute("data-filter-key");
           if(key==="status") accountMgmtStatusFilter=el.value;
+          else if(key==="nameVerification") accountMgmtNameFilter=el.value;
           else if(key==="activity") accountMgmtActivityFilter=el.value;
           else if(key==="sort") accountMgmtSort=el.value;
           render();
@@ -16353,19 +16376,35 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     }});
     return;
   }
-  if(action==="verify-player-realname"){
-    if(!isSuperAdmin()){ showToast("只有最高管理員可以確認玩家本名",true); return; }
-    const uid=target.getAttribute("data-uid");
-    if(!uid || !window.cloudAuth || !window.cloudAuth.verifyPlayerRealName) return;
+  if(action==="scan-player-realnames"){runAccountRealNameAutoScan(true);return;}
+  if(action==="recheck-player-realname"){
+    if(!isSuperAdmin())return;
+    const uid=target.getAttribute("data-uid")||"";
+    if(!uid||!window.engagementService||!window.engagementService.realNameVerification)return;
     target.disabled=true;
-    (async()=>{
-      const r=await window.cloudAuth.verifyPlayerRealName(uid);
-      if(r&&r.ok){
-        showToast("已確認玩家本名");
+    (async()=>{try{
+      const r=await window.engagementService.realNameVerification({action:"recheck",targetUid:uid});
+      if(!r||r.ok!==true)throw Error("recheck-failed");
+      accountMgmtUsers=await window.cloudAuth.listUsers();
+      const row=(accountMgmtUsers||[]).find(x=>x.uid===uid),info=accountNameVerificationInfo(row);
+      showToast(info.key==="review"?"系統仍有疑問，已保留待人工確認":"本名重新檢核完成",info.key==="review");
+    }catch(e){showToast("本名重新檢核失敗，請稍後再試",true);}finally{render();}})();return;
+  }
+  if(action==="verify-player-realname"){
+    if(!isSuperAdmin()){showToast("只有最高管理員可以人工確認玩家本名",true);return;}
+    const uid=target.getAttribute("data-uid")||"";
+    if(!uid||!window.engagementService||!window.engagementService.realNameVerification)return;
+    const user=(accountMgmtUsers||[]).find(x=>x.uid===uid);
+    if(!user)return;
+    const info=accountNameVerificationInfo(user);
+    openModal({type:"generic",title:"人工確認玩家本名",message:"玩家："+accountPrimaryName(user)+"\n本名："+String(user.realName||"—")+"\n系統疑問："+info.reason+"\n\n確認後會記錄為最高管理員人工覆核。",confirmLabel:"確認本名",onConfirm:()=>{
+      (async()=>{try{
+        const r=await window.engagementService.realNameVerification({action:"manual-approve",targetUid:uid});
+        if(!r||r.ok!==true)throw Error("manual-approve-failed");
+        showToast("已人工確認玩家本名");
         accountMgmtUsers=await window.cloudAuth.listUsers();
-      }else showToast((r&&r.error)||"本名確認失敗",true);
-      render();
-    })();
+      }catch(e){showToast("本名人工確認失敗，請稍後再試",true);}finally{render();}})();
+    }});
     return;
   }
   if(action==="player-select-avatar"){
@@ -16469,7 +16508,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
       playerProfileEditOpen=false;
       publicTournamentsCache=null; myRegistrationsCache=null;
       engagementRequestGeneration++;engagementLoading=false;engagementSnapshot=null;requestEngagementSnapshot(true);
-      showToast(oldRealName!==realName?"資料已更新；本名修改後需重新由後台確認":"會員資料已更新");
+      showToast(oldRealName!==realName?"資料已更新；系統將自動重新檢核本名，如有疑問才交由管理員確認":"會員資料已更新");
       render();
     })();
     return;
@@ -16745,6 +16784,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   if(action==="account-clear-filters"){
     accountMgmtRoleFilter="all";
     accountMgmtStatusFilter="all";
+    accountMgmtNameFilter="all";
     accountMgmtActivityFilter="all";
     accountMgmtSort="created-desc";
     accountMgmtQuery="";
@@ -16834,6 +16874,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     accountMgmtUsers = null;
     accountMgmtRoleFilter="all";
     accountMgmtStatusFilter="all";
+    accountMgmtNameFilter="all";
     accountMgmtActivityFilter="all";
     accountMgmtSort="created-desc";
     accountMgmtQuery="";
@@ -16843,6 +16884,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     (async ()=>{
       accountMgmtUsers = await window.cloudAuth.listUsers();
       render();
+      runAccountRealNameAutoScan(false);
     })();
     return;
   }
@@ -19514,6 +19556,13 @@ init();
           payload.realNameVerified=false;
           payload.realNameVerifiedAt=null;
           payload.realNameVerifiedBy=null;
+          payload.realNameVerificationStatus="pending";
+          payload.realNameVerificationMethod=null;
+          payload.realNameVerificationReason="name-changed";
+          payload.realNameVerificationWarnings=[];
+          payload.realNameVerificationCheckedAt=null;
+          payload.realNameVerificationVersion=0;
+          payload.realNameVerificationName="";
         }
         await fx.updateDoc(ref,payload);
         await fx.setDoc(fx.doc(dbHandle,"publicPlayers",uid),{
@@ -19530,20 +19579,8 @@ init();
 
     async verifyPlayerRealName(uid){
       if(!authReady || !uid) return {ok:false};
-      try{
-        const verifier=(authHandle&&authHandle.currentUser&&authHandle.currentUser.uid)||null;
-        if(!verifier) return {ok:false};
-        await fx.updateDoc(fx.doc(dbHandle,USERS_COLLECTION,uid),{
-          realNameVerified:true,
-          realNameVerifiedAt:Date.now(),
-          realNameVerifiedBy:verifier,
-          updatedAt:Date.now()
-        });
-        return {ok:true};
-      }catch(e){
-        console.warn("確認玩家本名失敗",e);
-        return {ok:false,error:friendlyAuthError(e)};
-      }
+      try{return await callEngagementFunction("realNameVerificationService",{action:"manual-approve",targetUid:uid},120000);}
+      catch(e){console.warn("確認玩家本名失敗",e);return {ok:false,error:friendlyAuthError(e)};}
     },
 
     async updatePlayerAvatar(uid, avatarUrl){
@@ -19703,6 +19740,7 @@ init();
     connectionInfo(){return {projectId:FIREBASE_CONFIG.projectId||'未設定',region:'asia-east1',signedIn:!!(authHandle&&authHandle.currentUser),sdkReady:!!fnx};},
     async changeManagedAccounts(payload){return callEngagementFunction("changeManagedAccounts",payload,30000);},
     async deleteManagedAccount(payload){return callEngagementFunction("deleteManagedAccount",payload,120000);},
+    async realNameVerification(payload){return callEngagementFunction("realNameVerificationService",payload,120000);},
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
