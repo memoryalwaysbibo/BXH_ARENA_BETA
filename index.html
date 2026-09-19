@@ -15881,7 +15881,22 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     guestReadOnlyMode = false;
     currentRole = "player"; playerLookupQuery=""; playerLookupResult=null; appPhase="player-home"; render(); return;
   }
-  if(action==="player-goto-login"){ playerLoginError=""; appPhase="player-login"; render(); return; }
+  if(action==="player-goto-login"){
+    playerLoginError=""; appPhase="player-login"; render();
+    if(!authAvailable()){
+      Promise.resolve().then(async()=>{
+        try{
+          if(window.cloudSync&&window.cloudSync.connect) await window.cloudSync.connect();
+        }catch(e){}
+        if(appPhase==="player-login"){
+          if(!authAvailable()) playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";
+          else playerLoginError="";
+          render();
+        }
+      });
+    }
+    return;
+  }
   if(action==="player-goto-apply"){ playerApplyError=""; appPhase="player-apply"; render(); return; }
   if(action==="player-goto-lookup"){ playerLookupQuery=""; playerLookupResult=null; appPhase="player-lookup"; render(); return; }
   if(action==="player-google-signin"){
@@ -15915,7 +15930,13 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   }
   if(action==="player-email-signin"){
     if(playerLoginBusy) return;
-    if(!(window.cloudAuth && window.cloudAuth.isReady())){ playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試"; render(); return; }
+    if(!(window.cloudAuth && window.cloudAuth.isReady())){
+      playerLoginBusy=true;playerLoginError="正在重新連線雲端…";render();
+      try{if(window.cloudSync&&window.cloudSync.connect)await window.cloudSync.connect();}catch(e){}
+      playerLoginBusy=false;
+      if(!(window.cloudAuth && window.cloudAuth.isReady())){playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";render();return;}
+      playerLoginError="";render();
+    }
     const emailEl = document.getElementById("player-login-email");
     const pwEl = document.getElementById("player-login-password");
     const identifier = emailEl?emailEl.value.trim():"";
@@ -19401,7 +19422,9 @@ init();
         const appMod = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
         const fsMod = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`);
         const authMod = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`);
-        const app = appMod.initializeApp(FIREBASE_CONFIG);
+        const app = (typeof appMod.getApps==="function" && appMod.getApps().length)
+          ? appMod.getApp()
+          : appMod.initializeApp(FIREBASE_CONFIG);
         dbHandle = fsMod.getFirestore(app);
         // Functions 是附加服務；載入失敗時不可拖垮既有 Auth／Firestore。
         try{
@@ -19420,10 +19443,22 @@ init();
           increment: fsMod.increment, collectionGroup: fsMod.collectionGroup, orderBy: fsMod.orderBy, limit: fsMod.limit
         };
         // Select durable storage at initialization; avoid racing persistence migrations.
-        authHandle = authMod.initializeAuth(app, {
-          persistence: [authMod.browserLocalPersistence, authMod.browserSessionPersistence],
-          popupRedirectResolver: authMod.browserPopupRedirectResolver
-        });
+        try{
+          authHandle = authMod.initializeAuth(app, {
+            persistence: [authMod.browserLocalPersistence, authMod.browserSessionPersistence],
+            popupRedirectResolver: authMod.browserPopupRedirectResolver
+          });
+        }catch(authInitError){
+          // A previous partial initialization can leave the default Auth
+          // instance alive even though the overall Firebase boot failed.
+          // Reuse it instead of treating "already initialized" as a fatal,
+          // permanent cloud outage.
+          if(authInitError && (authInitError.code==="auth/already-initialized" || String(authInitError.message||"").includes("already-initialized"))){
+            authHandle = authMod.getAuth(app);
+          }else{
+            throw authInitError;
+          }
+        }
         ax = {
           onAuthStateChanged: authMod.onAuthStateChanged,
           signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
@@ -19442,8 +19477,14 @@ init();
         cloudEnabled = true;
         return true;
       }catch(e){
-        console.warn("BXH ARENA 雲端同步：Firebase 初始化失敗，自動退回僅本機模式。", e);
+        console.warn("BXH ARENA 雲端同步：Firebase 初始化失敗；保留重新連線能力。", e);
         cloudEnabled = false;
+        authReady = false;
+        // Do not cache a failed boot forever. The previous implementation
+        // kept the resolved-false Promise in initPromise, so every later
+        // connect() call immediately returned false until a full page reload.
+        // Reset it so player/admin login can genuinely retry the cloud boot.
+        initPromise = null;
         return false;
       }
     })();
