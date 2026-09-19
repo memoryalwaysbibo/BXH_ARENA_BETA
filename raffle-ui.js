@@ -91,6 +91,40 @@ function renderRaffleEditor(c){const d=c.draft,disabled=c.busy||!!c.pending;cons
  ${d.conditions.map((r,i)=>`<div class="panel"><div class="btn-row"><b>${esc(({age:'帳號年資',event:'指定賽事',ticket:'指定票券',manual:'人工審核'})[r.kind])}</b><button class="btn btn-ghost btn-sm" data-action="raffle-remove-rule" data-index="${i}">移除</button></div>${r.kind==='age'?`<input type="number" min="1" data-raffle-rule="${i}" data-key="value" value="${r.value}"><select data-raffle-rule="${i}" data-key="unit"><option value="months" ${r.unit==='months'?'selected':''}>個月（例如 1／3／6／12）</option><option value="days" ${r.unit==='days'?'selected':''}>自訂天數</option></select>`:r.kind==='ticket'?`<input placeholder="道具代碼" data-raffle-rule="${i}" data-key="itemCode" value="${esc(r.itemCode)}"><input type="number" min="1" max="10000" data-raffle-rule="${i}" data-key="quantity" value="${r.quantity}"><select data-raffle-rule="${i}" data-key="mode"><option value="hold" ${r.mode==='hold'?'selected':''}>持有資格（不扣票）</option><option value="consume" ${r.mode==='consume'?'selected':''}>消耗票券</option></select>`:r.kind==='event'?`<input placeholder="賽事代碼" data-raffle-rule="${i}" data-key="code" value="${esc(r.code)}"><select data-raffle-rule="${i}" data-key="stage">${[['registered','已報名'],['checkedIn','已報到'],['completed','完成參賽']].map(([v,t])=>`<option value="${v}" ${r.stage===v?'selected':''}>${t}</option>`).join('')}</select>`:`<input placeholder="請說明人工審核條件" maxlength="300" data-raffle-rule="${i}" data-key="note" value="${esc(r.note)}">`}</div>`).join('')}
  <div class="btn-row">${[['age','年資'],['event','賽事'],['ticket','票券'],['manual','人工審核']].map(([v,t])=>`<button class="btn btn-ghost btn-sm" data-action="raffle-add-rule" data-kind="${v}">＋ ${t}</button>`).join('')}</div></fieldset><div class="btn-row" style="margin-top:16px"><button class="btn btn-primary" data-action="raffle-save" ${disabled?'disabled':''}>儲存草稿</button><button class="btn btn-ghost" data-action="raffle-editor-close" ${c.busy?'disabled':''}>返回活動</button></div></section>`;
 }
+function raffleFoldStorageKey(key){return 'bxh.ui.raffle-fold.'+key;}
+function raffleFoldOpen(key,defaultOpen){
+ try{
+  const saved=sessionStorage.getItem(raffleFoldStorageKey(key));
+  if(saved==='open')return true;
+  if(saved==='closed')return false;
+ }catch{}
+ return defaultOpen;
+}
+function renderRaffleListCard(e){
+ return `<button class="panel mailbox-item" data-action="raffle-open" data-id="${esc(e.id)}"><h3>${e.testMode?'（TEST）':''}${esc(e.title)}</h3><p>${esc(raffleStateLabels[e.state])}｜${e.mode==='auto'?'線上自動':'現場手動'}</p><p class="hint">截止：${esc(mailboxDate(e.endAt))}${e.myAward?'｜'+esc(e.myAward.prizeName)+'：'+esc(({pending:'已中獎／待領獎',claimed:'已領獎',forfeited:'已棄領',replaced:'已補抽'})[e.myAward.status]||''):e.myStatus?'｜已留下報名紀錄':''}</p></button>`;
+}
+function renderRaffleEventGroups(c){
+ const events=c.events||[];
+ const completedStates=new Set(['drawn','cancelled','archived']);
+ const active=events.filter(e=>!completedStates.has(e.state));
+ const completed=events.filter(e=>completedStates.has(e.state));
+ const group=(key,label,items,defaultOpen,emptyText)=>{
+  const open=raffleFoldOpen(key,defaultOpen);
+  return `<details class="raffle-event-fold raffle-event-fold-${key}" data-raffle-fold="${key}" ${open?'open':''}>
+    <summary class="raffle-event-fold-head">
+      <span class="raffle-event-fold-title">${label}<b>${items.length}</b></span>
+      <span class="raffle-event-fold-toggle" aria-hidden="true"></span>
+    </summary>
+    <div class="raffle-event-fold-body">
+      ${items.length?`<div class="raffle-card-grid">${items.map(renderRaffleListCard).join('')}</div>`:`<div class="raffle-fold-empty">${emptyText}</div>`}
+    </div>
+  </details>`;
+ };
+ return `<div class="raffle-event-groups">
+   ${group('active','活動進行中',active,true,'目前沒有進行中的活動')}
+   ${group('completed','活動已完成',completed,false,'目前沒有已完成的活動')}
+ </div>${c.nextCursor?'<button class="btn btn-ghost raffle-more-btn" data-action="raffle-more">載入更多</button>':''}`;
+}
 function renderRafflePage(){
  const c=raffleContext(),management=isRaffleManagementView();if(!c.editing&&!c.loading&&!c.busy&&!c.error&&(c.id?!c.detail:c.events===null))setTimeout(()=>loadRaffles(),0);
  const d=c.detail,e=d?.event,locked=c.loading||c.busy||!!c.pending;
@@ -105,7 +139,7 @@ function renderRafflePage(){
  ${d.myEntry?.award?.claimedAt?'<p>核銷時間：'+esc(mailboxDate(d.myEntry.award.claimedAt))+'（台灣時間）</p>':''}
  ${!management&&e.state==='open'&&d.myEntry?.status!=='joined'?`<button class="btn btn-primary" data-action="${currentAuthUid()?'raffle-join':'raffle-login'}" ${locked?'disabled':''}>${currentAuthUid()?'參加活動':'登入／註冊後參加'}</button>`:''}
  ${d.winners.length||d.drawnAt?`<section class="panel"><div class="panel-title">開獎結果</div><p class="hint">結果由後端保存；回放沿用同一份結果。</p><button class="btn btn-primary" data-action="raffle-play">全螢幕拉霸／紀錄回放</button><details><summary>查看完整結果</summary>${d.winners.map(w=>`<p>${esc(w.prizeName)}：${esc(w.nickname)}（${esc(w.playerId)}）｜${esc(({pending:'待領獎',claimed:'已領獎',forfeited:'已棄領'})[w.status])}${management&&d.isManager?`<span class="btn-row">${w.status==='pending'?`<button class="btn btn-ghost btn-sm" data-action="raffle-claim" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>確認已領獎</button><button class="btn btn-ghost btn-sm" data-action="raffle-forfeit" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>記錄棄領</button>`:w.status==='forfeited'?`<button class="btn btn-ghost btn-sm" data-action="raffle-redraw" data-award="${esc(w.awardId)}" ${locked?'disabled':''}>補抽此份獎品</button>`:''}</span>`:''}</p>`).join('')||'<p>本次沒有合格得獎者。</p>'}</details><p class="mailbox-body">領獎方式：${esc(e.claimInstructions)}</p></section>`:''}
- ${management&&d.isManager?`<section class="panel"><div class="panel-title">主辦管理</div><div class="btn-row"><button class="btn btn-ghost" data-action="raffle-claim-history">核銷紀錄</button><button class="btn btn-ghost" data-action="raffle-claim-staff">核銷人員授權</button></div><p class="hint">報名 ${e.entryCount} 人｜鎖定合格 ${e.candidateCount} 人。鎖定後不能增刪報名或報到；公布後不能修改獎品與資格。</p><div class="btn-row">${e.state==='draft'?'<button class="btn btn-ghost" data-action="raffle-edit">編輯草稿</button><button class="btn btn-primary" data-action="raffle-publish">公布活動</button>':''}${e.state==='open'?'<button class="btn btn-ghost" data-action="raffle-participants">查看報名／審核／報到</button>':''}${e.state==='open'&&e.mode==='manual'?'<button class="btn btn-primary" data-action="raffle-lock">截止報名並鎖定合格名單</button>':''}${e.state==='locked'?'<button class="btn btn-ghost" data-action="raffle-participants">查看鎖定名單</button>':''}${e.state==='locked'&&e.mode==='manual'?'<button class="btn btn-primary" data-action="raffle-draw">確認名單，開始開獎</button>':''}${['freezing','drawn','cancelled','archived'].includes(e.state)?'<button class="btn btn-ghost" data-action="raffle-retry">重試後續處理</button>':''}${['draft','open','locked','freezing'].includes(e.state)?'<button class="btn btn-ghost" data-action="raffle-cancel">取消活動並退票</button>':''}${e.state==='drawn'?'<button class="btn btn-ghost" data-action="raffle-archive">封存活動</button>':''}</div>${c.participants.map(p=>`<div class="panel">${esc(p.nickname)}（${esc(p.playerId)}）｜${p.eligible===true?'合格':p.eligible===false?'未符合資格':esc(p.status||'')}｜${p.checkedIn?'已報到':'未報到'}${e.state==='open'?`<div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="raffle-checkin" data-uid="${esc(p.uid)}">${p.checkedIn?'取消報到':'標記已報到'}</button>${p.status==='pending_review'?`<button class="btn btn-ghost btn-sm" data-action="raffle-approve" data-uid="${esc(p.uid)}">審核通過</button><button class="btn btn-ghost btn-sm" data-action="raffle-reject" data-uid="${esc(p.uid)}">拒絕</button>`:''}</div>`:''}</div>`).join('')}${c.participantCursor?'<button class="btn btn-ghost" data-action="raffle-participants-more">載入更多名單</button>':''}</section>`:''}</article>`:`<div class="grid grid-2 inventory-grid">${(c.events||[]).map(e=>`<button class="panel mailbox-item" data-action="raffle-open" data-id="${esc(e.id)}"><h3>${e.testMode?'（TEST）':''}${esc(e.title)}</h3><p>${esc(raffleStateLabels[e.state])}｜${e.mode==='auto'?'線上自動':'現場手動'}</p><p class="hint">截止：${esc(mailboxDate(e.endAt))}${e.myAward?'｜'+esc(e.myAward.prizeName)+'：'+esc(({pending:'已中獎／待領獎',claimed:'已領獎',forfeited:'已棄領',replaced:'已補抽'})[e.myAward.status]||''):e.myStatus?'｜已留下報名紀錄':''}</p></button>`).join('')||(!c.loading?'<div class="raffle-empty-state"><div class="raffle-empty-icon" aria-hidden="true">🎟️</div><strong>目前沒有進行中的活動</strong><p>新的會員抽獎公布後，會顯示在這裡。</p><button class="btn btn-ghost btn-sm" data-action="raffle-refresh">重新整理</button></div>':'')}</div>${c.nextCursor?'<button class="btn btn-ghost" data-action="raffle-more">載入更多</button>':''}`}</section>`;
+ ${management&&d.isManager?`<section class="panel"><div class="panel-title">主辦管理</div><div class="btn-row"><button class="btn btn-ghost" data-action="raffle-claim-history">核銷紀錄</button><button class="btn btn-ghost" data-action="raffle-claim-staff">核銷人員授權</button></div><p class="hint">報名 ${e.entryCount} 人｜鎖定合格 ${e.candidateCount} 人。鎖定後不能增刪報名或報到；公布後不能修改獎品與資格。</p><div class="btn-row">${e.state==='draft'?'<button class="btn btn-ghost" data-action="raffle-edit">編輯草稿</button><button class="btn btn-primary" data-action="raffle-publish">公布活動</button>':''}${e.state==='open'?'<button class="btn btn-ghost" data-action="raffle-participants">查看報名／審核／報到</button>':''}${e.state==='open'&&e.mode==='manual'?'<button class="btn btn-primary" data-action="raffle-lock">截止報名並鎖定合格名單</button>':''}${e.state==='locked'?'<button class="btn btn-ghost" data-action="raffle-participants">查看鎖定名單</button>':''}${e.state==='locked'&&e.mode==='manual'?'<button class="btn btn-primary" data-action="raffle-draw">確認名單，開始開獎</button>':''}${['freezing','drawn','cancelled','archived'].includes(e.state)?'<button class="btn btn-ghost" data-action="raffle-retry">重試後續處理</button>':''}${['draft','open','locked','freezing'].includes(e.state)?'<button class="btn btn-ghost" data-action="raffle-cancel">取消活動並退票</button>':''}${e.state==='drawn'?'<button class="btn btn-ghost" data-action="raffle-archive">封存活動</button>':''}</div>${c.participants.map(p=>`<div class="panel">${esc(p.nickname)}（${esc(p.playerId)}）｜${p.eligible===true?'合格':p.eligible===false?'未符合資格':esc(p.status||'')}｜${p.checkedIn?'已報到':'未報到'}${e.state==='open'?`<div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="raffle-checkin" data-uid="${esc(p.uid)}">${p.checkedIn?'取消報到':'標記已報到'}</button>${p.status==='pending_review'?`<button class="btn btn-ghost btn-sm" data-action="raffle-approve" data-uid="${esc(p.uid)}">審核通過</button><button class="btn btn-ghost btn-sm" data-action="raffle-reject" data-uid="${esc(p.uid)}">拒絕</button>`:''}</div>`:''}</div>`).join('')}${c.participantCursor?'<button class="btn btn-ghost" data-action="raffle-participants-more">載入更多名單</button>':''}</section>`:''}</article>`:renderRaffleEventGroups(c)}</section>`;
 }
 async function raffleMutate(payload){
  const c=raffleContext();if(c.busy)return;if((c.pending||payload)?.action!=='join'&&!isRaffleManagementView())return;const storageKey=rafflePendingKey();c.error='';
@@ -149,6 +183,12 @@ async function handleRaffle(action,target){
 }
 function captureRaffleDraft(e){const el=e.target,c=raffleContext();if(!c.editing||c.busy||c.pending)return;const field=el.getAttribute?.('data-raffle-field'),prize=el.getAttribute?.('data-raffle-prize'),rule=el.getAttribute?.('data-raffle-rule'),key=el.getAttribute?.('data-key');if(field&&Object.hasOwn(c.draft,field))c.draft[field]=el.type==='checkbox'?el.checked:el.value;if(prize!==null&&prize!==undefined&&c.draft.prizes[Number(prize)]&&['name','quantity','imageUrl'].includes(key))c.draft.prizes[Number(prize)][key]=key==='quantity'?Number(el.value):el.value;if(rule!==null&&rule!==undefined&&c.draft.conditions[Number(rule)]&&['unit','value','itemCode','quantity','mode','code','stage','note'].includes(key))c.draft.conditions[Number(rule)][key]=['value','quantity'].includes(key)?Number(el.value):el.value;}
 document.addEventListener('input',captureRaffleDraft);document.addEventListener('change',captureRaffleDraft);
+document.addEventListener('toggle',e=>{
+ const fold=e.target?.closest?.('details[data-raffle-fold]');
+ if(!fold||e.target!==fold)return;
+ try{sessionStorage.setItem(raffleFoldStorageKey(fold.getAttribute('data-raffle-fold')),fold.open?'open':'closed');}catch{}
+},true);
+
 setInterval(()=>{
  raffleAnnouncementsState.loaded=false;
  const c=raffleContext();
