@@ -1112,6 +1112,8 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 /* ==== auth / landing screens ==== */
 .auth-shell{
   position:fixed;inset:0;z-index:400;overflow-y:auto;
+  height:100vh;height:100dvh;max-height:100dvh;
+  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;
   background:
     radial-gradient(ellipse at 50% -10%, rgba(212,175,55,0.09) 0%, transparent 45%),
     linear-gradient(180deg, #0d0e0a 0%, var(--obsidian) 55%, #020303 100%);
@@ -2097,7 +2099,7 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 .community-event-card,.community-history-card{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--border-soft)}
 .community-event-card:last-child,.community-history-card:last-child{border-bottom:none}.community-event-name{font-family:var(--font-d);font-weight:800;color:var(--ivory)}
 .community-room-notice{padding:8px 16px;background:rgba(89,140,255,.08);border-bottom:1px solid rgba(89,140,255,.18);font-size:12px;color:var(--metal)}
-.community-create-card{max-width:620px}.community-create-card .banner{margin-bottom:14px}
+.community-create-card{max-width:620px;flex:0 0 auto}.community-create-card .banner{margin-bottom:14px}
 .community-create-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 2px;}
 .community-create-actions .btn{width:100%;min-width:0;}
 .community-create-advanced{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);}
@@ -14214,7 +14216,7 @@ function render(){
   if(appPhase==="player-complete-profile"){ app.innerHTML = renderPlayerCompleteProfileScreen(); bindAuthInputs(); return; }
   if(appPhase==="player-lookup"){ app.innerHTML = renderPlayerLookupScreen(); bindAuthInputs(); return; }
   if(appPhase==="player-center"){ app.innerHTML = renderPlayerCenterScreen(); bindAuthInputs(); return; }
-  if(appPhase==="community-create"){ app.innerHTML = renderCommunityCreateScreen(); bindAuthInputs(); initHalfHourTimePickers(); return; }
+  if(appPhase==="community-create"){ app.innerHTML = renderCommunityCreateScreen(); bindAuthInputs(); initHalfHourTimePickers(); bindCommunityCreateScroll(); return; }
   if(appPhase==="community-room"){ app.innerHTML = renderCommunityRoomApp(); bindDynamicInputs(); return; }
   if(appPhase==="tournament-detail"){ app.innerHTML = renderTournamentDetailScreen(); return; }
   if(appPhase==="admin-no-tournament"){ renderAdminNoTournamentScreen(); return; }
@@ -14927,6 +14929,31 @@ async function buildPlayerCenterData(name){
   }
   records.sort((a,b)=> (b.date||"").localeCompare(a.date||""));
   return { name, records, currentCheckin };
+}
+
+function bindCommunityCreateScroll(){
+  try{
+    const shell=document.querySelector(".auth-shell");
+    if(!shell) return;
+    shell.addEventListener("wheel",(e)=>{
+      if(e.ctrlKey) return;
+      let node=e.target;
+      while(node&&node!==shell){
+        const style=window.getComputedStyle?getComputedStyle(node):null;
+        const oy=style&&style.overflowY;
+        if((oy==="auto"||oy==="scroll")&&node.scrollHeight>node.clientHeight){
+          const canDown=e.deltaY>0&&(node.scrollTop+node.clientHeight<node.scrollHeight-1);
+          const canUp=e.deltaY<0&&node.scrollTop>0;
+          if(canDown||canUp) return;
+        }
+        node=node.parentElement;
+      }
+      if(shell.scrollHeight<=shell.clientHeight) return;
+      const before=shell.scrollTop;
+      shell.scrollTop+=e.deltaY;
+      if(shell.scrollTop!==before) e.preventDefault();
+    },{passive:false});
+  }catch(e){}
 }
 
 function bindAuthInputs(){
