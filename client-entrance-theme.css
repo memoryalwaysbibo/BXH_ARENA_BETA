@@ -2553,46 +2553,46 @@ button.btn-primary,
 }
 
 
-/* BXH ARENA schedule glass transparency v2.0.7 */
+/* BXH ARENA schedule glass transparency v2.0.8 */
 /* My Schedule / BXH CALL only: lighter glass, preserve text contrast. */
 .schedule-fold .find-event-card{
   background:
-    linear-gradient(145deg,rgba(18,24,34,.54),rgba(6,10,17,.60)) padding-box,
-    linear-gradient(135deg,rgba(var(--accent-rgb),.27),rgba(255,255,255,.035) 50%,rgba(var(--accent-rgb),.14)) border-box!important;
+    linear-gradient(145deg,rgba(18,24,34,.42),rgba(6,10,17,.48)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.23),rgba(255,255,255,.028) 50%,rgba(var(--accent-rgb),.11)) border-box!important;
   box-shadow:
-    inset 0 1px 0 rgba(255,235,175,.026),
-    inset 0 0 22px rgba(var(--accent-rgb),.018),
-    0 12px 28px rgba(0,0,0,.20)!important;
-  backdrop-filter:blur(10px) saturate(1.03)!important;
-  -webkit-backdrop-filter:blur(10px) saturate(1.03)!important;
+    inset 0 1px 0 rgba(255,235,175,.021),
+    inset 0 0 22px rgba(var(--accent-rgb),.014),
+    0 12px 28px rgba(0,0,0,.16)!important;
+  backdrop-filter:blur(9px) saturate(1.025)!important;
+  -webkit-backdrop-filter:blur(9px) saturate(1.025)!important;
 }
 .schedule-fold .find-event-card::after{
-  background:linear-gradient(110deg,transparent 18%,rgba(255,255,255,.010) 48%,transparent 74%)!important;
-  opacity:.70!important;
+  background:linear-gradient(110deg,transparent 18%,rgba(255,255,255,.008) 48%,transparent 74%)!important;
+  opacity:.62!important;
 }
 .schedule-fold .smart-call-box{
-  border-color:rgba(var(--accent-rgb),.20)!important;
+  border-color:rgba(var(--accent-rgb),.17)!important;
   background:
-    linear-gradient(135deg,rgba(var(--accent-rgb),.038),rgba(7,9,12,.55))!important;
+    linear-gradient(135deg,rgba(var(--accent-rgb),.030),rgba(7,9,12,.44))!important;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.018),
-    0 8px 22px rgba(0,0,0,.12)!important;
-  backdrop-filter:blur(8px) saturate(1.02);
-  -webkit-backdrop-filter:blur(8px) saturate(1.02);
+    inset 0 1px 0 rgba(255,255,255,.014),
+    0 8px 22px rgba(0,0,0,.09)!important;
+  backdrop-filter:blur(7px) saturate(1.015);
+  -webkit-backdrop-filter:blur(7px) saturate(1.015);
 }
 .schedule-fold .smart-call-body{
-  border-top-color:rgba(255,255,255,.055)!important;
+  border-top-color:rgba(255,255,255,.045)!important;
 }
 .schedule-fold .smart-call-stat{
-  background:rgba(255,255,255,.022)!important;
-  border:1px solid rgba(255,255,255,.028);
+  background:rgba(255,255,255,.016)!important;
+  border:1px solid rgba(255,255,255,.022);
 }
 .schedule-fold .smart-call-box .auth-error{
-  border-color:rgba(var(--accent-rgb),.16)!important;
-  background:rgba(11,13,18,.32)!important;
+  border-color:rgba(var(--accent-rgb),.13)!important;
+  background:rgba(11,13,18,.24)!important;
   box-shadow:none!important;
-  backdrop-filter:blur(7px)!important;
-  -webkit-backdrop-filter:blur(7px)!important;
+  backdrop-filter:blur(6px)!important;
+  -webkit-backdrop-filter:blur(6px)!important;
 }
 .schedule-fold .smart-call-status{
   color:rgba(207,212,220,.76)!important;
@@ -2602,6 +2602,6 @@ button.btn-primary,
   color:rgba(188,195,198,.40)!important;
 }
 @supports not ((backdrop-filter:blur(8px)) or (-webkit-backdrop-filter:blur(8px))){
-  .schedule-fold .find-event-card{background:rgba(11,15,22,.76)!important}
-  .schedule-fold .smart-call-box{background:rgba(9,11,15,.70)!important}
+  .schedule-fold .find-event-card{background:rgba(11,15,22,.66)!important}
+  .schedule-fold .smart-call-box{background:rgba(9,11,15,.60)!important}
 }
