@@ -12863,6 +12863,12 @@ function lobbySummary(raw){
     fee:raw.fee, checkInAt:raw.checkInAt||m.checkin||"", eventDescription:raw.eventDescription||""
   };
 }
+function lobbyNewestFirst(a,b){
+  const aKnown=Number.isFinite(a&&a.startMs), bKnown=Number.isFinite(b&&b.startMs);
+  if(aKnown!==bKnown) return aKnown ? -1 : 1; // 未填日期時間固定沉底
+  if(aKnown && bKnown && a.startMs!==b.startMs) return b.startMs-a.startMs;
+  return String(a&&a.code||"").localeCompare(String(b&&b.code||""));
+}
 function lobbyLists(rawList){
   const unique = new Map();
   (rawList||[]).forEach(r=>{ if(r&&r.code&&!unique.has(r.code)) unique.set(r.code,r); });
@@ -12870,11 +12876,11 @@ function lobbyLists(rawList){
     .filter(r=>r.visibility==="public" && (!!r.publishedAt || r.eventAuthority==="community"))
     .map(lobbySummary)
     .filter(lobbyMatchesActiveFilters);
-  const live=all.filter(t=>t.phase==="live").sort((a,b)=>a.startMs-b.startMs);
-  const settling=all.filter(t=>t.phase==="settling").sort((a,b)=>b.startMs-a.startMs);
-  const registration=all.filter(t=>t.phase==="waiting" && !t.eventCancelled && (t.regStatus==="open" || t.regStatus==="full")).sort((a,b)=>a.startMs-b.startMs);
-  const waiting=all.filter(t=>t.phase==="waiting" && !t.eventCancelled && !(t.regStatus==="open" || t.regStatus==="full")).sort((a,b)=>a.startMs-b.startMs);
-  const ended=all.filter(t=>t.phase==="done" || t.phase==="cancelled").sort((a,b)=>b.startMs-a.startMs).slice(0,5);
+  const live=all.filter(t=>t.phase==="live").sort(lobbyNewestFirst);
+  const settling=all.filter(t=>t.phase==="settling").sort(lobbyNewestFirst);
+  const registration=all.filter(t=>t.phase==="waiting" && !t.eventCancelled && (t.regStatus==="open" || t.regStatus==="full")).sort(lobbyNewestFirst);
+  const waiting=all.filter(t=>t.phase==="waiting" && !t.eventCancelled && !(t.regStatus==="open" || t.regStatus==="full")).sort(lobbyNewestFirst);
+  const ended=all.filter(t=>t.phase==="done" || t.phase==="cancelled").sort(lobbyNewestFirst).slice(0,5);
   return { live, settling, registration, waiting, ended, total:all.length };
 }
 function lobbyRegistrationButtons(t, loggedIn){
