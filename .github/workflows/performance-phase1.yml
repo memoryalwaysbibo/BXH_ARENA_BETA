@@ -1,0 +1,23 @@
+name: Phase 1 performance regression
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'sw.js'
+      - 'tests/performance-phase1.cjs'
+      - '.github/workflows/performance-phase1.yml'
+permissions:
+  contents: read
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run 16/32/64-client snapshot coalescing stress test
+        run: node tests/performance-phase1.cjs
