@@ -2098,6 +2098,15 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 .community-event-card:last-child,.community-history-card:last-child{border-bottom:none}.community-event-name{font-family:var(--font-d);font-weight:800;color:var(--ivory)}
 .community-room-notice{padding:8px 16px;background:rgba(89,140,255,.08);border-bottom:1px solid rgba(89,140,255,.18);font-size:12px;color:var(--metal)}
 .community-create-card{max-width:620px}.community-create-card .banner{margin-bottom:14px}
+.community-create-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 2px;}
+.community-create-actions .btn{width:100%;min-width:0;}
+.community-create-advanced{margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);}
+.community-create-advanced summary{cursor:pointer;list-style:none;color:var(--champagne-gold);font-size:12.5px;font-weight:700;letter-spacing:.2px;padding:4px 0;}
+.community-create-advanced summary::-webkit-details-marker{display:none;}
+.community-create-advanced summary::after{content:"＋";float:right;color:var(--gold);}
+.community-create-advanced[open] summary::after{content:"－";}
+.community-create-advanced-body{padding-top:12px;}
+@media(max-width:520px){.community-create-actions{grid-template-columns:1fr 1fr;gap:8px}.community-create-actions .btn{padding-left:10px;padding-right:10px}}
 @media(max-width:720px){.community-policy-grid{grid-template-columns:1fr}.community-event-card,.community-history-card{align-items:flex-start;flex-direction:column}.community-event-card .btn-row{width:100%}.community-event-card .btn-row .btn{flex:1}}
 
 /* ==== v13.22.0 lobby / lifecycle / referee workstation ==== */
@@ -12380,11 +12389,20 @@ function renderCommunityCreateScreen(){
     <div class="field"><label>賽事名稱</label><input id="community-name" type="text" placeholder="例如：好友交流賽"></div>
     <div class="field"><label>活動日期</label><input id="community-date" type="date"></div>
     <div class="field"><label>活動地點</label><input id="community-location" type="text" placeholder="例如：XX 桌遊店"></div>
-    <div class="field"><label>開賽時間</label><div class="half-hour-time" data-time-target="community-start"><select class="half-hour-hour"></select><span class="time-colon">:</span><select class="half-hour-minute"><option value="00">00</option><option value="30">30</option></select><input id="community-start" type="hidden" value="19:00"></div></div>
-    <div class="field"><label>賽制</label><select id="community-format"><option value="single">單淘汰賽</option><option value="double">雙敗制</option><option value="roundrobin">單循環賽</option></select></div>
-    <div class="field"><label>戰鬥台數</label><input id="community-stations" type="number" min="1" max="16" value="1"></div>
-    <button class="hoc-btn hoc-btn-primary btn-block" data-action="community-create-submit">建立一般賽事</button>
-    <div class="auth-links"><button class="link-btn" data-action="community-create-cancel">返回我的房間</button></div>
+
+    <div class="community-create-actions" role="group" aria-label="建立一般賽事操作">
+      <button class="btn btn-ghost" data-action="community-create-cancel">取消</button>
+      <button class="btn btn-primary" data-action="community-create-submit">確認建立</button>
+    </div>
+
+    <details class="community-create-advanced">
+      <summary>進階設定｜開賽時間・賽制・戰鬥台</summary>
+      <div class="community-create-advanced-body">
+        <div class="field"><label>開賽時間</label><div class="half-hour-time" data-time-target="community-start"><select class="half-hour-hour"></select><span class="time-colon">:</span><select class="half-hour-minute"><option value="00">00</option><option value="30">30</option></select><input id="community-start" type="hidden" value="19:00"></div></div>
+        <div class="field"><label>賽制</label><select id="community-format"><option value="single">單淘汰賽</option><option value="double">雙敗制</option><option value="roundrobin">單循環賽</option></select></div>
+        <div class="field"><label>戰鬥台數</label><input id="community-stations" type="number" min="1" max="16" value="1"></div>
+      </div>
+    </details>
   </div>`+authShellClose();
 }
 function renderCommunitySettings(){
