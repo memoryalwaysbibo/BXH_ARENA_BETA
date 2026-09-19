@@ -3226,3 +3226,68 @@ button.btn-primary,
     max-height:46px!important;
   }
 }
+
+
+/* BXH ARENA landing action hierarchy v13.43.9 */
+/* QR is the primary landing shortcut; raffle is a secondary service entry. */
+.landing-home > .btn-row{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  justify-items:stretch!important;
+  gap:9px!important;
+  width:100%!important;
+}
+
+.landing-home > .btn-row .btn.btn-primary{
+  width:100%!important;
+  min-height:50px!important;
+  height:50px!important;
+  justify-self:stretch!important;
+  font-size:13px!important;
+  letter-spacing:.04em!important;
+}
+
+.landing-home > .btn-row .landing-raffle-cta{
+  width:auto!important;
+  min-width:0!important;
+  min-height:36px!important;
+  height:36px!important;
+  justify-self:center!important;
+  padding:0 13px!important;
+  border-color:rgba(218,174,58,.28)!important;
+  border-radius:8px!important;
+  color:rgba(231,201,109,.80)!important;
+  background:rgba(255,255,255,.012)!important;
+  box-shadow:none!important;
+  font-size:11.5px!important;
+  font-weight:850!important;
+  letter-spacing:.03em!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+
+.landing-home > .btn-row .landing-raffle-cta:hover:not(:disabled),
+.landing-home > .btn-row .landing-raffle-cta:focus-visible{
+  transform:translateY(-1px)!important;
+  border-color:rgba(238,194,70,.52)!important;
+  color:#f1d57a!important;
+  background:rgba(216,171,51,.035)!important;
+  box-shadow:0 0 12px rgba(214,167,39,.055)!important;
+}
+
+@media(max-width:640px){
+  .landing-home > .btn-row{
+    gap:8px!important;
+  }
+  .landing-home > .btn-row .btn.btn-primary{
+    min-height:48px!important;
+    height:48px!important;
+    font-size:12.5px!important;
+  }
+  .landing-home > .btn-row .landing-raffle-cta{
+    min-height:34px!important;
+    height:34px!important;
+    padding:0 11px!important;
+    font-size:11px!important;
+  }
+}
