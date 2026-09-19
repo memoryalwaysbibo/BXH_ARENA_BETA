@@ -12900,14 +12900,14 @@ function lobbyLists(rawList){
 }
 function lobbyRegistrationButtons(t, loggedIn){
   if(t.authority==="community"){
-    if(t.phase==="live") return `<button class="btn btn-primary btn-sm" data-action="view-public-tournament" data-code="${esc(t.code)}">觀看比賽</button>`;
+    if(t.phase==="live") return `<button class="btn btn-primary btn-sm" data-action="switch-to-player-watch" data-view="live" data-code="${esc(t.code)}">觀看比賽</button>`;
     if(t.phase==="settling" || t.phase==="done") return `<button class="btn btn-ghost btn-sm" data-action="view-public-tournament" data-code="${esc(t.code)}">查看結果</button>`;
     return `<button class="btn btn-ghost btn-sm" data-action="view-public-tournament" data-code="${esc(t.code)}">查看房間</button>`;
   }
   if(loggedIn && myRegistrationsCache===null) return `<button class="btn btn-ghost btn-sm" disabled>確認報名狀態…</button>`;
   const reg=lobbyMyRegistration(t.code);
   const now=Date.now();
-  if(t.phase==="live") return `<button class="btn btn-primary btn-sm" data-action="view-public-tournament" data-code="${esc(t.code)}">進入觀看</button>`;
+  if(t.phase==="live") return `<button class="btn btn-primary btn-sm" data-action="switch-to-player-watch" data-view="live" data-code="${esc(t.code)}">進入觀看</button>`;
   if(t.phase==="settling" || t.phase==="done") return `<button class="btn btn-ghost btn-sm" data-action="view-public-tournament" data-code="${esc(t.code)}">查看結果</button>`;
   if(publicTournamentRegistrationLocked(t)) return `<button class="btn btn-ghost btn-sm" disabled>報名已鎖定</button>`;
   if(reg){
