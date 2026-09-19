@@ -11613,14 +11613,18 @@ function renderAccountManagementScreen(){
           <div class="stat-box"><div class="label">啟用帳號</div><div class="value">${activity.enabled}</div></div>
           <div class="stat-box"><div class="label">日活躍｜近 24 小時</div><div class="value">${activity.daily}</div></div>
           <div class="stat-box"><div class="label">週活躍｜近 7 天</div><div class="value">${activity.weekly}</div></div>
+          <div class="stat-box"><div class="label">待人工確認本名</div><div class="value">${activity.nameReview}</div></div>
         </div>
-        <div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜日／週活躍以啟用帳號的 lastLoginAt 去重計算；週活躍包含日活躍。</div>
+        <div class="hint" style="margin-top:8px;">封測管理員：${activity.testers}｜本名由系統做資料一致性檢核，不代表法定身分驗證；只有疑問案例才需要人工覆核。</div>
+        <div class="btn-row" style="margin-top:10px;"><button class="btn btn-ghost btn-sm" data-action="scan-player-realnames" ${accountRealNameScanBusy?'disabled':''}>${accountRealNameScanBusy?'系統檢核中……':'重新檢核本名'}</button>${accountRealNameScanSummary?('<span class="hint">本輪：通過 '+Number(accountRealNameScanSummary.verified||0)+'｜待確認 '+Number(accountRealNameScanSummary.review||0)+'｜無本名 '+Number(accountRealNameScanSummary.missing||0)+'</span>'):''}</div>
+        ${accountRealNameScanError?`<div class="auth-error" style="margin-top:8px;">${esc(accountRealNameScanError)}</div>`:''}
         <div class="account-role-filter-bar" aria-label="帳號角色快速分類">
           ${ACCOUNT_ROLE_FILTERS.map(([key,label])=>`<button class="account-filter-chip ${accountMgmtRoleFilter===key?'active':''}" data-action="account-role-filter" data-role="${key}" aria-pressed="${accountMgmtRoleFilter===key?'true':'false'}">${label} ${accountRoleCount(users,key)}</button>`).join("")}
         </div>
         <div class="account-filter-toolbar">
           <div class="field"><label>搜尋姓名／帳號</label><div class="account-filter-search"><input id="account-mgmt-search" value="${esc(accountMgmtQuery)}" placeholder="姓名、遊戲 ID 或 Email"><button class="btn btn-ghost" data-action="account-search-apply">搜尋</button></div></div>
           <div class="field"><label>帳號狀態</label><select class="account-filter-select" data-filter-key="status"><option value="all" ${accountMgmtStatusFilter==='all'?'selected':''}>全部狀態</option><option value="active" ${accountMgmtStatusFilter==='active'?'selected':''}>啟用中</option><option value="inactive" ${accountMgmtStatusFilter==='inactive'?'selected':''}>已停用</option></select></div>
+          <div class="field"><label>本名檢核</label><select class="account-filter-select" data-filter-key="nameVerification"><option value="all" ${accountMgmtNameFilter==='all'?'selected':''}>全部</option><option value="review" ${accountMgmtNameFilter==='review'?'selected':''}>待人工確認</option><option value="verified" ${accountMgmtNameFilter==='verified'?'selected':''}>已確認</option><option value="unchecked" ${accountMgmtNameFilter==='unchecked'?'selected':''}>等待系統檢核</option><option value="missing" ${accountMgmtNameFilter==='missing'?'selected':''}>尚無本名</option></select></div>
           <div class="field"><label>活躍度</label><select class="account-filter-select" data-filter-key="activity"><option value="all" ${accountMgmtActivityFilter==='all'?'selected':''}>全部活躍度</option><option value="daily" ${accountMgmtActivityFilter==='daily'?'selected':''}>今日活躍</option><option value="weekly" ${accountMgmtActivityFilter==='weekly'?'selected':''}>近 7 天活躍</option><option value="stale" ${accountMgmtActivityFilter==='stale'?'selected':''}>逾 7 天</option><option value="never" ${accountMgmtActivityFilter==='never'?'selected':''}>從未登入</option></select></div>
           <div class="field"><label>排序</label><select class="account-filter-select" data-filter-key="sort"><option value="created-desc" ${accountMgmtSort==='created-desc'?'selected':''}>申辦時間｜最新</option><option value="created-asc" ${accountMgmtSort==='created-asc'?'selected':''}>申辦時間｜最早</option><option value="activity-desc" ${accountMgmtSort==='activity-desc'?'selected':''}>最近登入</option><option value="name" ${accountMgmtSort==='name'?'selected':''}>姓名筆畫</option></select></div>
           <button class="btn btn-ghost" data-action="account-clear-filters">清除條件</button>
@@ -11629,7 +11633,7 @@ function renderAccountManagementScreen(){
         <div class="account-result-line"><span>${loading?'正在讀取帳號……':`顯示 ${visibleUsers.length}／${users.length} 筆`}</span><span>點擊帳號查看詳細資料⌄</span></div>
         ${loading?'<div class="empty-state">正在讀取帳號資料……</div>':visibleUsers.length===0?'<div class="empty-state">沒有符合目前條件的帳號</div>':`
         <div class="account-user-list">
-          ${visibleUsers.map(user=>{const status=accountActivityStatus(user);const gameId=accountGameId(user);const active=user.active!==false;return `<details class="account-user-card">
+          ${visibleUsers.map(user=>{const status=accountActivityStatus(user);const gameId=accountGameId(user);const active=user.active!==false;const nameInfo=accountNameVerificationInfo(user);return `<details class="account-user-card">
             <summary>
               <label><input class="account-batch-checkbox" type="checkbox" aria-label="選取此帳號" data-uid="${esc(user.uid)}" ${accountBatchContext().selected.has(user.uid)?'checked':''} ${accountBatchContext().busy?'disabled':''}></label><div class="account-user-identity"><div class="account-user-name">${esc(accountPrimaryName(user))}</div><div class="account-user-gameid">${gameId?`遊戲 ID｜${esc(gameId)}`:'尚未設定遊戲 ID'}</div></div>
               <div class="account-user-email">${esc(user.email||"未提供 Email")}</div>
@@ -11641,14 +11645,14 @@ function renderAccountManagementScreen(){
                 <div class="account-detail-item"><div class="label">遊戲 ID</div><div class="value">${esc(gameId||"—")}</div></div>
                 <div class="account-detail-item"><div class="label">申辦時間</div><div class="value">${esc(formatAccountTimestamp(user.createdAt))}</div></div>
                 <div class="account-detail-item"><div class="label">最後登入</div><div class="value">${esc(formatAccountTimestamp(user.lastLoginAt))}</div></div>
-                <div class="account-detail-item"><div class="label">本名確認</div><div class="value">${user.realNameVerified===true?'已確認':'尚未確認'}</div></div>
+                <div class="account-detail-item"><div class="label">本名檢核</div><div class="value"><span class="badge ${nameInfo.badge}">${esc(nameInfo.label)}</span><div class="hint" style="margin-top:5px;">${esc(nameInfo.reason)}</div></div></div>
                 <div class="account-detail-item"><div class="label">帳號 UID</div><div class="value">${esc(user.uid||"—")}</div></div>
               </div>
               <div class="account-user-controls">
                 <div class="field"><label>帳號分類</label><select class="mgmt-role-select" data-uid="${esc(user.uid)}">${["super_admin","admin","staff","tester","player","viewer"].map(role=>`<option value="${role}" ${user.role===role?'selected':''}>${roleDisplayLabel(role)}</option>`).join("")}</select></div>
                 <label class="account-active-control"><input type="checkbox" class="mgmt-test-box" data-uid="${esc(user.uid)}" ${user.role==='tester'||user.isTestAccount===true?'checked':''} style="width:20px;height:20px;">測試身分</label>
                 <label class="account-active-control"><input type="checkbox" class="mgmt-active-box" data-uid="${esc(user.uid)}" ${active?'checked':''} style="width:20px;height:20px;">帳號啟用</label>
-                ${user.role==="player"||user.realName?(user.realNameVerified===true?'<span class="badge badge-neon">本名已確認</span>':`<button class="btn btn-ghost btn-sm" data-action="verify-player-realname" data-uid="${esc(user.uid)}">確認玩家本名</button>`):""}
+                \${user.role==="player"||user.realName?(nameInfo.key==="review"?\`<span class="badge badge-danger">待人工確認</span><button class="btn btn-ghost btn-sm" data-action="verify-player-realname" data-uid="\${esc(user.uid)}">人工確認本名</button><button class="btn btn-ghost btn-sm" data-action="recheck-player-realname" data-uid="\${esc(user.uid)}">重新檢核</button>\`:nameInfo.key==="unchecked"?\`<span class="badge badge-gold">等待系統檢核</span><button class="btn btn-ghost btn-sm" data-action="recheck-player-realname" data-uid="\${esc(user.uid)}">立即檢核</button>\`:nameInfo.key==="verified"?\`<span class="badge badge-neon">\${esc(nameInfo.label)}</span>\`:'<span class="badge badge-metal">尚無本名</span>'):""}
                 ${user.uid===currentAuthUid()
                   ? '<button class="btn btn-danger btn-sm" disabled title="不能刪除目前登入中的最高管理員帳號">刪除帳號</button>'
                   : `<button class="btn btn-danger btn-sm" data-action="delete-managed-account" data-uid="${esc(user.uid)}" ${accountDeleteBusyUid===user.uid?'disabled':''}>${accountDeleteBusyUid===user.uid?'刪除中……':'刪除帳號'}</button>`}
