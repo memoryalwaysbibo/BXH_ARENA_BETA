@@ -15932,10 +15932,19 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     if(playerLoginBusy) return;
     if(!(window.cloudAuth && window.cloudAuth.isReady())){
       playerLoginBusy=true;playerLoginError="正在重新連線雲端…";render();
-      try{if(window.cloudSync&&window.cloudSync.connect)await window.cloudSync.connect();}catch(e){}
-      playerLoginBusy=false;
-      if(!(window.cloudAuth && window.cloudAuth.isReady())){playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";render();return;}
-      playerLoginError="";render();
+      Promise.resolve().then(async()=>{
+        try{if(window.cloudSync&&window.cloudSync.connect)await window.cloudSync.connect();}catch(e){}
+        playerLoginBusy=false;
+        if(!(window.cloudAuth && window.cloudAuth.isReady())){
+          playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";
+          render();
+          return;
+        }
+        playerLoginError="";
+        render();
+        handleAction("player-email-signin",target);
+      });
+      return;
     }
     const emailEl = document.getElementById("player-login-email");
     const pwEl = document.getElementById("player-login-password");
