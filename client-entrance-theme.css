@@ -2510,3 +2510,44 @@ button.btn-primary,
   .raffle-empty-state{min-height:200px;padding:28px 14px}
 }
 @media(prefers-reduced-motion:reduce){.raffle-loading-dot{animation:none!important}}
+
+
+/* BXH ARENA player bracket progress CTA v13.43.1 */
+.schedule-fold .player-bracket-progress-btn,
+.tournament-live-view-actions .player-bracket-progress-btn{
+  border-color:rgba(231,190,75,.78)!important;
+  background:linear-gradient(135deg,#f1d36e,#c99d32)!important;
+  color:#151006!important;
+  font-weight:900!important;
+  box-shadow:0 8px 20px rgba(202,154,37,.16),inset 0 1px 0 rgba(255,255,255,.42)!important;
+}
+.schedule-fold .player-bracket-progress-btn::before,
+.tournament-live-view-actions .player-bracket-progress-btn::before{
+  content:"⌘";
+  margin-right:5px;
+  font-size:.95em;
+}
+.schedule-fold .player-bracket-progress-btn:hover,
+.schedule-fold .player-bracket-progress-btn:focus-visible,
+.tournament-live-view-actions .player-bracket-progress-btn:hover,
+.tournament-live-view-actions .player-bracket-progress-btn:focus-visible{
+  outline:none!important;
+  filter:brightness(1.05);
+  box-shadow:0 10px 24px rgba(202,154,37,.22),0 0 14px rgba(231,190,75,.10),inset 0 1px 0 rgba(255,255,255,.48)!important;
+}
+.tournament-live-view-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+@media(max-width:520px){
+  .schedule-fold .fe-card-action .player-bracket-progress-btn{
+    flex:1 1 100%!important;
+    order:-1;
+    min-height:42px!important;
+  }
+  .tournament-live-view-actions .btn{
+    flex:1 1 100%;
+  }
+}
