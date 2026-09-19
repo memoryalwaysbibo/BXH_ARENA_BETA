@@ -11,6 +11,7 @@ on:
       - 'tests/classic-script-syntax.cjs'
       - 'tests/smart-call-default.cjs'
       - 'tests/lobby-sort.cjs'
+      - 'tests/navigation-language.cjs'
       - '.github/workflows/performance-phase1.yml'
 permissions:
   contents: read
@@ -31,5 +32,7 @@ jobs:
         run: node tests/smart-call-default.cjs
       - name: Check lobby newest-first ordering
         run: node tests/lobby-sort.cjs
+      - name: Check global navigation language
+        run: node tests/navigation-language.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
