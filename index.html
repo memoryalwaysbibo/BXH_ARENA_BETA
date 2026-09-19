@@ -6564,7 +6564,7 @@ function renderDailyCheckInCard(){
     <div class="checkin-stats">
       <div class="checkin-stat"><strong>${Number(stats.currentCheckInStreak||0)}</strong><span>連續天數</span></div>
       <div class="checkin-stat"><strong>${Number(stats.monthlyCheckInDays||0)}</strong><span>本月簽到</span></div>
-      <div class="checkin-stat"><strong>${Number(stats.totalCheckInDays||0)}</strong><span>累積簽到</span></div>
+      <div class="checkin-stat"><strong>${Number(stats.totalCheckInDays||0)}</strong><span>總簽到天數</span></div>
     </div>
     <button class="btn ${ci.checkedIn?'btn-ghost':'btn-primary'}" data-action="player-daily-checkin" ${ci.checkedIn||engagementActionBusy?'disabled':''}>${engagementActionBusy?'處理中…':ci.checkedIn?'✓ 今日已完成':'今日簽到'}</button>
     <div class="checkin-makeup-panel">
