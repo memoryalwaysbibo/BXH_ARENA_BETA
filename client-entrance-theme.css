@@ -3346,3 +3346,25 @@ button.btn-primary,
     background:none!important;
   }
 }
+
+
+/* BXH ARENA modal cancel same-surface fix v13.43.11 */
+/* Cancel button uses the modal surface itself: no separate gray fill block. */
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-cancel-btn{
+  border:1px solid rgba(var(--accent-rgb),.28)!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  color:rgba(226,229,235,.72)!important;
+  box-shadow:none!important;
+}
+
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-cancel-btn:hover,
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-cancel-btn:focus-visible{
+  outline:none!important;
+  border-color:rgba(var(--accent-rgb),.46)!important;
+  background:rgba(var(--accent-rgb),.025)!important;
+  color:#eef0f3!important;
+  box-shadow:none!important;
+}
