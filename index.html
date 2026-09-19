@@ -5895,6 +5895,7 @@ let authFormError = "";
 let accountMgmtUsers = null;
 let superAdminManagementPage = "accounts"; // accounts | checkin | titles
 let accountMgmtBusy = false;
+let accountDeleteBusyUid = "";
 let accountMgmtRoleFilter = "all";
 let accountMgmtStatusFilter = "all";
 let accountMgmtActivityFilter = "all";
@@ -6558,7 +6559,7 @@ const COMMUNITY_OWNER_ACTIONS = new Set([
 ]);
 const COMMUNITY_OWNER_TIER_ACTIONS = new Set(["set-round-scoring-mode","correct-quick-result","board-reshuffle"]);
 const SUPER_ADMIN_ONLY_ACTIONS = new Set([
-  "open-account-management","super-admin-page","create-managed-user-submit","set-user-role","toggle-user-active",
+  "open-account-management","super-admin-page","create-managed-user-submit","delete-managed-account","set-user-role","toggle-user-active",
   "account-role-filter","account-search-apply","account-clear-filters",
   "unarchive-record","preview-cleanup-public-mirrors","run-cleanup-public-mirrors","ladder-new-season",
   "admin-refresh-engagement","admin-seed-initial-titles","admin-save-engagement-settings","admin-grant-title","admin-revoke-title",
@@ -11328,6 +11329,22 @@ function renderAccountBatchPanel(){
  ${b.error?`<p class="auth-error">${esc(b.error)}</p>`:''}${b.result?`<div class="hint">${b.result.map(r=>`${esc((accountMgmtUsers||[]).find(u=>u.uid===r.uid)?.displayName||r.uid)}：${esc(({updated:'已更新',unchanged:'無須變更',failed:'未完成'})[r.status]||r.status)}${r.reason?'（'+esc(accountChangeError(r.reason))+'）':''}`).join('<br>')}</div>`:''}</div>`;
 }
 function accountChangeError(message){const map={'tester-role-requires-test-identity':'封測角色必須保留測試身分，請同時改為其他角色','last-super-admin-protected':'必須保留至少一位啟用的最高管理員','super-admin-required':'只有啟用的最高管理員可管理帳號','test-account-cannot-be-super-admin':'測試身分不能成為最高管理員','account-not-found':'找不到帳號','operation-conflict':'操作識別不一致','select-1-to-50-accounts':'請選擇1至50個帳號'};for(const [key,value]of Object.entries(map))if(String(message).includes(key))return value;return '操作結果尚未確認，請確認上次操作結果。';}
+function accountDeletePendingKey(uid){return 'bxh-account-delete:'+currentAuthUid()+':'+uid;}
+function accountDeleteError(error){
+ const text=String(error&&error.message||error||'');
+ const map={
+  'self-delete-protected':'不能刪除目前登入中的最高管理員帳號',
+  'last-super-admin-protected':'必須保留至少一位啟用的最高管理員',
+  'super-admin-required':'只有啟用中的最高管理員可以刪除帳號',
+  'account-not-found':'帳號已不存在，請重新整理清單',
+  'operation-conflict':'刪除操作識別不一致，請重新整理後再試',
+  'account-delete-incomplete':'帳號刪除尚未完整完成；目標帳號已先停用，請再次執行相同刪除以續跑',
+  'beta-only':'此功能僅允許在 BETA 使用',
+  'auth-required':'登入狀態已失效，請重新登入'
+ };
+ for(const [key,value] of Object.entries(map))if(text.includes(key))return value;
+ return '帳號刪除尚未確認完成，請稍後重試。';
+}
 async function handleAccountBatch(action,target){
  if(!isSuperAdmin())return;const b=accountBatchContext();if(b.busy)return;
  if(action==='account-batch-select'){b.selected=new Set(getVisibleAccountUsers(accountMgmtUsers||[]).slice(0,50).map(u=>u.uid));render();return;}
@@ -11542,7 +11559,7 @@ function renderAccountManagementScreen(){
     <main class="account-management-main">
       ${page==="accounts"?`<div class="panel account-management-panel">
         <div class="panel-title">帳號管理<button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回系統首頁</button></div>
-        <p class="hint">摘要優先顯示姓名、帳號分類與活躍度；點擊個別帳號即可展開角色、狀態及完整資料。</p>
+        <p class="hint">摘要優先顯示姓名、帳號分類與活躍度；點擊個別帳號即可展開角色、狀態、永久刪除及完整資料。刪除僅限最高管理員，且不可刪除自己或最後一位啟用中的最高管理員。</p>
         ${authFormError ? `<div class="auth-error">${esc(authFormError)}</div>` : ""}
         <div class="account-overview-grid">
           <div class="stat-box"><div class="label">全部帳號</div><div class="value">${activity.total}</div></div>
@@ -11585,6 +11602,9 @@ function renderAccountManagementScreen(){
                 <label class="account-active-control"><input type="checkbox" class="mgmt-test-box" data-uid="${esc(user.uid)}" ${user.role==='tester'||user.isTestAccount===true?'checked':''} style="width:20px;height:20px;">測試身分</label>
                 <label class="account-active-control"><input type="checkbox" class="mgmt-active-box" data-uid="${esc(user.uid)}" ${active?'checked':''} style="width:20px;height:20px;">帳號啟用</label>
                 ${user.role==="player"||user.realName?(user.realNameVerified===true?'<span class="badge badge-neon">本名已確認</span>':`<button class="btn btn-ghost btn-sm" data-action="verify-player-realname" data-uid="${esc(user.uid)}">確認玩家本名</button>`):""}
+                ${user.uid===currentAuthUid()
+                  ? '<button class="btn btn-danger btn-sm" disabled title="不能刪除目前登入中的最高管理員帳號">刪除帳號</button>'
+                  : `<button class="btn btn-danger btn-sm" data-action="delete-managed-account" data-uid="${esc(user.uid)}" ${accountDeleteBusyUid===user.uid?'disabled':''}>${accountDeleteBusyUid===user.uid?'刪除中……':'刪除帳號'}</button>`}
               </div>
             </div>
           </details>`;}).join("")}
@@ -16802,6 +16822,50 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     openModal({ type:"generic", title:"執行公開賽事資料清理", message:"即將檢查並重建 publicTournaments 集合中每份文件的公開安全欄位，移除舊版可能殘留的私人資料。不會刪除任何賽事，不會變更文件 ID 或賽事代碼。是否繼續？", confirmLabel:"確定執行", onConfirm:doCleanup });
     return;
   }
+  if(action==="delete-managed-account"){
+    const uid=target.getAttribute("data-uid")||"";
+    if(!uid)return;
+    if(uid===currentAuthUid()){showToast("不能刪除目前登入中的最高管理員帳號",true);return;}
+    const user=(accountMgmtUsers||[]).find(x=>x.uid===uid);
+    if(!user){showToast("找不到帳號，請重新整理清單",true);return;}
+    const name=accountPrimaryName(user);
+    const pendingKey=accountDeletePendingKey(uid);
+    let pending=null;
+    try{pending=JSON.parse(sessionStorage.getItem(pendingKey)||"null");}catch(e){}
+    const message=(pending
+      ?"這個帳號有一筆尚未確認完成的刪除操作。系統會沿用同一個操作識別繼續確認，不會重複建立另一筆刪除。"
+      :"即將永久刪除「"+name+"」。\n\n會移除 Firebase 登入資格、帳號個資、站內信、道具、家庭選手與公開玩家資料；既有賽事結果與稽核歷史會保留。\n\n此動作無法復原。");
+    openModal({type:"generic",title:pending?"確認帳號刪除結果":"永久刪除帳號",message,danger:true,confirmLabel:pending?"繼續確認":"永久刪除",onConfirm:()=>{
+      (async()=>{
+        if(accountDeleteBusyUid)return;
+        let payload=pending;
+        if(!payload){
+          payload={targetUid:uid,operationId:crypto.randomUUID()};
+          try{sessionStorage.setItem(pendingKey,JSON.stringify(payload));}catch(e){showToast("無法保存刪除操作識別，請更換瀏覽器後再試",true);return;}
+        }
+        accountDeleteBusyUid=uid;render();
+        try{
+          const result=await window.engagementService.deleteManagedAccount(payload);
+          if(!result||result.ok!==true)throw Error("account-delete-incomplete");
+          try{sessionStorage.removeItem(pendingKey);}catch(e){}
+          const batch=accountBatchContext();batch.selected.delete(uid);
+          accountMgmtUsers=await window.cloudAuth.listUsers();
+          showToast("已永久刪除帳號："+name);
+        }catch(error){
+          const msg=accountDeleteError(error);
+          showToast(msg,true);
+          if(String(error&&error.message||error).includes("account-not-found")){
+            try{sessionStorage.removeItem(pendingKey);}catch(e){}
+            accountMgmtUsers=await window.cloudAuth.listUsers();
+          }
+        }finally{
+          if(accountDeleteBusyUid===uid)accountDeleteBusyUid="";
+          render();
+        }
+      })();
+    }});
+    return;
+  }
   if(action==="create-managed-user-submit"){
     const nameEl = document.getElementById("mgmt-new-displayname");
     const emailEl = document.getElementById("mgmt-new-email");
@@ -19587,6 +19651,7 @@ init();
   window.engagementService={
     connectionInfo(){return {projectId:FIREBASE_CONFIG.projectId||'未設定',region:'asia-east1',signedIn:!!(authHandle&&authHandle.currentUser),sdkReady:!!fnx};},
     async changeManagedAccounts(payload){return callEngagementFunction("changeManagedAccounts",payload,30000);},
+    async deleteManagedAccount(payload){return callEngagementFunction("deleteManagedAccount",payload,120000);},
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
