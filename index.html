@@ -13342,27 +13342,38 @@ const TARGET_GROUP_DESCRIPTIONS = {
 };
 
 async function loadTournamentDetail(code){
-  tournamentDetailLoading = true;
-  tournamentDetailError = null;
-  render();
+  const cached=Array.isArray(publicTournamentsCache)
+    ? publicTournamentsCache.find(t=>t&&t.code===code)
+    : null;
+  if(cached){
+    tournamentDetailData=cached;
+    tournamentDetailLoading=false;
+    tournamentDetailError=null;
+    render();
+  }else{
+    tournamentDetailLoading = true;
+    tournamentDetailError = null;
+    render();
+  }
   try{
     if(window.cloudSync && window.cloudSync.connect){ await window.cloudSync.connect(); }
     if(!cloudAvailable() || !window.cloudSync.getPublicTournamentFull){
-      tournamentDetailError = PUBLIC_TOURNAMENTS_ERROR_MESSAGES.network;
+      if(!cached) tournamentDetailError = PUBLIC_TOURNAMENTS_ERROR_MESSAGES.network;
       tournamentDetailLoading = false; render(); return;
     }
-    const data = await window.cloudSync.getPublicTournamentFull(code);
-    if(!data){ tournamentDetailError = "找不到賽事"; tournamentDetailLoading = false; render(); return; }
-    tournamentDetailData = data;
     const uid = (typeof firebaseUser!=="undefined" && firebaseUser) ? firebaseUser.uid : null;
-    if(uid && window.cloudSync.getMyRegistrationForTournament){
-      tournamentDetailMyReg = await window.cloudSync.getMyRegistrationForTournament(code);
-    } else {
-      tournamentDetailMyReg = null;
-    }
-    tournamentDetailError = null;
+    const [data,myReg]=await Promise.all([
+      window.cloudSync.getPublicTournamentFull(code),
+      uid && window.cloudSync.getMyRegistrationForTournament
+        ? window.cloudSync.getMyRegistrationForTournament(code)
+        : Promise.resolve(null)
+    ]);
+    if(data) tournamentDetailData=data;
+    else if(!cached) tournamentDetailError="找不到賽事";
+    tournamentDetailMyReg=myReg;
+    if(data||cached) tournamentDetailError=null;
   }catch(e){
-    tournamentDetailError = mapRegistrationError(e);
+    if(!cached) tournamentDetailError = mapRegistrationError(e);
   }
   tournamentDetailLoading = false;
   render();
@@ -16456,22 +16467,26 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
           myRegistrationsCache = []; myRegistrationsError = PUBLIC_TOURNAMENTS_ERROR_MESSAGES.network;
           myRegistrationsLoading = false; render(); return;
         }
-        const regs = await window.cloudSync.queryMyRegistrations();
-        // 先顯示玩家賽程，不再等待每一場賽事摘要全部抓完才 render。
-        // 若大廳已有安全公開快取，先拿來補名稱／日期／live 狀態，讓 BXH CALL 可立即出現。
+        const cachedCodes=Array.isArray(publicTournamentsCache)
+          ? publicTournamentsCache.map(t=>t&&t.code).filter(Boolean)
+          : null;
+        const regs = await window.cloudSync.queryMyRegistrations(cachedCodes);
+        // 先顯示玩家賽程；大廳已經讀過的公開安全資料直接共用，不重複 Firestore get。
         const uniqueCodes = [...new Set(regs.map(r=>r.tournamentCode))];
-        if(Array.isArray(publicTournamentsCache)){
-          for(const code of uniqueCodes){
-            const cached = publicTournamentsCache.find(t=>t && (t.code===code || t.tournamentCode===code));
-            if(cached) myRegistrationsTournamentInfo[code] = cached;
-          }
+        const missingSummaryCodes=[];
+        for(const code of uniqueCodes){
+          const cached=Array.isArray(publicTournamentsCache)
+            ? publicTournamentsCache.find(t=>t && (t.code===code || t.tournamentCode===code))
+            : null;
+          if(cached) myRegistrationsTournamentInfo[code]=cached;
+          else missingSummaryCodes.push(code);
         }
         myRegistrationsCache = regs;
         myRegistrationsError = null;
         render();
 
-        // 賽事摘要改成背景平行讀取；任何單場變慢／失敗都不再阻塞其他賽事與 BXH CALL UI。
-        await Promise.all(uniqueCodes.map(async code=>{
+        // 只有快取沒有的賽事才補摘要；避免 N 場賽事每次都再做 N 次相同公開讀取。
+        await Promise.all(missingSummaryCodes.map(async code=>{
           try{
             const info = await window.cloudSync.getPublicTournamentSummary(code);
             if(info) myRegistrationsTournamentInfo[code] = info;
@@ -20952,17 +20967,22 @@ init();
     // 或 permission-denied，導致玩家明明已成功報名，這個分頁卻只顯示未知錯誤。
     // 現在不需要 collection-group index；每筆 registration 仍只 get 自己 uid 的文件，
     // 因此沿用既有 Security Rules 的本人讀取限制，不會讀到其他玩家資料。
-    async queryMyRegistrations(){
+    async queryMyRegistrations(knownPublicCodes){
       const uid = (authReady && authHandle && authHandle.currentUser) ? authHandle.currentUser.uid : null;
       if(!uid) return [];
 
-      const q = fx.query(
-        fx.collection(dbHandle, "publicTournaments"),
-        fx.where("visibility", "==", "public")
-      );
-      const tourSnap = await fx.getDocs(q);
-      const codes = [];
-      tourSnap.forEach(docSnap => codes.push(docSnap.id));
+      let codes=Array.isArray(knownPublicCodes)
+        ? [...new Set(knownPublicCodes.map(code=>String(code||"").toUpperCase()).filter(Boolean))]
+        : null;
+      if(!codes){
+        const q = fx.query(
+          fx.collection(dbHandle, "publicTournaments"),
+          fx.where("visibility", "==", "public")
+        );
+        const tourSnap = await fx.getDocs(q);
+        codes = [];
+        tourSnap.forEach(docSnap => codes.push(docSnap.id));
+      }
       if(codes.length===0) return [];
 
       const reads = await Promise.all(codes.map(async code=>{
