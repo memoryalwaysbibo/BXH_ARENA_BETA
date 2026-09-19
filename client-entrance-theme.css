@@ -3087,3 +3087,19 @@ button.btn-primary,
 @media(prefers-reduced-motion:reduce){
   .raffle-page-public .raffle-game-card{transition:none!important}
 }
+
+
+/* BXH ARENA player entrance order v13.43.5 */
+/* Visual order: APPLY -> LOGIN -> LOOKUP. Scope only to the player-center entrance. */
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .role-cards
+  > [data-action^="player-goto-"]:nth-child(1){
+  order:2!important;
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .role-cards
+  > [data-action^="player-goto-"]:nth-child(2){
+  order:1!important;
+}
+.auth-shell:has(.role-cards [data-action="player-goto-login"]) .role-cards
+  > [data-action^="player-goto-"]:nth-child(3){
+  order:3!important;
+}
