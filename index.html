@@ -13400,6 +13400,7 @@ function renderTournamentDetailScreen(){
   const profileIncomplete = isLoggedIn && !userProfile.realName;
   const isCommunity=(t.eventAuthority==="community" || (t.parsedData&&t.parsedData.meta&&t.parsedData.meta.eventAuthority==="community"));
   const detailPhase=canonicalPublicTournamentPhase(t);
+  const detailLobbySummary=lobbySummary(t);
 
   let actionHtml;
   if(isCommunity){
@@ -13493,6 +13494,7 @@ ${!isCommunity?`<div class="stat-box"><div class="label">報名費</div><div cla
       </div>
       <p class="hint" style="margin-top:8px;">${isCommunity?"COMMUNITY 一般賽事｜公開瀏覽，不計官方報名／天梯":esc(TARGET_GROUP_DESCRIPTIONS[t.targetGroup]||TARGET_GROUP_DESCRIPTIONS.open)}</p>
       ${isCommunity&&t.eventDescription?`<div class="field" style="margin-top:10px;"><label>活動說明</label><p>${esc(t.eventDescription)}</p></div>`:""}
+      ${lobbyPlayerRosterHtml(detailLobbySummary)}
     </div>
     <div class="panel" ${isCommunity?'style="display:none"':''}>
       <div class="panel-title">報名資訊</div>
