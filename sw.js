@@ -1,6 +1,6 @@
 'use strict';
 
-const STATIC_CACHE='bxh-arena-static-v10';
+const STATIC_CACHE='bxh-arena-static-v11';
 
 self.addEventListener('install',event=>{
   self.skipWaiting();
