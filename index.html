@@ -10785,7 +10785,7 @@ function renderPeopleManagement(){
       <div class="stat-box"><div class="label">對戰表</div><div class="value small">${state.bracketSize ? "已產生" : "尚未產生"}</div></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" data-action="draw-bracket" ${state.startedAt||!entryRosterValid()?'disabled':''}>${state.bracketSize ? "重新抽籤並產生對戰表" : "產生對戰表"}</button>
+      <button class="btn ${state.bracketSize?'btn-ghost':'btn-primary'}" data-action="draw-bracket" ${state.startedAt||!entryRosterValid()?'disabled':''}>${state.bracketSize ? "重新抽籤並產生對戰表" : "產生對戰表"}</button>
       ${state.bracketSize && !state.startedAt ? `<button class="btn btn-primary" data-action="start-tournament">賽事開始</button>` : ''}
       ${state.startedAt ? (()=>{
         const ts=tournamentStatus();
