@@ -9,6 +9,8 @@ assert.match(html,/class="btn btn-danger btn-sm" data-action="ops-forfeit"/,'raf
 assert.match(html,/class="btn btn-primary" data-action="share-copy-url"/,'share copy URL remains the primary share action');
 assert.match(html,/class="btn btn-ghost" data-action="share-native"/,'native share is a secondary alternate action');
 assert.match(html,/class="btn btn-ghost btn-block" data-action="cloud-close-test-result"/,'closing a diagnostic result must not be primary');
+assert.match(html,/class="btn \${state\.bracketSize\?'btn-ghost':'btn-primary'\}" data-action="draw-bracket"/,'redraw must become secondary once a bracket already exists');
+assert.match(html,/class="btn btn-primary" data-action="start-tournament"/,'starting a prepared tournament remains the primary action');
 assert.doesNotMatch(html,/class="btn btn-ghost btn-sm" data-action="admin-cancel-registration"/,'dangerous admin cancellation must not look neutral');
 assert.doesNotMatch(html,/class="btn btn-ghost btn-sm" data-action="ops-forfeit"/,'raffle forfeiture must not look neutral');
 
