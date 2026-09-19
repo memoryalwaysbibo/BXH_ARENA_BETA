@@ -12,6 +12,7 @@ on:
       - 'tests/smart-call-default.cjs'
       - 'tests/lobby-sort.cjs'
       - 'tests/navigation-language.cjs'
+      - 'tests/button-hierarchy.cjs'
       - '.github/workflows/performance-phase1.yml'
 permissions:
   contents: read
@@ -34,5 +35,7 @@ jobs:
         run: node tests/lobby-sort.cjs
       - name: Check global navigation language
         run: node tests/navigation-language.cjs
+      - name: Check button hierarchy
+        run: node tests/button-hierarchy.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
