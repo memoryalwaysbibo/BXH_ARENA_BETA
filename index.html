@@ -16326,23 +16326,34 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
           myRegistrationsLoading = false; render(); return;
         }
         const regs = await window.cloudSync.queryMyRegistrations();
-        // 批次補上顯示用的賽事資訊（name/date/tournamentPhase），來源是
-        // publicTournaments（公開安全欄位），不會讀到私人資料。
+        // 先顯示玩家賽程，不再等待每一場賽事摘要全部抓完才 render。
+        // 若大廳已有安全公開快取，先拿來補名稱／日期／live 狀態，讓 BXH CALL 可立即出現。
         const uniqueCodes = [...new Set(regs.map(r=>r.tournamentCode))];
-        for(const code of uniqueCodes){
+        if(Array.isArray(publicTournamentsCache)){
+          for(const code of uniqueCodes){
+            const cached = publicTournamentsCache.find(t=>t && (t.code===code || t.tournamentCode===code));
+            if(cached) myRegistrationsTournamentInfo[code] = cached;
+          }
+        }
+        myRegistrationsCache = regs;
+        myRegistrationsError = null;
+        render();
+
+        // 賽事摘要改成背景平行讀取；任何單場變慢／失敗都不再阻塞其他賽事與 BXH CALL UI。
+        await Promise.all(uniqueCodes.map(async code=>{
           try{
             const info = await window.cloudSync.getPublicTournamentSummary(code);
             if(info) myRegistrationsTournamentInfo[code] = info;
           }catch(e){ /* best-effort display info only, never blocks the list itself */ }
-        }
-        myRegistrationsCache = regs;
-        myRegistrationsError = null;
+        }));
+        myRegistrationsLoading = false;
+        if(appPhase==="player-center" && playerActiveTab==="registered") renderPreservingScroll();
       }catch(e){
         myRegistrationsCache = [];
         myRegistrationsError = mapRegistrationError(e);
+        myRegistrationsLoading = false;
+        render();
       }
-      myRegistrationsLoading = false;
-      render();
     })();
     return;
   }
