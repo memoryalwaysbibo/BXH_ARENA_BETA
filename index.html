@@ -945,9 +945,9 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;max-width:420px;width:100%;max-height:calc(100dvh - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch;margin:auto 0;}
-.modal-box>.btn-row{position:sticky;bottom:-22px;background:linear-gradient(180deg,rgba(24,25,29,.82),var(--panel) 22%);padding:18px 0 4px;margin-bottom:-4px;z-index:4;}
+.modal-box>.btn-row{position:static;bottom:auto;background:transparent;padding:0;margin:18px 0 0;z-index:4;}
 @supports not (height:100dvh){.modal-box{max-height:calc(100vh - 40px);}}
-@media(max-width:640px){.modal-overlay{padding:10px;align-items:flex-start}.modal-box{max-height:calc(100dvh - 20px);padding:18px;border-radius:14px}.modal-box>.btn-row{bottom:-18px}}
+@media(max-width:640px){.modal-overlay{padding:10px;align-items:flex-start}.modal-box{max-height:calc(100dvh - 20px);padding:18px;border-radius:14px}.modal-box>.btn-row{position:static;bottom:auto;background:transparent;padding:0;margin-top:18px}}
 .modal-box h3{font-family:var(--font-d);font-size:19px;margin:0 0 10px;color:var(--white);}
 .modal-box p{font-size:14px;color:var(--metal);line-height:1.6;margin:0 0 18px;}
 .modal-box .radio-row{display:flex;gap:10px;margin-bottom:18px;}
