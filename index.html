@@ -10389,7 +10389,7 @@ function renderAdminRegistrationsTab(){
     <td>${esc(r.email||"—")}</td>
     <td>${normalizeDateTime(r.createdAt)?esc(new Date(normalizeDateTime(r.createdAt)).toLocaleString()):"—"}</td>
     <td>${esc(r.source==="admin"?"管理員新增":"玩家自行報名")}</td>
-    ${showCancel ? `<td><button class="btn btn-ghost btn-sm" data-action="admin-cancel-registration" data-uid="${esc(r.uid)}" ${adminRegistrationsBusy||registrationLocked?'disabled':''}>手動取消</button></td>` : `<td>—</td>`}
+    ${showCancel ? `<td><button class="btn btn-danger btn-sm" data-action="admin-cancel-registration" data-uid="${esc(r.uid)}" ${adminRegistrationsBusy||registrationLocked?'disabled':''}>手動取消</button></td>` : `<td>—</td>`}
   </tr>`;
   const card = (r, showCancel)=>{
     const mainName=r.displayName||r.publicName||r.realName||r.gameId||"未命名選手";
@@ -10407,7 +10407,7 @@ function renderAdminRegistrationsTab(){
         <div><span>Email</span><b class="break-anywhere">${esc(r.email||"—")}</b></div>
         <div><span>報名時間</span><b>${esc(created)}</b></div>
         <div><span>來源</span><b>${esc(r.source==="admin"?"管理員新增":"玩家自行報名")}</b></div>
-        ${showCancel?`<div class="registration-mobile-actions"><button class="btn btn-ghost btn-sm" data-action="admin-cancel-registration" data-uid="${esc(r.uid)}" ${adminRegistrationsBusy||registrationLocked?'disabled':''}>手動取消</button></div>`:""}
+        ${showCancel?`<div class="registration-mobile-actions"><button class="btn btn-danger btn-sm" data-action="admin-cancel-registration" data-uid="${esc(r.uid)}" ${adminRegistrationsBusy||registrationLocked?'disabled':''}>手動取消</button></div>`:""}
       </div>
     </details>`;
   };
@@ -13686,7 +13686,7 @@ function renderPlayerRegisteredTab(){
           ? `<button class="btn btn-primary btn-sm player-bracket-progress-btn" data-action="switch-to-player-watch" data-view="bracket" data-code="${esc(r.tournamentCode)}">查看對戰表／賽程進度</button>`
           : ""}
         ${(['confirmed','waitlist','pending_draw'].includes(r.status)) && !publicTournamentRegistrationLocked(info)
-          ? `<button class="btn btn-ghost btn-sm" data-action="cancel-my-registration" data-code="${esc(r.tournamentCode)}">取消報名</button>`
+          ? `<button class="btn btn-danger btn-sm" data-action="cancel-my-registration" data-code="${esc(r.tournamentCode)}">取消報名</button>`
           : ((r.status==='confirmed'||r.status==='waitlist'||r.status==='pending_draw') ? `<span class="fe-status-chip status-closed">賽事已開始｜報名鎖定</span>` : "")}
       </div>
     </div>`;
@@ -14005,7 +14005,7 @@ function renderShareModal(){
       <div class="share-summary-box" style="word-break:break-all;font-size:12px;">${esc(url)}</div>
       <div class="btn-row" style="margin-top:12px;flex-direction:column;align-items:stretch;">
         <button class="btn btn-primary" data-action="share-copy-url">複製${esc(cfg.label)}網址</button>
-        ${canNativeShare?`<button class="btn btn-primary" data-action="share-native">系統分享</button>`:""}
+        ${canNativeShare?`<button class="btn btn-ghost" data-action="share-native">系統分享</button>`:""}
         <div class="btn-row"><button class="btn btn-ghost" data-action="share-download-qr">下載 QR</button><button class="btn btn-ghost" data-action="share-fullscreen-qr">全螢幕 QR</button></div>
       </div>`:`<div class="banner" style="margin-top:14px;"><span>尚未建立雲端賽事代碼，請先完成賽事架構並發布。</span></div>`}
       <div class="share-summary-box">${esc(currentShareText()).replace(/\n/g,"<br>")}</div>
@@ -14878,7 +14878,7 @@ function renderCloudTestResultModal(){
       ${(!r.configured || !r.sdkLoaded) ? `<p class="hint" style="margin-top:10px;">若一直卡在①或②，可能是：FIREBASE_CONFIG 沒填、專案不存在、或目前所在的瀏覽器環境（例如 Claude.ai 預覽視窗的沙盒）不允許連到外部網路。建議把此檔案部署到 GitHub Pages 後在該網址重新測試。</p>` : ""}
       ${r.permissionLimited ? `<p class="hint" style="margin-top:10px;">Firebase 連線正常；目前帳號是工作人員權限，不能建立新的正式賽事。請由管理員建立賽事後再指派工作人員管理。</p>` : ""}${(r.readOk===false && r.sdkLoaded && !r.permissionLimited) ? `<p class="hint" style="margin-top:10px;">SDK 已初始化但 Firestore 讀取失敗，請確認登入狀態、Rules 或網路連線。</p>` : ""}
       <div class="btn-row" style="margin-top:14px;">
-        <button class="btn btn-primary btn-block" data-action="cloud-close-test-result">關閉</button>
+        <button class="btn btn-ghost btn-block" data-action="cloud-close-test-result">關閉</button>
       </div>
     </div>
   </div>`;
@@ -15777,7 +15777,7 @@ function renderTournamentOperationsPage(){
  return `<div class="panel"><div class="panel-title">抽獎與賽事維護</div><p class="hint">${esc(state.meta.name)}｜一般抽獎限本場已報到者；一輪遊限單淘汰第一輪實際淘汰者。僅抽獎品，不變更參賽名單。</p><button class="btn btn-ghost" data-action="ops-load" ${o.busy?'disabled':''}>${o.busy?'處理中…':'載入／重新整理'}</button>${o.error?`<p class="auth-error">${esc(o.error)}</p>`:''}
  ${o.data?`<p class="hint">呆滯賽事自動關閉：${o.data.enabled?'已啟用':'未啟用'}。連續 24 小時無操作才符合條件，實際於後端巡查時關閉；首次觀察與重新啟用均保留 24 小時。</p>${isSuperAdmin()?`<button class="btn btn-ghost" data-action="ops-toggle" ${o.busy?'disabled':''}>${o.data.enabled?'停用':'啟用'}呆滯偵測（全站）</button>`:''}`:'<p class="hint">請先載入設定。若服務尚未更新，會顯示錯誤並保留其他賽事功能。</p>'}</div>
  <div class="panel"><div class="panel-title">獎品抽獎</div><div class="grid grid-2"><div class="field"><label for="ops-title">獎項名稱／獎品</label><input id="ops-title" maxlength="120" value="${esc(d.title)}"></div><div class="field"><label for="ops-description">獎品內容</label><input id="ops-description" maxlength="500" value="${esc(d.description)}"></div><div class="field"><label for="ops-mode">抽獎資格</label><select id="ops-mode"><option value="general" ${d.mode==='general'?'selected':''}>一般抽獎：本場已報到</option><option value="first_round" ${d.mode==='first_round'?'selected':''}>一輪遊：單淘汰第一輪淘汰</option></select></div><div class="field"><label for="ops-count">中獎人數</label><input id="ops-count" type="number" min="1" max="100" value="${d.count}"></div><label><input id="ops-exclude" type="checkbox" ${d.excludePrevious?'checked':''}>排除本場已中獎者</label></div><div class="btn-row"><button class="btn btn-ghost" data-action="ops-preview" ${locked||pending?'disabled':''}>預覽候選名單</button><button class="btn btn-primary" data-action="ops-draw" ${locked||pending||!o.preview?'disabled':''}>確認抽獎</button>${pending?`<button class="btn btn-primary" data-action="ops-retry" ${o.busy?'disabled':''}>確認／重試上次抽獎</button>`:''}</div>${pending?'<p class="hint">上次抽獎尚未確認結果，請使用同一次請求確認，避免重複抽出。</p>':''}${o.preview?`<p>符合資格：${o.preview.count} 人</p><details><summary>查看候選名單</summary><p>${o.preview.candidates.map(x=>esc(x.name)).join('、')||'無'}</p></details>`:''}</div>
- ${(o.data?.raffles||[]).map(r=>`<div class="panel"><div class="panel-title">${esc(r.title)}${r.testMode?'（測試）':''}</div><p>${esc(r.description||'')}</p><p class="hint">${esc(modes[r.mode]||r.mode)}｜${esc(operationsDate(r.createdAt))}｜抽出 ${r.count} 人</p>${r.winners.map(w=>`<div class="ops-winner"><b>${esc(w.name)}</b><span>${statuses[w.status]||esc(w.status)}</span><div class="btn-row">${w.status==='pending'?`<button class="btn btn-ghost btn-sm" data-action="ops-claim" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>登記領獎</button><button class="btn btn-ghost btn-sm" data-action="ops-forfeit" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>棄領</button>`:w.status==='forfeited'?`<button class="btn btn-ghost btn-sm" data-action="ops-replace" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>補抽一人</button>`:''}</div></div>`).join('')}</div>`).join('')}
+ ${(o.data?.raffles||[]).map(r=>`<div class="panel"><div class="panel-title">${esc(r.title)}${r.testMode?'（測試）':''}</div><p>${esc(r.description||'')}</p><p class="hint">${esc(modes[r.mode]||r.mode)}｜${esc(operationsDate(r.createdAt))}｜抽出 ${r.count} 人</p>${r.winners.map(w=>`<div class="ops-winner"><b>${esc(w.name)}</b><span>${statuses[w.status]||esc(w.status)}</span><div class="btn-row">${w.status==='pending'?`<button class="btn btn-ghost btn-sm" data-action="ops-claim" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>登記領獎</button><button class="btn btn-danger btn-sm" data-action="ops-forfeit" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>棄領</button>`:w.status==='forfeited'?`<button class="btn btn-ghost btn-sm" data-action="ops-replace" data-raffle="${esc(r.id)}" data-winner="${esc(w.key)}" ${locked?'disabled':''}>補抽一人</button>`:''}</div></div>`).join('')}</div>`).join('')}
  ${o.data?`<div class="panel"><details><summary>操作紀錄（最近 30 筆）</summary>${o.data.logs.map(x=>`<p class="hint">${esc(operationsDate(x.at))}｜${esc(({'system-close':'系統關閉',restore:'恢復賽事','raffle-draw':'抽獎','raffle-winner':'領獎／棄領／補抽'})[x.type]||x.type)}｜${esc(x.reason||x.title||'')}</p>`).join('')||'<p>尚無操作紀錄</p>'}</details></div>`:''}`;
 }
 function operationsError(e){const msg=String(e?.message||'');const messages={'first-round-not-complete':'第一輪尚未全部完成，暫時不能抽一輪遊獎項。','first-round-single-only':'一輪遊目前僅支援單淘汰賽。','not-enough-candidates':'符合資格人數不足，請調整人數或資格。','invalid-winner-count':'中獎人數請填 1～100 的整數。','system-closed':'此賽事已由系統關閉，需由最高管理員恢復。','tournament-access-denied':'目前帳號沒有管理此場賽事的權限。','super-admin-required':'只有最高管理員可以操作。','winner-already-handled':'此人已完成領獎或棄領處理，請重新整理。','candidate-list-changed':'候選名單已改變，請重新預覽後抽獎。','pending-storage-unavailable':'此瀏覽器無法保存抽獎請求，請更換瀏覽器後再試。'};for(const [k,v]of Object.entries(messages))if(msg.includes(k))return v;return '操作未確認完成，請重新整理或重試；若服務尚未部署，請先完成 13.29.8 後端更新。';}
