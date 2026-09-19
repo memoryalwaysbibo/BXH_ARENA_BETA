@@ -8,6 +8,7 @@ on:
       - 'sw.js'
       - 'tests/performance-phase1.cjs'
       - 'tests/performance-phase2.cjs'
+      - 'tests/registration-invitations-performance.cjs'
       - 'tests/firebase-module-syntax.cjs'
       - 'tests/classic-script-syntax.cjs'
       - 'tests/smart-call-default.cjs'
@@ -43,5 +44,7 @@ jobs:
         run: node tests/lobby-navigation.cjs
       - name: Check Phase 2 read de-duplication
         run: node tests/performance-phase2.cjs
+      - name: Check invitation background polling
+        run: node tests/registration-invitations-performance.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
