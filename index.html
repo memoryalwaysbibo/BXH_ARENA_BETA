@@ -13649,7 +13649,14 @@ function scheduleSmartCallAutoRefresh(){
   if(appPhase!=="player-center" || playerActiveTab!=="registered" || !Array.isArray(myRegistrationsCache)) return;
   const enabled=myRegistrationsCache.filter(r=>r.status==="confirmed"&&schedulePhase(myRegistrationsTournamentInfo[r.tournamentCode]||{})==='live'&&smartCallModel(r,myRegistrationsTournamentInfo[r.tournamentCode]||{}).kind!=='done'&&smartCallEnabled(r.tournamentCode)); if(!enabled.length) return;
   smartCallAutoRefreshTimer=setTimeout(async()=>{
-    if(smartCallRefreshBusy || appPhase!=="player-center" || playerActiveTab!=="registered") return;
+    smartCallAutoRefreshTimer=null;
+    if(appPhase!=="player-center" || playerActiveTab!=="registered") return;
+    // Hidden tabs should not keep polling Firestore. Re-arm the timer and resume
+    // naturally after the player returns to the foreground.
+    if(document.visibilityState!=="visible" || smartCallRefreshBusy){
+      scheduleSmartCallAutoRefresh();
+      return;
+    }
     smartCallRefreshBusy=true;
     try{
       await Promise.all(enabled.map(async r=>{
@@ -20341,6 +20348,32 @@ init();
   function cloudNextSeasonId(cur){ const m=String(cur||"S1").match(/^(?:S)?(\d+)$/i); return "S"+((m?parseInt(m[1],10):1)+1); }
   function cloudSafeTimestampMs(v){ try{ if(v&&typeof v.toMillis==="function") return v.toMillis(); }catch(e){} return typeof v==="number"?v:0; }
 
+  // Performance Phase 2B: coalesce short-burst reads of the same public event.
+  // This only caches the Firestore DocumentSnapshot for 5 seconds, so live data
+  // still refreshes normally while duplicate UI requests share one network read.
+  const PUBLIC_TOURNAMENT_DOC_READ_TTL_MS=5000;
+  const publicTournamentDocReadCache=new Map();
+  async function readPublicTournamentDocCoalesced(code){
+    const key=String(code||"").toUpperCase();
+    if(!key) throw new Error("invalid-code");
+    const now=Date.now();
+    const cached=publicTournamentDocReadCache.get(key);
+    if(cached){
+      if(cached.promise) return cached.promise;
+      if(cached.snap && now-Number(cached.at||0)<=PUBLIC_TOURNAMENT_DOC_READ_TTL_MS) return cached.snap;
+    }
+    const promise=fx.getDoc(fx.doc(dbHandle,"publicTournaments",key));
+    publicTournamentDocReadCache.set(key,{promise,snap:null,at:now});
+    try{
+      const snap=await promise;
+      publicTournamentDocReadCache.set(key,{promise:null,snap,at:Date.now()});
+      return snap;
+    }catch(e){
+      if(publicTournamentDocReadCache.get(key)?.promise===promise) publicTournamentDocReadCache.delete(key);
+      throw e;
+    }
+  }
+
   window.cloudSync = {
     async connect(){ return await tryInitFirebase(); },
     isConfigured(){ return isConfigPresent(); },
@@ -21013,7 +21046,7 @@ init();
     // 的公開安全欄位，不含任何私人資料。
     async getPublicTournamentSummary(code){
       try{
-        const snap = await fx.getDoc(fx.doc(dbHandle, "publicTournaments", code));
+        const snap = await readPublicTournamentDocCoalesced(code);
         if(!snap.exists()) return null;
         const d = snap.data();
         let parsedData=null;
@@ -21037,7 +21070,7 @@ init();
     // 完整公開鏡像讀取，供賽事詳細頁使用（仍然只有公開安全欄位，因為
     // publicTournaments 這個集合本身就不含私人資料）。
     async getPublicTournamentFull(code){
-      const snap = await fx.getDoc(fx.doc(dbHandle, "publicTournaments", code));
+      const snap = await readPublicTournamentDocCoalesced(code);
       if(!snap.exists()) return null;
       const d=snap.data();
       let parsedData=null;
