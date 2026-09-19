@@ -13405,7 +13405,11 @@ function smartCallStorageWrite(key,obj){
 }
 function smartCallUserKey(){ return (firebaseUser&&firebaseUser.uid)||"guest"; }
 function smartCallEnabled(code){
-  const all=smartCallStorageRead(SMART_CALL_PREF_KEY); const u=all[smartCallUserKey()]||{}; return u[code]===true;
+  const all=smartCallStorageRead(SMART_CALL_PREF_KEY);
+  const u=all[smartCallUserKey()]||{};
+  // Built-in default is ON. Only an explicit per-user/per-event false means
+  // the player intentionally disabled BXH CALL and should remain opted out.
+  return u[code]!==false;
 }
 function setSmartCallEnabled(code,on){
   const all=smartCallStorageRead(SMART_CALL_PREF_KEY); const uk=smartCallUserKey(); all[uk]=all[uk]||{}; all[uk][code]=!!on; smartCallStorageWrite(SMART_CALL_PREF_KEY,all);
