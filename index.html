@@ -5373,6 +5373,76 @@ function renderPreservingScroll(){
 }
 
 let remoteAppliedRoomId=null, remoteAppliedAt=0;
+
+// Live-performance Phase 1: keep authoritative state immediate, but coalesce
+// expensive DOM/local-cache work when several Courts publish close together.
+const REMOTE_RENDER_COALESCE_MS=100;
+const REMOTE_PERSIST_THROTTLE_MS=350;
+let remoteRenderTimer=null;
+let remoteRenderDirty=false;
+let remotePersistTimer=null;
+let remotePersistRunning=false;
+let remotePersistSnapshot=null;
+
+function remoteCourtAssignmentFingerprint(st){
+  const stations=Number(st&&st.meta&&st.meta.stations||1);
+  const matches=Array.isArray(st&&st.matches)?st.matches:[];
+  return stations+"#"+matches.map(m=>[
+    m&&m.id||"",Number(m&&m.station||0),m&&m.completed?1:0,m&&m.status||"",
+    m&&m.winnerId||"",m&&m.a&&m.a.playerId||"",m&&m.b&&m.b.playerId||"",
+    Number(m&&m.skippedAt||0),Number(m&&m.resumeQueuedAt||0),Number(m&&m.dispatchRevision||0)
+  ].join(":")).join("|");
+}
+
+function flushRemoteRender(){
+  remoteRenderTimer=null;
+  if(!remoteRenderDirty) return;
+  if(typeof document!=="undefined" && document.visibilityState==="hidden") return;
+  remoteRenderDirty=false;
+  const scrollY=(typeof window!=="undefined"&&window.scrollY)||0;
+  render();
+  if(typeof window!=="undefined"&&window.scrollTo){
+    try{window.scrollTo(0,scrollY);}catch(e){}
+  }
+}
+
+function scheduleRemoteRender(){
+  remoteRenderDirty=true;
+  if(typeof document!=="undefined" && document.visibilityState==="hidden") return;
+  if(remoteRenderTimer) return;
+  remoteRenderTimer=setTimeout(flushRemoteRender,REMOTE_RENDER_COALESCE_MS);
+}
+
+async function flushRemotePersist(){
+  remotePersistTimer=null;
+  if(remotePersistRunning || !remotePersistSnapshot) return;
+  const snapshot=remotePersistSnapshot;
+  remotePersistSnapshot=null;
+  remotePersistRunning=true;
+  try{await saveRecord(snapshot);}catch(e){}
+  finally{
+    remotePersistRunning=false;
+    if(remotePersistSnapshot && !remotePersistTimer){
+      remotePersistTimer=setTimeout(flushRemotePersist,REMOTE_PERSIST_THROTTLE_MS);
+    }
+  }
+}
+
+function scheduleRemotePersist(st){
+  remotePersistSnapshot=cloneStateForSave(st);
+  if(remotePersistRunning || remotePersistTimer) return;
+  remotePersistTimer=setTimeout(flushRemotePersist,REMOTE_PERSIST_THROTTLE_MS);
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"){
+    if(remoteRenderDirty) scheduleRemoteRender();
+    if(remotePersistSnapshot && !remotePersistRunning && !remotePersistTimer){
+      remotePersistTimer=setTimeout(flushRemotePersist,0);
+    }
+  }
+});
+
 function applyRemoteState(remote, authoritative=false){
   try{
     if(!remote || !remote.id) return;
@@ -5383,30 +5453,22 @@ function applyRemoteState(remote, authoritative=false){
     const remoteUpdated = remote.updatedAt || 0;
     if(!authoritative && Number(remote.callRevision||0)<=Number(state.callRevision||0) && Number(remote.entrySelectionRevision||0)<=Number(state.entrySelectionRevision||0) && remoteUpdated <= localUpdated) return; // ignore stale/older data (avoid clobbering newer local edits)
     remoteAppliedAt=remoteUpdated;
+    const previousCourtFingerprint=remoteCourtAssignmentFingerprint(state);
     const keepCode = state.cloudCode;
     state = Object.assign(defaultState(remote.id), remote);
     state.cloudCode = keepCode;
     refereeAssignmentDraftEnabled = null;
-    // Court assignments are a PURE, deterministic function of state.matches +
-    // state.meta.stations — never trust whatever courtAssignments value
-    // happened to be included in the transmitted blob (the device that wrote
-    // this update may not have pushed its own freshly-rebuilt assignments as
-    // part of the SAME write, e.g. confirmMatchTransaction only commits match
-    // fields). Recomputing locally here means every device always converges
-    // on the same correct court state from the same underlying match data,
-    // regardless of transmission timing.
-    if(state.bracketSize>0){ rebuildCourtAssignments(); }
-    cloudLastSyncAt = Date.now();
-    saveRecord(state);
-    // Firebase-driven updates should never yank the viewport back to the top —
-    // this is a live data refresh, not a navigation action, so the person's
-    // current scroll position (mid-read on a long bracket/roster list, etc.)
-    // is preserved across the re-render.
-    const scrollY = (typeof window!=="undefined" && window.scrollY) || 0;
-    render();
-    if(typeof window!=="undefined" && window.scrollTo){
-      try{ window.scrollTo(0, scrollY); }catch(e){}
+
+    // Score-only updates do not change Court assignment inputs.
+    if(state.bracketSize>0 && previousCourtFingerprint!==remoteCourtAssignmentFingerprint(state)){
+      rebuildCourtAssignments();
     }
+    cloudLastSyncAt = Date.now();
+
+    // During a burst, persist/render only the newest state. Hidden tabs keep
+    // receiving authoritative state but defer DOM work until visible again.
+    scheduleRemotePersist(state);
+    scheduleRemoteRender();
   }catch(e){ /* ignore malformed remote payloads */ }
 }
 
@@ -21263,7 +21325,7 @@ if(testerSession){
       if(!cloudEnabled || !code) return ()=>{};
       try{
         const ref = fx.doc(dbHandle,"tournaments",String(code).toUpperCase());
-        const unsub = fx.onSnapshot(ref, { includeMetadataChanges:true }, (snap)=>{
+        const unsub = fx.onSnapshot(ref, (snap)=>{
           if(!snap.exists()) return;
           if(snap.metadata.hasPendingWrites) return; // 略過自己剛寫入、尚未確認的本地回音
           const d = snap.data();
@@ -21286,7 +21348,7 @@ if(testerSession){
       if(!cloudEnabled || !code) return ()=>{};
       try{
         const ref = fx.doc(dbHandle,"publicTournaments",String(code).toUpperCase());
-        const unsub = fx.onSnapshot(ref, { includeMetadataChanges:true }, (snap)=>{
+        const unsub = fx.onSnapshot(ref, (snap)=>{
           if(!snap.exists()) return;
           if(snap.metadata.hasPendingWrites) return;
           const d = snap.data();
