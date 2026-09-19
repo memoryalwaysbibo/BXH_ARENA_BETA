@@ -9371,7 +9371,7 @@ function renderLive(){
       <div class="stat-box"><div class="label">已完成場次</div><div class="value small">${doneCount}</div></div>
       <div class="stat-box"><div class="label">戰鬥台數量</div><div class="value small">${state.meta.stations}</div></div>
     </div>
-    ${renderArchiveControls()}
+    ${publicWatchReturnContext?"":renderArchiveControls()}
   </div>`;
   const liveCourtsPanelHtml=`  <div class="panel">
     <div class="panel-title">${spectatorSettling?"已完成戰鬥台":"即時戰鬥台"}</div>
