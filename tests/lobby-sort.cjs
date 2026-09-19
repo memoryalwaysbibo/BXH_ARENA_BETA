@@ -46,6 +46,7 @@ assert.match(actionBlock,/phase==="cancelled"[\s\S]*查看取消資訊/,'cancell
 
 assert.match(html,/function publicWatchReturnLabel\(context=publicWatchReturnContext\)/,'public watch return labels must be centralized');
 assert.match(html,/spectatorSettling[\s\S]*暫定選手排名/,'settling view must label ranking as provisional');
+assert.match(html,/rankingOpen\|\|spectatorSettling/,'settling view must open provisional ranking by default');
 assert.match(html,/spectatorSettling[\s\S]*已完成戰鬥台/,'settling view must stop calling courts live');
 
 console.log('PASS lobby ordering, lifecycle routing, settlement hierarchy, and return semantics');
