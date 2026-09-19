@@ -1585,12 +1585,12 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 /* ==== v13.28.9 compact account management ==== */
 .account-management-main{width:min(1180px,100%);margin:0 auto;padding:22px 16px 80px;box-sizing:border-box;}
 .account-management-panel{min-width:0;}
-.account-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px;}
+.account-overview-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:14px;}
 .account-role-filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding:12px;border:1px solid rgba(217,185,92,.16);border-radius:12px;background:rgba(255,255,255,.018);}
 .account-filter-chip{appearance:none;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(8,10,13,.78);color:var(--metal);padding:8px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease;}
 .account-filter-chip:hover{border-color:var(--gold-dim);color:var(--ivory);}
 .account-filter-chip.active{border-color:var(--gold);background:rgba(217,178,73,.16);color:#f4d977;box-shadow:0 0 0 1px rgba(217,178,73,.08) inset;}
-.account-filter-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,minmax(130px,auto)) auto;gap:8px;align-items:end;margin-top:10px;}
+.account-filter-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) repeat(4,minmax(125px,auto)) auto;gap:8px;align-items:end;margin-top:10px;}
 .account-filter-search{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;}
 .account-filter-toolbar .field{margin:0;min-width:0;}
 .account-filter-toolbar input,.account-filter-toolbar select{width:100%;min-width:0;}
@@ -1620,6 +1620,7 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 .account-tools-card>summary::-webkit-details-marker{display:none;}
 .account-tools-body{padding:14px 15px 15px;border-top:1px solid rgba(255,255,255,.07);}
 @media(max-width:900px){
+  .account-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .account-filter-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));}
   .account-filter-search{grid-column:1/-1;}
   .account-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -5899,8 +5900,12 @@ let accountMgmtUsers = null;
 let superAdminManagementPage = "accounts"; // accounts | checkin | titles
 let accountMgmtBusy = false;
 let accountDeleteBusyUid = "";
+let accountRealNameScanBusy = false;
+let accountRealNameScanSummary = null;
+let accountRealNameScanError = "";
 let accountMgmtRoleFilter = "all";
 let accountMgmtStatusFilter = "all";
+let accountMgmtNameFilter = "all";
 let accountMgmtActivityFilter = "all";
 let accountMgmtSort = "created-desc";
 let accountMgmtQuery = "";
@@ -11051,7 +11056,8 @@ function accountActivitySummary(users, now=Date.now()){
   const enabled=(users||[]).filter(u=>u&&u.active!==false);
   const daily=enabled.filter(u=>{ const ts=accountTimestampValue(u.lastLoginAt); return ts>0&&now-ts<=24*60*60*1000; }).length;
   const weekly=enabled.filter(u=>{ const ts=accountTimestampValue(u.lastLoginAt); return ts>0&&now-ts<=7*24*60*60*1000; }).length;
-  return {total:(users||[]).length,enabled:enabled.length,daily,weekly,testers:enabled.filter(u=>(u.role==="tester"||u.isTestAccount===true)).length};
+  const review=(users||[]).filter(u=>accountNameVerificationInfo(u).key==="review").length;
+  return {total:(users||[]).length,enabled:enabled.length,daily,weekly,testers:enabled.filter(u=>(u.role==="tester"||u.isTestAccount===true)).length,nameReview:review};
 }
 
 const ACCOUNT_ROLE_FILTERS = [
@@ -11076,6 +11082,43 @@ function accountPrimaryName(user){
 function accountGameId(user){
   if(!user) return "";
   return String(user.gameId||user.nickname||((user.displayName&&user.displayName!==user.realName)?user.displayName:"")||"");
+}
+function realNameVerificationReasonLabel(reason){
+ const map={
+  "missing-name":"尚未填寫本名",
+  "name-too-short":"姓名長度過短",
+  "name-too-long":"姓名長度過長",
+  "contains-number":"姓名含有數字",
+  "contains-contact-or-url":"姓名含網址或帳號字樣",
+  "placeholder-or-test-name":"疑似測試資料、暱稱或佔位名稱",
+  "unusual-characters":"含不常見的姓名字元",
+  "repeated-characters":"姓名出現可疑重複字元",
+  "unusual-name-length":"姓名長度需要人工確認",
+  "latin-single-token":"英文姓名只有單一詞，需要人工確認",
+  "mixed-script-name":"姓名使用混合字元格式",
+  "history-name-mismatch":"與既有正式賽事姓名不一致",
+  "history-check-unavailable":"歷史賽事姓名暫時無法核對",
+  "format-valid":"格式檢核通過",
+  "format-and-history-consistent":"與既有正式賽事姓名一致",
+  "manual-approved":"最高管理員人工確認",
+  "legacy-manual-confirmation":"舊版人工確認紀錄"
+ };
+ return map[String(reason||"")]||"等待系統檢核";
+}
+function accountNameVerificationInfo(user){
+ if(!user||!String(user.realName||"").trim())return {key:"missing",label:"尚無本名",badge:"badge-metal",reason:"尚未填寫本名"};
+ if(user.realNameVerified===true){
+  const method=String(user.realNameVerificationMethod||"");
+  if(method==="system")return {key:"verified",label:"系統檢核通過",badge:"badge-neon",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+  return {key:"verified",label:"人工已確認",badge:"badge-neon",reason:realNameVerificationReasonLabel(user.realNameVerificationReason||"legacy-manual-confirmation")};
+ }
+ if(user.realNameVerificationStatus==="review")return {key:"review",label:"待人工確認",badge:"badge-danger",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+ if(user.realNameVerificationStatus==="missing")return {key:"missing",label:"尚無本名",badge:"badge-metal",reason:realNameVerificationReasonLabel(user.realNameVerificationReason)};
+ return {key:"unchecked",label:"等待系統檢核",badge:"badge-gold",reason:"系統尚未完成本名資料一致性檢核"};
+}
+function accountMatchesNameVerification(user,filter){
+ if(filter==="all")return true;
+ return accountNameVerificationInfo(user).key===filter;
 }
 function accountRoleMatches(user,filter){
   if(filter==="all") return true;
@@ -11104,6 +11147,7 @@ function getVisibleAccountUsers(users,now=Date.now()){
     if(!accountRoleMatches(user,accountMgmtRoleFilter)) return false;
     if(accountMgmtStatusFilter==="active"&&user.active===false) return false;
     if(accountMgmtStatusFilter==="inactive"&&user.active!==false) return false;
+    if(!accountMatchesNameVerification(user,accountMgmtNameFilter)) return false;
     if(!accountMatchesActivity(user,accountMgmtActivityFilter,now)) return false;
     if(keyword){
       const haystack=[accountPrimaryName(user),accountGameId(user),user.email,user.role].join(" ").toLowerCase();
