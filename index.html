@@ -2563,7 +2563,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.5">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.6">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -2594,7 +2594,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
 <script src="raffle-claims-ui.js?v=13.35.0"></script>
 <script src="registration-invitations-ui.js?v=13.42.3" data-bxh-registration-invitations="true"></script>
 <script src="family-ui.js?v=13.42.1"></script>
-<script src="raffle-ui.js?v=13.40.0"></script>
+<script src="raffle-ui.js?v=13.43.0"></script>
 <script>
 // Standalone browsers do not provide the hosted artifact's window.storage API.
 // Preserve an existing provider; propagate storage failures to existing callers.
@@ -11112,7 +11112,7 @@ function renderLandingScreen(){
       </div>
       <div class="btn-row" style="justify-content:center;margin-top:18px;">
         <button class="btn btn-primary" data-action="open-qr-scanner" data-source="landing">掃描賽事 QR</button>
-        <button class="btn btn-ghost" data-action="raffle-public">會員抽獎活動</button>
+        <button class="btn btn-ghost landing-raffle-cta" data-action="raffle-public">🎟 會員抽獎活動</button>
       </div>
       <div class="auth-footnote landing-footnote">
         <span>BXH ARENA · TOURNAMENT MANAGEMENT SYSTEM</span>
@@ -14428,7 +14428,7 @@ function render(){
   const __viewportSnapshot = captureRenderViewport();
   try{
     const app = document.getElementById("app");
-  if(appPhase==='raffle-public'){app.innerHTML=authShellOpen()+authBrandHeader()+'<button class="btn btn-ghost" data-action="raffle-home">返回首頁</button>'+renderRafflePage()+authShellClose();return;}
+  if(appPhase==='raffle-public'){app.innerHTML=authShellOpen()+'<div class="raffle-public-shellbar"><button class="raffle-public-back" data-action="raffle-home" aria-label="返回首頁">←</button><div class="raffle-public-shellbrand"><strong>BXH ARENA</strong><span>MEMBER RAFFLE</span></div><span class="raffle-public-shellstatus">會員專區</span></div>'+renderRafflePage()+authShellClose();return;}
   if(appPhase==="landing"){ app.innerHTML = renderLandingScreen(); bindAuthInputs(); return; }
   if(appPhase==="admin-login"){ app.innerHTML = renderAdminLoginScreen(); bindAuthInputs(); return; }
   if(appPhase==="admin-setup"){ app.innerHTML = renderAdminSetupScreen(); bindAuthInputs(); return; }
