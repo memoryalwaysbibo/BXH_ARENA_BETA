@@ -2563,7 +2563,7 @@ header.topbar .brandtext .t-conn-heading .online-presence strong{font-size:10px;
   }
 }
 </style>
-<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.4">
+<link rel="stylesheet" href="client-entrance-theme.css?v=2.0.5">
 </head>
 <body>
 <div id="bxh-beta-environment-banner" style="position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b91c1c;color:#fff;text-align:center;font:700 12px/28px system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:.08em;box-shadow:0 1px 8px rgba(0,0,0,.35);pointer-events:none">BETA 測試站｜非正式環境</div>
@@ -6426,17 +6426,24 @@ function scheduleEngagementDayRefresh(result){
   },delay);
 }
 function renderCheckInCalendar(ci){
-  if(!ci || !/^\d{4}-\d{2}$/.test(ci.month||"")) return '<div class="hint">日曆需部署 v13.29.4 後端後開放。</div>';
+  if(!ci || !/^\\d{4}-\\d{2}$/.test(ci.month||"")) return '<div class="hint">日曆需部署 v13.29.4 後端後開放。</div>';
   const [year,month]=ci.month.split('-').map(Number);
   const days=new Date(Date.UTC(year,month,0)).getUTCDate();
   const start=new Date(Date.UTC(year,month-1,1)).getUTCDay();
   const checked=new Set(Array.isArray(ci.dates)?ci.dates:[]);
+  const makeup=ci.makeup||{};
+  const eligible=new Set(Array.isArray(makeup.eligibleDates)?makeup.eligibleDates:[]);
+  const canUseMakeup=Number(makeup.remaining||0)>0;
   const cells=Array.from({length:start},()=>'<span aria-hidden="true"></span>');
   for(let n=1;n<=days;n++){
-    const key=ci.month+'-'+String(n).padStart(2,'0'),got=checked.has(key);
-    cells.push(`<span class="checkin-day ${got?'done':''}" ${key===ci.today?'aria-current="date"':''} aria-label="${key}${got?' 已簽到':''}">${n}${got?' ✓':''}</span>`);
+    const key=ci.month+'-'+String(n).padStart(2,'0'),got=checked.has(key),canMakeup=!got&&canUseMakeup&&eligible.has(key);
+    if(canMakeup){
+      cells.push(`<button type="button" class="checkin-day makeup-eligible" data-action="player-makeup-checkin" data-date="${key}" ${engagementActionBusy?'disabled':''} aria-label="${key} 可補簽"><span>${n}</span><small>補</small></button>`);
+    }else{
+      cells.push(`<span class="checkin-day ${got?'done':''}" ${key===ci.today?'aria-current="date"':''} aria-label="${key}${got?' 已簽到':''}">${n}${got?' ✓':''}</span>`);
+    }
   }
-  return `<div class="hint" style="margin-top:12px">${esc(ci.month)} 簽到日曆｜✓ 已簽到</div><div class="checkin-calendar">${['日','一','二','三','四','五','六'].map(s=>`<b>${s}</b>`).join('')}${cells.join('')}</div>`;
+  return `<div class="hint" style="margin-top:12px">${esc(ci.month)} 簽到日曆｜✓ 已簽到｜「補」可補簽</div><div class="checkin-calendar">${['日','一','二','三','四','五','六'].map(s=>`<b>${s}</b>`).join('')}${cells.join('')}</div>`;
 }
 function safeEngagementRender(fn){
   try{return fn();}catch(error){
@@ -6460,6 +6467,11 @@ function engagementFriendlyError(error,fallback="服務暫時無法使用，請�
   if(code==="deadline-exceeded") return "雲端回應逾時，請稍後重試";
   if(code==="unavailable" || message.includes("service-unavailable")) return "雲端服務暫時無法連線";
   if(message.includes("feature-disabled")) return "此功能目前尚未開放";
+  if(message.includes("makeup-limit-reached")) return "本月 2 次補簽機會已使用完畢";
+  if(message.includes("makeup-window-expired")) return "只能補簽最近 7 天內的漏簽日期";
+  if(message.includes("makeup-current-month-only")) return "補簽僅限本月份的漏簽日期";
+  if(message.includes("already-checked-in") || code==="already-exists") return "該日期已完成簽到";
+  if(message.includes("invalid-makeup-date")) return "補簽日期格式不正確";
   if(message.includes("title-not-earned")) return "只能裝備自己已取得的稱號";
   return fallback;
 }
@@ -6536,10 +6548,16 @@ function renderDailyCheckInCard(){
   if(!engagementSnapshot && !engagementLoading && !engagementError) setTimeout(()=>requestEngagementSnapshot(false),0);
   if(engagementLoading && !engagementSnapshot) return `<div class="panel engagement-panel"><div class="empty-state">正在讀取每日簽到…</div></div>`;
   if(engagementError && !engagementSnapshot) return `<div class="panel engagement-panel"><div class="engagement-disabled">${esc(engagementError)}<div class="btn-row" style="justify-content:center;margin-top:10px;"><button class="btn btn-ghost btn-sm" data-action="player-refresh-engagement">重新連線</button></div></div></div>`;
-  const s=engagementSettings();
-  if(s.dailyCheckInEnabled!==true) return `<section class="panel"><div class="panel-title">每日簽到</div><div class="empty-state">${engagementSnapshot?"每日簽到尚未開放，請留意主辦公告。":"正在讀取每日簽到…"}</div></section>`;
+  const settings=engagementSettings();
+  if(settings.dailyCheckInEnabled!==true) return `<section class="panel"><div class="panel-title">每日簽到</div><div class="empty-state">${engagementSnapshot?"每日簽到尚未開放，請留意主辦公告。":"正在讀取每日簽到…"}</div></section>`;
   const stats=(engagementSnapshot&&engagementSnapshot.stats)||{};
   const ci=(engagementSnapshot&&engagementSnapshot.checkIn)||{};
+  const makeup=ci.makeup||{limit:2,used:0,remaining:2,windowDays:7,eligibleDates:[]};
+  const makeupLimit=Math.max(0,Number(makeup.limit||2));
+  const makeupUsed=Math.max(0,Number(makeup.used||0));
+  const makeupRemaining=Math.max(0,Number(makeup.remaining??(makeupLimit-makeupUsed)));
+  const makeupDates=Array.isArray(makeup.eligibleDates)?makeup.eligibleDates:[];
+  const makeupDateButtons=makeupDates.map(date=>`<button type="button" class="btn btn-ghost btn-sm checkin-makeup-date" data-action="player-makeup-checkin" data-date="${esc(date)}" ${engagementActionBusy||makeupRemaining<=0?'disabled':''}>${esc(date.slice(5).replace('-','/'))}</button>`).join('');
   return `<section class="panel engagement-panel">
     <div class="checkin-heading"><div><div class="engagement-kicker">BXH DAILY</div><div class="engagement-title">每日簽到</div></div><span class="badge checkin-status ${ci.checkedIn?'badge-green':'badge-metal'}">${ci.checkedIn?'今日已簽到':'等待簽到'}</span></div>
     <div class="hint checkin-description">使用台灣時間，每日需主動簽到一次；與賽事報到完全分開。</div>
@@ -6548,7 +6566,13 @@ function renderDailyCheckInCard(){
       <div class="checkin-stat"><strong>${Number(stats.monthlyCheckInDays||0)}</strong><span>本月簽到</span></div>
       <div class="checkin-stat"><strong>${Number(stats.totalCheckInDays||0)}</strong><span>累積簽到</span></div>
     </div>
-    <button class="btn ${ci.checkedIn?'btn-ghost':'btn-primary'}" data-action="player-daily-checkin" ${ci.checkedIn||engagementActionBusy?'disabled':''}>${engagementActionBusy?'簽到確認中…':ci.checkedIn?'✓ 今日已完成':'今日簽到'}</button>
+    <button class="btn ${ci.checkedIn?'btn-ghost':'btn-primary'}" data-action="player-daily-checkin" ${ci.checkedIn||engagementActionBusy?'disabled':''}>${engagementActionBusy?'處理中…':ci.checkedIn?'✓ 今日已完成':'今日簽到'}</button>
+    <div class="checkin-makeup-panel">
+      <div class="checkin-makeup-head"><div><strong>補簽</strong><span>每月 2 次免費機會</span></div><span class="checkin-makeup-counter">本月 ${makeupUsed} / ${makeupLimit}</span></div>
+      <div class="hint">僅能補本月最近 ${Number(makeup.windowDays||7)} 天內的漏簽；補簽後視同當日正常簽到，可恢復連續簽到紀錄。次數每月 1 日重置，不累積。</div>
+      <div class="checkin-makeup-actions">${makeupRemaining<=0?'<span class="checkin-makeup-empty">本月補簽次數已用完</span>':makeupDateButtons||'<span class="checkin-makeup-empty">最近 7 天沒有可補簽日期</span>'}</div>
+      <div class="checkin-makeup-remaining">剩餘 <b>${makeupRemaining}</b> 次</div>
+    </div>
     ${engagementError?`<div class="hint">${esc(engagementError)} <button class="btn btn-ghost btn-sm" data-action="player-refresh-engagement">重新連線</button></div>`:''}
     ${renderCheckInCalendar(ci)}
   </section>`;
@@ -16560,6 +16584,37 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     });
     return;
   }
+  if(action==="player-makeup-checkin"){
+    if(engagementActionBusy) return;
+    const date=String(target.getAttribute("data-date")||"").trim();
+    const makeup=engagementSnapshot&&engagementSnapshot.checkIn&&engagementSnapshot.checkIn.makeup||{};
+    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){showToast("補簽日期不正確",true);return;}
+    if(Number(makeup.remaining||0)<=0){showToast("本月補簽次數已用完",true);return;}
+    if(!window.engagementService || !window.engagementService.makeupCheckIn){showToast("補簽服務尚未就緒",true);return;}
+    const shown=date.slice(5).replace("-","/");
+    if(!confirm(`使用 1 次補簽機會補簽 ${shown}？本月剩餘次數將減少 1 次。`)) return;
+    const actionEpoch=engagementSessionEpoch;
+    engagementActionBusy=true;render();
+    Promise.resolve().then(async()=>{if(actionEpoch!==engagementSessionEpoch)return;
+      try{
+        const result=await window.engagementService.makeupCheckIn({date});
+        if(!result||result.ok!==true)throw new Error((result&&result.error)||"makeup-checkin-failed");
+        if(engagementSnapshot){
+          engagementSnapshot.stats=result.stats||engagementSnapshot.stats;
+          const current=engagementSnapshot.checkIn||{};
+          const dates=[...new Set([...(current.dates||[]),date])];
+          const nextMakeup={...(current.makeup||{}),...(result.makeup||{}),eligibleDates:(current.makeup?.eligibleDates||[]).filter(x=>x!==date)};
+          engagementSnapshot.checkIn={...current,dates,makeup:nextMakeup};
+        }
+        showToast(result.titleEvaluationWarning?`已補簽 ${shown}；稱號將稍後補發`:`已完成 ${shown} 補簽`);
+        requestEngagementSnapshot(true);
+      }catch(err){if(actionEpoch!==engagementSessionEpoch)return;
+        console.warn("[BXH makeup check-in]",{code:err&&err.code,message:err&&err.message});
+        showToast(engagementFriendlyError(err,"補簽失敗，請稍後再試"),true);
+      }finally{if(actionEpoch!==engagementSessionEpoch)return;engagementActionBusy=false;render();}
+    });
+    return;
+  }
   if(action==="player-save-title-settings"){
     if(engagementActionBusy) return;
     const equippedTitleId=(document.getElementById("profile-equipped-title")?.value||"").trim();
@@ -19877,7 +19932,7 @@ init();
     async courtCall(payload){return callEngagementFunction("courtCallService",payload,60000);},
     async raffle(payload){return callEngagementFunction("memberRaffle",payload,540000,['list','get','announcements'].includes(payload?.action));},
     async getSnapshot(){ return callEngagementFunction("getEngagementSnapshot",{}); },
-    async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },
+    async dailyCheckIn(){ return callEngagementFunction("dailyCheckIn",{}); },\n    async makeupCheckIn(payload){ return callEngagementFunction("makeupCheckIn",payload); },
     async setTitlePreferences(payload){ return callEngagementFunction("setTitlePreferences",payload); },
     async seedInitialTitles(){ return callEngagementFunction("seedInitialTitles",{}); },
     async saveSettings(payload){ return callEngagementFunction("saveEngagementSettings",payload); },
