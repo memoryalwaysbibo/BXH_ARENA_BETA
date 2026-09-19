@@ -29,4 +29,23 @@ for(const section of ['live','settling','registration','waiting','ended']){
   assert.match(listBlock,new RegExp('const '+section+'=.*\\.sort\\(lobbyNewestFirst\\)'),'section '+section+' must use newest-first ordering');
 }
 
-console.log('PASS lobby cards are newest-first in every section and undated cards stay last');
+
+const canonicalStart=html.indexOf('function canonicalPublicTournamentPhase');
+const canonicalEnd=html.indexOf('function publicTournamentRegistrationLocked',canonicalStart);
+const canonicalBlock=html.slice(canonicalStart,canonicalEnd);
+assert(canonicalBlock.indexOf('eventCancelled')>=0,'canonical phase must inspect cancellation');
+assert(canonicalBlock.indexOf('eventCancelled')<canonicalBlock.indexOf('archiveStatus==="completed"'),'cancellation must win over completed/archive state');
+
+const actionStart=html.indexOf('function lobbyRegistrationButtons');
+const actionEnd=html.indexOf('function publicEventLifecycleStatus',actionStart);
+const actionBlock=html.slice(actionStart,actionEnd);
+assert.match(actionBlock,/phase==="live"[\s\S]*switch-to-player-watch[\s\S]*觀看比賽/,'live cards must open spectator view');
+assert.match(actionBlock,/phase==="settling"[\s\S]*查看結算進度/,'settling cards must open settlement progress');
+assert.match(actionBlock,/phase==="done"[\s\S]*lobby-view-result[\s\S]*查看最終結果/,'completed cards must open final result');
+assert.match(actionBlock,/phase==="cancelled"[\s\S]*查看取消資訊/,'cancelled cards must open cancellation info');
+
+assert.match(html,/function publicWatchReturnLabel\(context=publicWatchReturnContext\)/,'public watch return labels must be centralized');
+assert.match(html,/spectatorSettling[\s\S]*暫定選手排名/,'settling view must label ranking as provisional');
+assert.match(html,/spectatorSettling[\s\S]*已完成戰鬥台/,'settling view must stop calling courts live');
+
+console.log('PASS lobby ordering, lifecycle routing, settlement hierarchy, and return semantics');
