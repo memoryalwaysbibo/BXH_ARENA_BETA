@@ -2023,3 +2023,102 @@ button.btn-primary,
 @media(prefers-reduced-motion:reduce){
   .quick-confirm-modal #modal-confirm-btn{transition:none!important}
 }
+
+
+/* BXH ARENA account theme third-level disclosure v2.0.4 */
+.account-theme-picker{
+  margin:4px 0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid transparent!important;
+  border-radius:3px!important;
+  background:
+    linear-gradient(145deg,rgba(15,17,23,.30),rgba(7,9,13,.22)) padding-box,
+    linear-gradient(135deg,rgba(var(--accent-rgb),.18),rgba(255,255,255,.045),rgba(var(--accent-rgb),.08)) border-box!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.022)!important;
+}
+.account-theme-summary{
+  list-style:none;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 20px;
+  align-items:center;
+  gap:10px;
+  min-height:48px;
+  padding:9px 11px;
+  cursor:pointer;
+  user-select:none;
+  color:#e5e8ee;
+  transition:background .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.account-theme-summary::-webkit-details-marker{display:none}
+.account-theme-summary::marker{content:""}
+.account-theme-summary:hover,
+.account-theme-summary:focus-visible{
+  outline:none;
+  color:var(--accent-color);
+  background:rgba(var(--accent-rgb),.055);
+  box-shadow:inset 0 0 12px rgba(var(--accent-rgb),.04);
+}
+.account-theme-summary-main{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  min-width:0;
+  line-height:1.18;
+}
+.account-theme-summary-label{
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.055em;
+}
+.account-theme-summary-main small{
+  margin-top:4px;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:rgba(222,226,234,.46);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.045em;
+}
+.account-theme-summary-caret{
+  color:var(--accent-color);
+  font-size:18px;
+  line-height:1;
+  text-align:center;
+  transform:rotate(0deg);
+  transition:transform .18s ease;
+}
+.account-theme-picker[open] .account-theme-summary-caret{transform:rotate(90deg)}
+.account-theme-picker[open] .account-theme-summary{
+  border-bottom:1px solid rgba(var(--accent-rgb),.13);
+  background:rgba(var(--accent-rgb),.038);
+}
+.account-theme-options{
+  margin-left:9px;
+  padding:8px 8px 9px 10px;
+  border-left:1px solid rgba(var(--accent-rgb),.18);
+  background:rgba(0,0,0,.12);
+}
+.account-theme-options-label{
+  margin:0 0 6px 2px;
+  color:rgba(222,226,234,.34);
+  font-size:8.5px;
+  font-weight:800;
+  letter-spacing:.12em;
+}
+.account-theme-picker .account-theme-swatches{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:5px!important;
+}
+.account-theme-picker .account-theme-swatch{
+  min-height:42px!important;
+  height:42px!important;
+}
+@media(max-width:700px){
+  .account-theme-picker{padding:0!important}
+  .account-theme-summary{min-height:46px;padding:8px 10px}
+  .account-theme-options{padding:7px 7px 8px 9px}
+}
