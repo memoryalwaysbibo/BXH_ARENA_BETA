@@ -2712,3 +2712,179 @@ button.btn-primary,
 @media(prefers-reduced-motion:reduce){
   .landing-home > .btn-row .btn{transition:none!important}
 }
+
+
+/* BXH ARENA public raffle compact cards v13.43.3 */
+/* Compact equal-height landscape cards for MEMBER RAFFLE. */
+.raffle-page-public .raffle-card-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-rows:146px!important;
+  align-items:stretch!important;
+  gap:12px!important;
+  margin-top:14px!important;
+}
+
+.raffle-page-public .raffle-game-card{
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:146px!important;
+  min-height:0!important;
+  max-height:146px!important;
+  padding:13px 14px 12px 16px!important;
+  border-radius:6px!important;
+  overflow:hidden!important;
+  background:
+    linear-gradient(145deg,rgba(24,29,38,.88),rgba(8,12,19,.95))!important;
+  border:1px solid rgba(212,169,54,.34)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,245,206,.035),
+    0 9px 21px rgba(0,0,0,.19)!important;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+}
+
+.raffle-page-public .raffle-game-card::before{
+  width:3px!important;
+  box-shadow:0 0 10px rgba(226,178,55,.28)!important;
+}
+
+/* Action stays compact in the top-right instead of consuming card height. */
+.raffle-page-public .raffle-game-card::after{
+  top:11px!important;
+  right:11px!important;
+  bottom:auto!important;
+  color:rgba(229,194,94,.72)!important;
+  font-size:9px!important;
+  font-weight:850!important;
+  line-height:1!important;
+  letter-spacing:.02em!important;
+}
+.raffle-page-public .raffle-game-card.is-raffle-pending::after{
+  content:"進入 ›"!important;
+}
+.raffle-page-public .raffle-game-card.is-raffle-drawn::after{
+  content:"結果 ›"!important;
+}
+
+.raffle-page-public .raffle-game-card:hover{
+  transform:translateY(-2px)!important;
+  border-color:rgba(231,188,69,.52)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,245,206,.045),
+    0 12px 25px rgba(0,0,0,.24)!important;
+}
+
+.raffle-page-public .raffle-card-head{
+  width:100%!important;
+  min-width:0!important;
+  margin:0 0 7px!important;
+  padding-right:46px!important;
+  gap:6px!important;
+}
+
+.raffle-page-public .raffle-game-card > h3,
+.raffle-page-public .raffle-card-head h3{
+  margin:0 0 7px!important;
+  padding:0 46px 0 0!important;
+  max-width:100%!important;
+  color:#f4f5f7!important;
+  font-size:16px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+  letter-spacing:.01em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.raffle-page-public .raffle-card-head h3{
+  flex:1 1 auto!important;
+  padding-right:0!important;
+  margin-bottom:0!important;
+}
+
+.raffle-page-public .raffle-game-card p:not(.hint){
+  display:inline-flex!important;
+  align-items:center!important;
+  flex:0 0 auto!important;
+  min-height:27px!important;
+  margin:0 0 7px!important;
+  padding:4px 9px!important;
+  border-radius:999px!important;
+  border:1px solid rgba(230,186,67,.30)!important;
+  color:#ecd17e!important;
+  background:rgba(210,160,39,.075)!important;
+  font-size:10.5px!important;
+  font-weight:850!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+}
+
+.raffle-page-public .raffle-game-card .hint{
+  width:100%!important;
+  max-width:100%!important;
+  margin:auto 0 0!important;
+  padding:0 48px 0 0!important;
+  color:rgba(173,184,200,.72)!important;
+  font-size:10px!important;
+  line-height:1.42!important;
+}
+
+.raffle-page-public .raffle-winner-badge{
+  flex:0 0 auto!important;
+  padding:3px 6px!important;
+  font-size:8.5px!important;
+}
+
+.raffle-page-public .raffle-game-card.is-raffle-drawn{
+  background:
+    radial-gradient(circle at 100% 0,rgba(219,174,49,.08),transparent 44%),
+    linear-gradient(145deg,rgba(29,32,37,.92),rgba(10,14,20,.97))!important;
+}
+
+/* Tablet / narrow panel: keep the landscape two-column look. */
+@media(max-width:700px){
+  .raffle-page-public .raffle-card-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-auto-rows:142px!important;
+    gap:10px!important;
+  }
+  .raffle-page-public .raffle-game-card{
+    height:142px!important;
+    max-height:142px!important;
+    padding:12px 11px 11px 14px!important;
+  }
+  .raffle-page-public .raffle-game-card > h3,
+  .raffle-page-public .raffle-card-head h3{
+    font-size:15px!important;
+  }
+  .raffle-page-public .raffle-game-card p:not(.hint){
+    min-height:25px!important;
+    padding:3px 8px!important;
+    font-size:10px!important;
+  }
+  .raffle-page-public .raffle-game-card .hint{
+    font-size:9.5px!important;
+    padding-right:40px!important;
+  }
+}
+
+/* Very narrow phones: one wide horizontal card per row. */
+@media(max-width:420px){
+  .raffle-page-public .raffle-card-grid{
+    grid-template-columns:1fr!important;
+    grid-auto-rows:126px!important;
+  }
+  .raffle-page-public .raffle-game-card{
+    height:126px!important;
+    max-height:126px!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .raffle-page-public .raffle-game-card{transition:none!important}
+}
