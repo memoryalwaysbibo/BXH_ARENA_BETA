@@ -6284,8 +6284,55 @@ let lineWarningShown = false;
 /* ---------- player center Phase 2: real tabbed UI ---------- */
 let playerActiveTab = "home";
 let playerStatsSubTab = "general"; // 'home'|'find'|'registered'|'stats'|'profile'
-let publicTournamentsCache = null; // null = not yet fetched this session
+let publicTournamentsCache = null; // safe public lobby cache
+let publicTournamentsCacheAt = 0;
+let publicTournamentsRefreshQueued = false;
+const PUBLIC_TOURNAMENTS_CACHE_KEY = "bxh-public-tournaments-cache-v1";
+const PUBLIC_TOURNAMENTS_CACHE_TTL_MS = 30000;
+const PUBLIC_TOURNAMENTS_CACHE_MAX_STALE_MS = 5*60*1000;
 let publicTournamentsError = null; // set when the query itself failed — takes priority over the empty-state message
+
+function hydratePublicTournamentsCache(){
+  try{
+    const raw=sessionStorage.getItem(PUBLIC_TOURNAMENTS_CACHE_KEY);
+    if(!raw) return;
+    const saved=JSON.parse(raw);
+    const age=Date.now()-Number(saved&&saved.at||0);
+    if(!Array.isArray(saved&&saved.items) || age<0 || age>PUBLIC_TOURNAMENTS_CACHE_MAX_STALE_MS){
+      sessionStorage.removeItem(PUBLIC_TOURNAMENTS_CACHE_KEY);
+      return;
+    }
+    publicTournamentsCache=saved.items;
+    publicTournamentsCacheAt=Number(saved.at)||0;
+  }catch(e){
+    try{sessionStorage.removeItem(PUBLIC_TOURNAMENTS_CACHE_KEY);}catch(ignore){}
+  }
+}
+function storePublicTournamentsCache(items){
+  publicTournamentsCache=Array.isArray(items)?items:[];
+  publicTournamentsCacheAt=Date.now();
+  try{sessionStorage.setItem(PUBLIC_TOURNAMENTS_CACHE_KEY,JSON.stringify({at:publicTournamentsCacheAt,items:publicTournamentsCache}));}catch(e){}
+}
+function invalidatePublicTournamentsCache(){
+  publicTournamentsCache=null;
+  publicTournamentsCacheAt=0;
+  publicTournamentsError=null;
+  try{sessionStorage.removeItem(PUBLIC_TOURNAMENTS_CACHE_KEY);}catch(e){}
+}
+function publicTournamentsCacheFresh(){
+  return publicTournamentsCache!==null && publicTournamentsCacheAt>0 && Date.now()-publicTournamentsCacheAt<=PUBLIC_TOURNAMENTS_CACHE_TTL_MS;
+}
+function queuePublicTournamentsBackgroundRefresh(){
+  if(publicTournamentsCache===null || publicTournamentsCacheFresh() || publicTournamentsLoading || publicTournamentsRefreshQueued) return;
+  publicTournamentsRefreshQueued=true;
+  setTimeout(()=>{
+    publicTournamentsRefreshQueued=false;
+    if(!publicTournamentsLoading && publicTournamentsCache!==null && !publicTournamentsCacheFresh()){
+      handleAction("background-refresh-public-tournaments",{getAttribute:()=>null});
+    }
+  },0);
+}
+hydratePublicTournamentsCache();
 const PUBLIC_TOURNAMENTS_ERROR_MESSAGES = {
   "permission-denied": "目前無法讀取公開賽事，請聯絡管理員",
   "failed-precondition": "賽事查詢索引尚未建立",
@@ -7314,7 +7361,7 @@ async function performAutoArchive(){
 
   if(state.cloudCode && cloudAvailable() && window.cloudSync && window.cloudSync.repairTournamentLifecycle){
     try{ await window.cloudSync.repairTournamentLifecycle(state.cloudCode); }catch(e){}
-    publicTournamentsCache=null;
+    invalidatePublicTournamentsCache();
     myRegistrationsCache=null;
   }
   if(isCommunityRoom() && state.cloudCode && cloudAvailable() && window.cloudSync && window.cloudSync.saveCommunityHistory){
@@ -9013,7 +9060,7 @@ async function publishRegistrationConfig(){
     if(cloudUnsub){ try{ cloudUnsub(); }catch(e){} }
     cloudUnsub = window.cloudSync.subscribe(code, applyRemoteState);
     cloudStatus = "connected"; cloudLastSyncAt = Date.now();
-    publicTournamentsCache = null; publicTournamentsError = null;
+    invalidatePublicTournamentsCache(); publicTournamentsError = null;
     render();
     showToast("賽事已發布，代碼："+code);
     if(!postCreateOk) showToast("賽事已建立，最新內容等待雲端同步", true);
@@ -9021,7 +9068,7 @@ async function publishRegistrationConfig(){
   }
 
   const syncResult = await saveState();
-  publicTournamentsCache = null; publicTournamentsError = null;
+  invalidatePublicTournamentsCache(); publicTournamentsError = null;
   render();
   showToast("賽事設定已更新");
   if(syncResult===false) showToast("已儲存本機，等待雲端同步", true);
@@ -12647,7 +12694,7 @@ function tickRegistrationCountdowns(){
  });
  if(!expired)return;
  if(appPhase==='tournament-detail'&&tournamentDetailCode){tournamentDetailLoading=true;render();loadTournamentDetail(tournamentDetailCode);}
- else if(!publicTournamentsLoading){publicTournamentsCache=null;handleAction('refresh-public-tournaments',{getAttribute:()=>null});}
+ else if(!publicTournamentsLoading){invalidatePublicTournamentsCache();handleAction('refresh-public-tournaments',{getAttribute:()=>null});}
 }
 setInterval(tickRegistrationCountdowns,1000);
 document.addEventListener('visibilitychange',tickRegistrationCountdowns);
@@ -12911,6 +12958,7 @@ function lobbySectionHtml(key,title,count,body,defaultOpen=false){
 
 function renderTournamentLobby(opts={}){
   const loggedIn=!!opts.loggedIn;
+  if(publicTournamentsCache!==null) queuePublicTournamentsBackgroundRefresh();
   if(publicTournamentsCache===null){
     if(!publicTournamentsLoading) setTimeout(()=>handleAction("load-public-tournaments",{getAttribute:()=>null}),0);
     return `<div class="panel"><div class="empty-state">正在讀取賽事大廳……</div></div>`;
@@ -13061,6 +13109,7 @@ function findEventsCategorySection(key, title, emptyText, list){
 }
 
 function renderPlayerFindEventsTab(){
+  if(publicTournamentsCache!==null) queuePublicTournamentsBackgroundRefresh();
   if(publicTournamentsCache===null){
     if(!publicTournamentsLoading){
       // Kick off the real Firebase fetch; render() will be called again once
@@ -14913,7 +14962,7 @@ async function loadAdminTournamentList(){
       await Promise.all(staleCompleted.map(t=>window.cloudSync.repairTournamentLifecycle(t.code)));
       const refreshed=await window.cloudSync.queryAdminTournaments();
       rawItems=Array.isArray(refreshed)?refreshed:rawItems;
-      publicTournamentsCache=null;
+      invalidatePublicTournamentsCache();
       myRegistrationsCache=null;
     }
 
@@ -15710,7 +15759,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         if(!window.cloudSync || !window.cloudSync.promoteEarliestWaitlist) throw { code:"network" };
         const result = await window.cloudSync.promoteEarliestWaitlist(code);
         showToast("已遞補一位候選人為正取");
-        publicTournamentsCache = null;
+        invalidatePublicTournamentsCache();
         adminRegistrationsBusy = false;
         resetAdminRegistrationsCache();
         render();
@@ -15734,7 +15783,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
           if(!window.cloudSync || !window.cloudSync.staffCancelRegistration) throw { code:"network" };
           await window.cloudSync.staffCancelRegistration(code, targetUid);
           showToast("已取消該報名");
-          publicTournamentsCache = null;
+          invalidatePublicTournamentsCache();
           adminRegistrationsBusy = false;
           resetAdminRegistrationsCache();
           render();
@@ -16089,7 +16138,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         st.cloudCode=code; state=st; await saveRecord(state); await setCurrentId(state.id);
         if(cloudUnsub){ try{cloudUnsub();}catch(e){} }
         cloudUnsub=window.cloudSync.subscribe(code,applyRemoteState); cloudStatus="connected";
-        communityRoomActiveTab="people"; appPhase="community-room"; communityEventsCache=null; publicTournamentsCache=null; publicTournamentsError=null; render();
+        communityRoomActiveTab="people"; appPhase="community-room"; communityEventsCache=null; invalidatePublicTournamentsCache(); publicTournamentsError=null; render();
         showToast("一般賽事已建立｜代碼 "+code);
       }catch(e){
         console.warn("[community create]",e);
@@ -16224,29 +16273,31 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     })();
     return;
   }
-  if(action==="load-public-tournaments" || action==="refresh-public-tournaments"){
+  if(action==="load-public-tournaments" || action==="refresh-public-tournaments" || action==="background-refresh-public-tournaments"){
     if(publicTournamentsLoading) return;
+    const background=action==="background-refresh-public-tournaments";
     publicTournamentsLoading = true;
-    publicTournamentsError = null;
-    render();
+    if(!background){
+      publicTournamentsError = null;
+      render();
+    }
     (async ()=>{
       if(window.cloudSync && window.cloudSync.connect){ await window.cloudSync.connect(); }
       if(cloudAvailable() && window.cloudSync.queryPublicTournaments){
         const result = await window.cloudSync.queryPublicTournaments();
         if(result.ok){
-          publicTournamentsCache = result.items;
+          storePublicTournamentsCache(result.items);
           publicTournamentsError = null;
-        } else {
-          // A real query failure is NEVER shown as "沒有賽事" — that message
-          // is reserved for a query that genuinely succeeded with 0 results.
-          // Cache stays an empty array (not null) so the tab doesn't loop
-          // back into re-triggering the load on every render; the error
-          // message takes priority over the empty-state text instead.
+        } else if(!background || publicTournamentsCache===null){
+          // Manual/initial loads surface the error. A background SWR miss keeps
+          // the last safe public snapshot instead of blanking the lobby.
           publicTournamentsCache = [];
+          publicTournamentsCacheAt = Date.now();
           publicTournamentsError = PUBLIC_TOURNAMENTS_ERROR_MESSAGES[result.reason] || PUBLIC_TOURNAMENTS_ERROR_MESSAGES.network;
         }
-      } else {
+      } else if(!background || publicTournamentsCache===null){
         publicTournamentsCache = [];
+        publicTournamentsCacheAt = Date.now();
         publicTournamentsError = PUBLIC_TOURNAMENTS_ERROR_MESSAGES.network;
       }
       publicTournamentsLoading = false;
@@ -16338,7 +16389,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     }else{
       appPhase="player-center";
       playerActiveTab="home";
-      publicTournamentsCache=null;
+      invalidatePublicTournamentsCache();
     }
     render();
     return;
@@ -16358,7 +16409,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         if(!window.cloudSync || !window.cloudSync.joinTournamentAsPlayer) throw {code:"network"};
         const result=await window.cloudSync.joinTournamentAsPlayer(code,true);
         showToast(result.status==="pending_draw"?"報名成功，等待抽籤":result.status==="confirmed"?"報名成功（正取）":"報名成功（備取）");
-        publicTournamentsCache=null; myRegistrationsCache=null; render();
+        invalidatePublicTournamentsCache(); myRegistrationsCache=null; render();
       }catch(e){ showToast(mapRegistrationError(e),true); }
     })();
     return;
@@ -16394,7 +16445,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         showToast(result.status==="pending_draw" ? "報名成功，等待抽籤" : result.status==="confirmed" ? "報名成功（正取）" : "報名成功（備取）");
         pendingRegistrationCode = null;
         clearRegistrationParamFromUrl();
-        publicTournamentsCache = null; // force refresh of the public list
+        invalidatePublicTournamentsCache(); // force refresh of the public list
         myRegistrationsCache = null; // force refresh of 已報名 tab
         tournamentDetailBusy = false;
         await loadTournamentDetail(code);
@@ -16421,7 +16472,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
           if(!window.cloudSync || !window.cloudSync.cancelRegistrationAsPlayer) throw { code:"network" };
           await window.cloudSync.cancelRegistrationAsPlayer(code);
           showToast("已取消報名");
-          publicTournamentsCache = null;
+          invalidatePublicTournamentsCache();
           myRegistrationsCache = null;
           tournamentDetailBusy = false;
           if(appPhase==="tournament-detail" && tournamentDetailCode===code){
@@ -16568,7 +16619,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
       }
       userProfile=Object.assign({},userProfile,result.profile||{});
       playerProfileEditOpen=false;
-      publicTournamentsCache=null; myRegistrationsCache=null;
+      invalidatePublicTournamentsCache(); myRegistrationsCache=null;
       engagementRequestGeneration++;engagementLoading=false;engagementSnapshot=null;requestEngagementSnapshot(true);
       showToast(oldRealName!==realName?"資料已更新；系統將自動重新檢核本名，如有疑問才交由管理員確認":"會員資料已更新");
       render();
@@ -16602,7 +16653,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     // brand new tournament in admin mode, in the SAME tab, would silently
     // keep showing the STALE cached list instead of querying again. Reset
     // here so entering player mode always re-fetches fresh.
-    publicTournamentsCache = null;
+    invalidatePublicTournamentsCache();
     publicTournamentsError = null;
     myRegistrationsCache = null; // same staleness bug applies to the 已報名 tab's data
     myRegistrationsError = null;
@@ -16637,7 +16688,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
   if(action==="select-role-guest"){
     guestReadOnlyMode = true;
     currentRole = "guest";
-    publicTournamentsCache = null; publicTournamentsError = null;
+    invalidatePublicTournamentsCache(); publicTournamentsError = null;
     guestActiveTab = "events";
     guestLadderExpanded = false;
     guestLadderSearch = "";
@@ -18587,7 +18638,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
         // which a player could still cancel from another device right after the
         // organizer pressed "開始賽事".
         const synced=await saveState();
-        publicTournamentsCache=null;
+        invalidatePublicTournamentsCache();
         myRegistrationsCache=null;
         resetAdminRegistrationsCache();
         activeTab="referee";
@@ -21374,6 +21425,14 @@ if(testerSession){
   tryInitFirebase().then((ok)=>{
     window.dispatchEvent(new CustomEvent("bxh-cloud-ready", { detail:{ enabled: ok, configured: isConfigPresent() } }));
   });
+
+  // Static App Shell cache only. Live Firebase tournament data remains network/
+  // snapshot authoritative and is intentionally never intercepted by this worker.
+  if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){
+    window.addEventListener("load",()=>{
+      navigator.serviceWorker.register("./sw.js").catch(err=>console.warn("BXH static cache registration failed",err));
+    },{once:true});
+  }
 </script>
 </body>
 </html>
