@@ -3103,3 +3103,62 @@ button.btn-primary,
   > [data-action^="player-goto-"]:nth-child(3){
   order:3!important;
 }
+
+
+/* BXH ARENA topbar control geometry v13.43.6 */
+/* Unify mailbox + account selector into the same compact BXH rectangle. */
+.mailbox-trigger,
+.account-badge{
+  box-sizing:border-box!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:40px!important;
+  height:40px!important;
+  padding:0 12px!important;
+  border-width:1px!important;
+  border-style:solid!important;
+  border-radius:8px!important;
+  font-size:12px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+.mailbox-trigger{
+  border-color:rgba(var(--accent-rgb),.34)!important;
+  background:rgba(15,17,23,.40)!important;
+  color:rgba(235,219,164,.88)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;
+  backdrop-filter:blur(12px) saturate(1.08)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(1.08)!important;
+}
+
+.account-badge{
+  border-color:rgba(var(--accent-rgb),.34)!important;
+  background:rgba(15,17,23,.40)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045)!important;
+}
+
+.mailbox-trigger:hover,
+.mailbox-trigger:focus-visible,
+.mailbox-trigger.active,
+.account-badge:hover,
+.account-badge:focus-visible,
+.account-badge[aria-expanded="true"]{
+  outline:none!important;
+  border-color:var(--accent-color)!important;
+  background:rgba(var(--accent-rgb),.055)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 0 16px var(--accent-glow)!important;
+}
+
+@media(max-width:520px){
+  .mailbox-trigger,
+  .account-badge{
+    min-height:38px!important;
+    height:38px!important;
+    padding:0 10px!important;
+    border-radius:8px!important;
+  }
+}
