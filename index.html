@@ -9386,7 +9386,7 @@ function renderLive(){
   `;
   return publicWatchReturnContext
     ? spectatorNotice + liveCourtsPanelHtml + liveInfoHtml + liveRankingHtml
-    : liveInfoHtml + liveCourtsPanelHtml + liveRankingHtml;;
+    : liveInfoHtml + liveCourtsPanelHtml + liveRankingHtml;
 }
 
 /* ==== tab: bracket ==== */
@@ -13402,9 +13402,14 @@ function renderTournamentDetailScreen(){
       actionHtml='<div class="hint">此為 COMMUNITY 一般賽事公開資訊頁；不使用官方線上報名流程。</div>';
     }
   } else if(publicTournamentRegistrationLocked(t)){
+    const lifecycleAction=t.tournamentPhase==="done"
+      ? `<button class="btn btn-primary" data-action="lobby-view-result" data-code="${esc(code)}">查看最終結果</button>`
+      : t.tournamentPhase==="settling"
+        ? `<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看結算進度</button>`
+        : `<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看即時賽況</button>`;
     actionHtml = `<div class="banner warn"><span>賽事已開始，報名、備取與取消報名功能均已鎖定。</span></div>
       <div class="btn-row tournament-live-view-actions">
-        <button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">${t.tournamentPhase==="done"?"查看比賽結果":"查看即時賽況"}</button>
+        ${lifecycleAction}
         <button class="btn btn-ghost player-bracket-progress-btn" data-action="switch-to-player-watch" data-view="bracket" data-code="${esc(code)}">查看對戰表／賽程進度</button>
       </div>`;
   } else if(isGuestMode){
@@ -13458,13 +13463,13 @@ function renderTournamentDetailScreen(){
       <div class="grid grid-2">
         <div class="stat-box"><div class="label">賽事代碼</div><div class="value small">${esc(code)}</div></div>
         <div class="stat-box"><div class="label">賽事狀況</div><div class="value small">${esc(publicEventLifecycleStatus(t).label)}</div></div>
-        <div class="stat-box"><div class="label">活動對象</div><div class="value small">${esc(TARGET_GROUP_LABELS[t.targetGroup]||"公開組")}</div></div>
+${!isCommunity?`<div class="stat-box"><div class="label">活動對象</div><div class="value small">${esc(TARGET_GROUP_LABELS[t.targetGroup]||"公開組")}</div></div>`:""}
         <div class="stat-box"><div class="label">日期</div><div class="value small">${esc(t.eventDate||"—")}</div></div>
         <div class="stat-box"><div class="label">地點</div><div class="value small">${esc(t.location||"—")}</div></div>
         <div class="stat-box"><div class="label">報到時間</div><div class="value small">${esc(t.checkInAt||"—")}</div></div>
         <div class="stat-box"><div class="label">開賽時間</div><div class="value small">${esc(t.startAt||"—")}</div></div>
         <div class="stat-box"><div class="label">賽制</div><div class="value small">${esc(t.formatType==='single'?'單淘汰賽':(t.formatType||"—"))}</div></div>
-        <div class="stat-box"><div class="label">報名費</div><div class="value small">${t.fee!=null?esc(String(t.fee))+" 元":"免費"}</div></div>
+${!isCommunity?`<div class="stat-box"><div class="label">報名費</div><div class="value small">${t.fee!=null?esc(String(t.fee))+" 元":"免費"}</div></div>`:""}
       </div>
       <p class="hint" style="margin-top:8px;">${isCommunity?"COMMUNITY 一般賽事｜公開瀏覽，不計官方報名／天梯":esc(TARGET_GROUP_DESCRIPTIONS[t.targetGroup]||TARGET_GROUP_DESCRIPTIONS.open)}</p>
       ${isCommunity&&t.eventDescription?`<div class="field" style="margin-top:10px;"><label>活動說明</label><p>${esc(t.eventDescription)}</p></div>`:""}
