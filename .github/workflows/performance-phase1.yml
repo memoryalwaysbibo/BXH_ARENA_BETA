@@ -9,6 +9,7 @@ on:
       - 'tests/performance-phase1.cjs'
       - 'tests/firebase-module-syntax.cjs'
       - 'tests/classic-script-syntax.cjs'
+      - 'tests/smart-call-default.cjs'
       - '.github/workflows/performance-phase1.yml'
 permissions:
   contents: read
@@ -25,5 +26,7 @@ jobs:
         run: node tests/classic-script-syntax.cjs
       - name: Check Firebase module JavaScript syntax
         run: node tests/firebase-module-syntax.cjs
+      - name: Check BXH CALL default-on preference
+        run: node tests/smart-call-default.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
