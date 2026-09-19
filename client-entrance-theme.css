@@ -3291,3 +3291,58 @@ button.btn-primary,
     font-size:11px!important;
   }
 }
+
+
+/* BXH ARENA generic modal action tray fix v13.43.10 */
+/* Remove legacy sticky action-tray backdrop that visually extends beyond the cancel button. */
+.modal-box:not(.quick-confirm-modal) > .btn-row{
+  position:static!important;
+  bottom:auto!important;
+  margin:18px 0 0!important;
+  margin-bottom:0!important;
+  padding:0!important;
+  background:none!important;
+  background-color:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  overflow:visible!important;
+}
+
+.modal-box:not(.quick-confirm-modal) > .btn-row::before,
+.modal-box:not(.quick-confirm-modal) > .btn-row::after{
+  display:none!important;
+  content:none!important;
+}
+
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-cancel-btn,
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-confirm-btn{
+  position:relative!important;
+  inset:auto!important;
+  flex:none!important;
+  width:100%!important;
+  height:46px!important;
+  min-height:46px!important;
+  max-height:46px!important;
+  margin:0!important;
+  padding:0 14px!important;
+  box-sizing:border-box!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+}
+
+.modal-box:not(.quick-confirm-modal) > .btn-row > #modal-cancel-btn{
+  border:1px solid rgba(222,226,235,.18)!important;
+  border-radius:8px!important;
+  background:rgba(255,255,255,.035)!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+
+@media(max-width:640px){
+  .modal-box:not(.quick-confirm-modal) > .btn-row{
+    bottom:auto!important;
+    margin-top:18px!important;
+    padding:0!important;
+    background:none!important;
+  }
+}
