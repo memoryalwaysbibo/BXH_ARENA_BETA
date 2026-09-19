@@ -2605,3 +2605,110 @@ button.btn-primary,
   .schedule-fold .find-event-card{background:rgba(11,15,22,.66)!important}
   .schedule-fold .smart-call-box{background:rgba(9,11,15,.60)!important}
 }
+
+
+/* BXH ARENA landing action buttons v13.43.2 */
+/* Unified BXH landing CTA geometry: compact esports corners, clear primary/secondary hierarchy. */
+.landing-home > .btn-row{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+  width:100%!important;
+  align-items:stretch!important;
+}
+.landing-home > .btn-row .btn{
+  position:relative!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  min-height:46px!important;
+  height:46px!important;
+  padding:0 14px!important;
+  border-width:1px!important;
+  border-style:solid!important;
+  border-radius:6px!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  letter-spacing:.035em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  transition:
+    transform .15s ease,
+    filter .18s ease,
+    border-color .18s ease,
+    background .18s ease,
+    box-shadow .18s ease!important;
+}
+
+/* Primary — Scan event QR */
+.landing-home > .btn-row .btn.btn-primary{
+  border-color:rgba(242,200,83,.88)!important;
+  color:#171106!important;
+  background:
+    linear-gradient(180deg,rgba(255,232,151,.24),transparent 42%),
+    linear-gradient(135deg,#e4c35d 0%,#c99a2e 58%,#ae7d18 100%)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,249,218,.42),
+    inset 0 -1px 0 rgba(73,48,5,.22),
+    0 8px 20px rgba(176,126,24,.16)!important;
+}
+
+/* Secondary — Member raffle */
+.landing-home > .btn-row .landing-raffle-cta{
+  border-color:rgba(218,174,58,.62)!important;
+  color:#e7c96d!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.018),transparent),
+    linear-gradient(135deg,rgba(214,169,48,.055),rgba(5,8,11,.42))!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,241,193,.045),
+    inset 0 0 16px rgba(206,157,36,.025)!important;
+  backdrop-filter:blur(8px)!important;
+  -webkit-backdrop-filter:blur(8px)!important;
+}
+
+.landing-home > .btn-row .btn:hover:not(:disabled),
+.landing-home > .btn-row .btn:focus-visible{
+  outline:none!important;
+  transform:translateY(-1px)!important;
+}
+.landing-home > .btn-row .btn.btn-primary:hover:not(:disabled),
+.landing-home > .btn-row .btn.btn-primary:focus-visible{
+  filter:brightness(1.06) saturate(1.03)!important;
+  border-color:#f3d06b!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,249,218,.50),
+    inset 0 -1px 0 rgba(73,48,5,.18),
+    0 10px 24px rgba(183,132,27,.22),
+    0 0 16px rgba(219,176,63,.09)!important;
+}
+.landing-home > .btn-row .landing-raffle-cta:hover:not(:disabled),
+.landing-home > .btn-row .landing-raffle-cta:focus-visible{
+  color:#f4d879!important;
+  border-color:rgba(238,194,70,.86)!important;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.026),transparent),
+    linear-gradient(135deg,rgba(219,174,53,.09),rgba(7,9,12,.46))!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,245,205,.06),
+    0 0 16px rgba(214,167,39,.08)!important;
+}
+.landing-home > .btn-row .btn:active:not(:disabled){
+  transform:translateY(0) scale(.985)!important;
+}
+@media(max-width:380px){
+  .landing-home > .btn-row{gap:8px!important}
+  .landing-home > .btn-row .btn{
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 10px!important;
+    font-size:11px!important;
+    gap:5px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .landing-home > .btn-row .btn{transition:none!important}
+}
