@@ -2770,6 +2770,9 @@ let mainTabNavCenterRequested = true;
 /* ==== leave tournament ==== */
 let leaveTournamentBusy = false;
 let publicWatchReturnContext = null; // "player-center" | "player-registered" | "guest-lobby" when viewing a public room
+function publicWatchReturnLabel(context=publicWatchReturnContext){
+  return context==="player-registered" ? "返回我的賽程" : "返回賽事大廳";
+}
 // "最近查看" — up to 3 entries, each ONLY {code, name, viewedAt}. Never stores
 // private tournament data, phone numbers, or a full tournament JSON blob.
 // Only ever populated from a REAL successful public join, never fabricated.
@@ -9350,8 +9353,9 @@ function renderLive(){
       </tr>`).join("");
   }
 
-  const spectatorNotice=publicWatchReturnContext && tournamentStatus()==="settling"
-    ? '<div class="banner warn"><span>所有對戰已完成，主辦正在處理最終結算；正式名次確認後會出現在「查看最終結果」。</span></div>'
+  const spectatorSettling=!!publicWatchReturnContext && tournamentStatus()==="settling";
+  const spectatorNotice=spectatorSettling
+    ? '<div class="banner warn"><span>所有對戰已完成，主辦正在處理最終結算；目前排名為暫定資訊，正式名次確認後會出現在「查看最終結果」。</span></div>'
     : "";
   const liveInfoHtml=`
   <div class="panel">
@@ -9370,14 +9374,14 @@ function renderLive(){
     ${renderArchiveControls()}
   </div>`;
   const liveCourtsPanelHtml=`  <div class="panel">
-    <div class="panel-title">即時戰鬥台</div>
-    <div class="hint" style="margin-bottom:12px;">每個戰鬥台分別顯示責任裁判、目前場次、即時比分與下一場。</div>
+    <div class="panel-title">${spectatorSettling?"已完成戰鬥台":"即時戰鬥台"}</div>
+    <div class="hint" style="margin-bottom:12px;">${spectatorSettling?"對戰已全部完成；以下保留各戰鬥台最後狀態供查閱。":"每個戰鬥台分別顯示責任裁判、目前場次、即時比分與下一場。"}</div>
     <div class="live-court-grid ${stationCount===1?"live-court-grid-1":""}">${liveCourtsHtml}</div>
   </div>`;
   const liveRankingHtml=`
 
   <details class="panel live-ranking-panel" ${rankingOpen?"open":""}>
-    <summary>即時選手排名</summary>
+    <summary>${spectatorSettling?"暫定選手排名":"即時選手排名"}</summary>
     <div class="live-ranking-body">
     ${stats.length===0 ? '<div class="empty-state">尚無選手資料，請至「賽事設定」新增選手</div>' : `
     <div class="rank-scroll">
@@ -9389,8 +9393,11 @@ function renderLive(){
     </div>
   </details>
   `;
+  if(spectatorSettling){
+    return spectatorNotice + liveInfoHtml + liveRankingHtml + liveCourtsPanelHtml;
+  }
   return publicWatchReturnContext
-    ? spectatorNotice + liveCourtsPanelHtml + liveInfoHtml + liveRankingHtml
+    ? liveCourtsPanelHtml + liveInfoHtml + liveRankingHtml
     : liveInfoHtml + liveCourtsPanelHtml + liveRankingHtml;
 }
 
@@ -11075,7 +11082,7 @@ function renderCelebrationOverlay(){
       <div class="hoc-actions">
         <button class="hoc-btn hoc-btn-primary" data-action="celeb-view-bracket">查看完整對戰表</button>
         ${publicWatchReturnContext
-          ? `<button class="hoc-btn hoc-btn-secondary" data-action="replay-fireworks">再次播放慶祝動畫</button><button class="hoc-btn hoc-btn-secondary" data-action="back-from-public-watch">返回賽事大廳</button>`
+          ? `<button class="hoc-btn hoc-btn-secondary" data-action="replay-fireworks">再次播放慶祝動畫</button><button class="hoc-btn hoc-btn-secondary" data-action="back-from-public-watch">${publicWatchReturnLabel()}</button>`
           : `<button class="hoc-btn hoc-btn-secondary" data-action="celeb-view-history">查看賽事紀錄</button><button class="hoc-btn hoc-btn-secondary" data-action="replay-fireworks">再次播放慶祝動畫</button><button class="hoc-btn hoc-btn-secondary" data-action="close-celebration">關閉排名畫面</button>`}
       </div>
     </div>
@@ -12245,7 +12252,7 @@ function playerSearchPanel(){const c=cardContext();return `<details class="panel
 function playerPrivacyPanel(){const c=cardContext(),labels={cardPublic:'公開玩家名片',searchable:'允許被搜尋',showTitle:'公開佩戴稱號（包含天梯）',showAvatar:'公開名片頭像',showPoints:'公開名片積分與階級',showStats:'公開名片勝率與參賽統計'};return `<div class="panel"><div class="panel-title">公開與隱私</div><p class="hint">新功能預設不公開名片、不允許搜尋。名片不含本名、Email、電話、生日。天梯原有排名、名稱及積分仍依排行榜規則顯示；既有賽事頁與頭像不受此設定追溯隱藏。</p>${c.settings&&c.editing?Object.entries(labels).map(([k,v])=>`<label style="display:flex;gap:10px;align-items:center;margin:12px 0"><input type="checkbox" data-card-privacy="${k}" ${c.settings[k]?'checked':''} ${c.busy?'disabled':''}>${v}</label>`).join(''):'<p class="hint">按「編輯公開設定」調整公開項目；儲存成功後會自動收合。</p>'}<div class="btn-row"><button class="btn btn-ghost" data-action="card-settings" ${c.busy?'disabled':''}>編輯公開設定</button>${c.settings&&c.editing?`<button class="btn btn-primary" data-action="card-save" ${c.busy?'disabled':''}>儲存並關閉</button><button class="btn btn-ghost" data-action="card-cancel" ${c.busy?'disabled':''}>取消</button>`:''}<button class="btn btn-ghost" data-action="card-preview" ${c.busy?'disabled':''}>預覽已儲存名片</button></div>${c.error?`<p role="status">${esc(c.error)}</p>`:''}</div>`;}
 function renderPlayerCardOverlay(){const c=cardContext();let el=document.getElementById('player-card-overlay');if(!c.opened){el?.remove();return;}if(!el){el=document.createElement('div');el.id='player-card-overlay';document.body.appendChild(el);}el.style.cssText='position:fixed;inset:0;z-index:2200;background:#000b;display:flex;align-items:center;justify-content:center;padding:18px';const p=c.card;el.innerHTML=`<section role="dialog" aria-modal="true" aria-label="玩家名片" class="panel" style="width:100%;max-width:520px;max-height:85dvh;overflow:auto;margin:0"><div class="panel-title">玩家名片</div>${c.busy?'<p>讀取中…</p>':c.error?`<p>${esc(c.error)}</p>`:!p?'<p>此玩家未公開名片，或目前無法查看。</p>':`${p.avatarUrl?`<img src="${esc(p.avatarUrl)}" alt="玩家頭像" style="width:72px;height:72px;border-radius:50%;object-fit:cover">`:''}<h2>${esc(p.name)}</h2><p>${esc(p.playerId)}</p>${p.title?`<p class="title-chip rarity-${esc(p.title.rarity||'common')}">${esc(p.title.name)}</p>`:''}${p.points?`<p>${esc(p.points.season)}｜${esc(p.points.rankTier)}</p><p>賽季 ${p.points.seasonPoints} PT · 生涯 ${p.points.careerPoints} PT</p>`:''}${p.stats?`<hr><p>${esc(p.stats.season)} 正式積分賽</p><p>勝率 ${p.stats.winRate===null?'尚無紀錄':p.stats.winRate+'%'}｜${p.stats.wins} 勝 ${p.stats.losses} 敗</p><p>完成 ${p.stats.events} 場｜冠軍 ${p.stats.champion} · 亞軍 ${p.stats.runnerUp} · 季軍 ${p.stats.third} · 殿軍 ${p.stats.fourth}</p><p class="hint">僅計入正常結算且仍有完整對戰資料的本季積分賽；輪空、棄權不計勝敗。${p.stats.incomplete?'部分歷史資料不完整，未納入以上統計。':''}</p>`:''}`}
 <button class="btn btn-ghost" data-action="card-close" type="button" style="width:100%;margin-top:14px;min-height:48px">關閉並返回</button></section>`;el.onclick=e=>{if(e.target===el||e.target.closest('[data-action="card-close"]')){e.preventDefault();e.stopPropagation();c.opened=false;renderPlayerCardOverlay();}};}
-async function handlePlayerCard(action,button){const c=cardContext();if(c.busy&&action!=='card-close')return;if(action==='card-close'){c.opened=false;renderPlayerCardOverlay();return;}if(!currentAuthUid()){showToast('請先登入以使用玩家搜尋與名片',true);return;}const uid=c.uid;c.error='';if(action==='card-cancel'){c.settings=c.savedSettings?{...c.savedSettings}:null;c.editing=false;c.opened=false;render();return;}let data={};if(action==='card-search'){c.query=document.getElementById('player-card-query')?.value||c.query;data={action:'search',query:c.query};}else if(action==='card-settings')data={action:'settings'};else if(action==='card-save'){data={action:'save',settings:c.settings};}else if(action==='card-open'||action==='card-preview'){data={action:action==='card-preview'?'preview':'card',uid:button?.getAttribute('data-uid')};c.card=null;c.opened=true;}else if(action==='card-event-open'){data={action:'event-card',code:button?.getAttribute('data-code')||'',playerId:button?.getAttribute('data-player-id')||''};c.card=null;c.opened=true;}else return;c.busy=true;render();try{const r=await window.engagementService.playerCard(data);if(uid!==currentAuthUid())return;if(!r?.ok)throw Error('服務未確認完成');if(data.action==='search'){c.results=r.players;c.hasMore=r.hasMore;}if(['settings','save'].includes(data.action)){c.settings={...r.settings};c.savedSettings={...r.settings};c.editing=data.action==='settings';if(data.action==='save'){c.opened=false;c.card=null;showToast('公開設定已儲存');ladderPublicLoaded=false;}}if(['preview','card','event-card'].includes(data.action))c.card=r.card;}catch(e){if(uid===currentAuthUid())c.error=managedFeatureError(e);}finally{if(uid===currentAuthUid()){c.busy=false;render();}}}
+async function handlePlayerCard(action,button){const c=cardContext();if(c.busy&&action!=='card-close')return;if(action==='card-close'){c.opened=false;renderPlayerCardOverlay();return;}if(!currentAuthUid()&&action!=='card-event-open'){showToast('請先登入以使用玩家搜尋與名片',true);return;}const uid=c.uid;c.error='';if(action==='card-cancel'){c.settings=c.savedSettings?{...c.savedSettings}:null;c.editing=false;c.opened=false;render();return;}let data={};if(action==='card-search'){c.query=document.getElementById('player-card-query')?.value||c.query;data={action:'search',query:c.query};}else if(action==='card-settings')data={action:'settings'};else if(action==='card-save'){data={action:'save',settings:c.settings};}else if(action==='card-open'||action==='card-preview'){data={action:action==='card-preview'?'preview':'card',uid:button?.getAttribute('data-uid')};c.card=null;c.opened=true;}else if(action==='card-event-open'){data={action:'event-card',code:button?.getAttribute('data-code')||'',playerId:button?.getAttribute('data-player-id')||''};c.card=null;c.opened=true;}else return;c.busy=true;render();try{const r=await window.engagementService.playerCard(data);if(uid!==currentAuthUid())return;if(!r?.ok)throw Error('服務未確認完成');if(data.action==='search'){c.results=r.players;c.hasMore=r.hasMore;}if(['settings','save'].includes(data.action)){c.settings={...r.settings};c.savedSettings={...r.settings};c.editing=data.action==='settings';if(data.action==='save'){c.opened=false;c.card=null;showToast('公開設定已儲存');ladderPublicLoaded=false;}}if(['preview','card','event-card'].includes(data.action))c.card=r.card;}catch(e){if(uid===currentAuthUid())c.error=managedFeatureError(e);}finally{if(uid===currentAuthUid()){c.busy=false;render();}}}
 function bindPlayerCardInputs(){document.querySelectorAll('[data-card-privacy]').forEach(el=>{el.onchange=()=>{const c=cardContext();if(c.settings){c.settings[el.dataset.cardPrivacy]=el.checked;if(el.dataset.cardPrivacy==='cardPublic'&&!el.checked){c.settings.searchable=false;const b=document.querySelector('[data-card-privacy="searchable"]');if(b)b.checked=false;}}};});const q=document.getElementById('player-card-query');if(q){q.oninput=()=>cardContext().query=q.value;q.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();handlePlayerCard('card-search');}};}}
 
 function ladderLeaderboardTable(rows, adminMode=false){
@@ -13392,27 +13399,35 @@ function renderTournamentDetailScreen(){
   const isLoggedIn = !!(userProfile && firebaseUser);
   const profileIncomplete = isLoggedIn && !userProfile.realName;
   const isCommunity=(t.eventAuthority==="community" || (t.parsedData&&t.parsedData.meta&&t.parsedData.meta.eventAuthority==="community"));
+  const detailPhase=canonicalPublicTournamentPhase(t);
 
   let actionHtml;
   if(isCommunity){
-    if(t.tournamentPhase==="live"){
-      actionHtml=`<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">觀看比賽</button>`;
-    }else if(t.tournamentPhase==="settling"){
-      actionHtml=`<div class="banner warn"><span>對戰已完成，最終結果仍在結算中。</span></div><button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看結算進度</button>`;
-    }else if(t.tournamentPhase==="done"){
-      actionHtml=`<button class="btn btn-primary" data-action="lobby-view-result" data-code="${esc(code)}">查看最終結果</button>`;
-    }else if(t.tournamentPhase==="cancelled" || t.eventCancelled){
+    if(detailPhase==="cancelled"){
       actionHtml='<div class="banner warn"><span>此賽事已取消。</span></div>';
+    }else if(detailPhase==="live"){
+      actionHtml=`<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">觀看比賽</button>`;
+    }else if(detailPhase==="settling"){
+      actionHtml=`<div class="banner warn"><span>對戰已完成，最終結果仍在結算中。</span></div><button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看結算進度</button>`;
+    }else if(detailPhase==="done"){
+      actionHtml=`<button class="btn btn-primary" data-action="lobby-view-result" data-code="${esc(code)}">查看最終結果</button>`;
     }else{
       actionHtml='<div class="hint">此為 COMMUNITY 一般賽事公開資訊頁；不使用官方線上報名流程。</div>';
     }
+  } else if(detailPhase==="cancelled"){
+    actionHtml = '<div class="banner warn"><span>此賽事已取消；報名與取消報名功能均已關閉。</span></div>';
   } else if(publicTournamentRegistrationLocked(t)){
-    const lifecycleAction=t.tournamentPhase==="done"
+    const lifecycleAction=detailPhase==="done"
       ? `<button class="btn btn-primary" data-action="lobby-view-result" data-code="${esc(code)}">查看最終結果</button>`
-      : t.tournamentPhase==="settling"
+      : detailPhase==="settling"
         ? `<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看結算進度</button>`
         : `<button class="btn btn-primary" data-action="switch-to-player-watch" data-view="live" data-code="${esc(code)}">查看即時賽況</button>`;
-    actionHtml = `<div class="banner warn"><span>賽事已開始，報名、備取與取消報名功能均已鎖定。</span></div>
+    const lockNotice=detailPhase==="done"
+      ? "賽事已結束，報名與取消報名功能已鎖定。"
+      : detailPhase==="settling"
+        ? "所有對戰已完成並進入結算，報名與取消報名功能已鎖定。"
+        : "賽事已開始，報名與取消報名功能已鎖定。";
+    actionHtml = `<div class="banner warn"><span>${lockNotice}</span></div>
       <div class="btn-row tournament-live-view-actions">
         ${lifecycleAction}
         <button class="btn btn-ghost player-bracket-progress-btn" data-action="switch-to-player-watch" data-view="bracket" data-code="${esc(code)}">查看對戰表／賽程進度</button>
@@ -13422,7 +13437,7 @@ function renderTournamentDetailScreen(){
       <button class="btn btn-primary" data-action="select-role-player">切換至玩家模式</button>`;
   } else if(myReg && (["confirmed","waitlist","pending_draw"].includes(myReg.status))){
     const statusLabel = t.registrationSelection?.status==='drawing'?'抽籤處理中':t.registrationSelection?.status==='open'||myReg.status==='pending_draw'?'待抽籤':myReg.status==='confirmed'?'正取':'備取'+(myReg.waitRank?'第 '+myReg.waitRank+' 位（原始順位）':'');
-    const canCancel = t.cancellationDeadline && now < t.cancellationDeadline && t.tournamentPhase==="waiting";
+    const canCancel = t.cancellationDeadline && now < t.cancellationDeadline && detailPhase==="waiting";
     actionHtml = `
       <div class="stat-box"><div class="label">您的報名狀態</div><div class="value small">${statusLabel}</div></div>
       ${canCancel
@@ -15185,7 +15200,7 @@ function renderApp(){
         <div class="spacer"></div>
         <div class="header-account-controls">${accountMenuHtml()}</div>
       </header>
-      ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← ${publicWatchReturnContext==="player-registered"?"返回我的賽程":(publicWatchReturnContext==="guest-lobby"?"返回賽事大廳":"返回玩家中心")}</button><span>目前為公開觀賽模式</span></div>`:""}
+      ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← ${publicWatchReturnLabel()}</button><span>目前為公開觀賽模式</span></div>`:""}
       <nav class="tabs">
         ${tabs.map(t=>`<button class="${activeTab===t[0]?'active':''}" data-action="switch-tab" data-tab="${t[0]}">${t[1]}</button>`).join("")}
       </nav>
