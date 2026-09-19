@@ -6426,7 +6426,7 @@ function scheduleEngagementDayRefresh(result){
   },delay);
 }
 function renderCheckInCalendar(ci){
-  if(!ci || !/^\\d{4}-\\d{2}$/.test(ci.month||"")) return '<div class="hint">日曆需部署 v13.29.4 後端後開放。</div>';
+  if(!ci || !/^\d{4}-\d{2}$/.test(ci.month||"")) return '<div class="hint">日曆需部署 v13.29.4 後端後開放。</div>';
   const [year,month]=ci.month.split('-').map(Number);
   const days=new Date(Date.UTC(year,month,0)).getUTCDate();
   const start=new Date(Date.UTC(year,month-1,1)).getUTCDay();
@@ -16588,7 +16588,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     if(engagementActionBusy) return;
     const date=String(target.getAttribute("data-date")||"").trim();
     const makeup=engagementSnapshot&&engagementSnapshot.checkIn&&engagementSnapshot.checkIn.makeup||{};
-    if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)){showToast("補簽日期不正確",true);return;}
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){showToast("補簽日期不正確",true);return;}
     if(Number(makeup.remaining||0)<=0){showToast("本月補簽次數已用完",true);return;}
     if(!window.engagementService || !window.engagementService.makeupCheckIn){showToast("補簽服務尚未就緒",true);return;}
     const shown=date.slice(5).replace("-","/");
