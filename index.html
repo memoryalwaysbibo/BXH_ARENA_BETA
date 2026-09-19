@@ -11404,7 +11404,7 @@ function renderCheckInManagementPanel(){
   const ov=engagementAdminOverview;
   const totals=(label,value)=>`<div class="stat-box"><div class="label">${label}</div><div class="value small">${Number(value||0)}</div></div>`;
   return `<section class="panel account-management-panel">
-    <div class="super-admin-page-head"><div><div class="super-admin-page-title">簽到管理</div><div class="super-admin-page-sub">每日簽到功能開關、簽到類稱號判定、簽到統計與異常檢查。</div></div><button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回系統首頁</button></div>
+    <div class="super-admin-page-head"><div><div class="super-admin-page-title">簽到管理</div><div class="super-admin-page-sub">每日簽到功能開關、簽到類稱號判定、簽到統計與異常檢查。</div></div><button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回賽事總覽</button></div>
     ${renderEngagementAdminConnectionBlock()}
     <div class="super-admin-section">
       <div class="panel-title">簽到功能設定</div>
@@ -11468,7 +11468,7 @@ function renderTitleManagementPanel(){
 `;
   else content=(ui.creating?renderTitleEditor(true):'')+renderAdminTitleList();
   return `<section id="title-management-panel" class="panel account-management-panel">
-    <div class="super-admin-page-head"><div><div class="super-admin-page-title">稱號管理</div><div class="super-admin-page-sub">查看與編輯稱號、冊封玩家及管理發放設定。</div></div><button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回系統首頁</button></div>
+    <div class="super-admin-page-head"><div><div class="super-admin-page-title">稱號管理</div><div class="super-admin-page-sub">查看與編輯稱號、冊封玩家及管理發放設定。</div></div><button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回賽事總覽</button></div>
     <nav class="title-management-nav" aria-label="稱號管理功能">${Object.entries({list:'稱號清單',grant:'冊封／撤銷',backfill:'歷史補算',settings:'功能設定'}).map(([key,label])=>`<button type="button" class="btn ${ui.tab===key?'btn-primary':'btn-ghost'}" data-action="title-management-tab" data-tab="${key}" aria-pressed="${ui.tab===key}" ${busy?'disabled':''}>${label}</button>`).join('')}</nav>
     <div class="title-management-content">${content}</div>
   </section>`;
@@ -11806,7 +11806,7 @@ function renderAccountManagementScreen(){
     ${accountMenuOverlayHtml()}
     <main class="account-management-main">
       ${page==="accounts"?`<div class="panel account-management-panel">
-        <div class="panel-title">帳號管理<button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回系統首頁</button></div>
+        <div class="panel-title">帳號管理<button class="btn btn-ghost btn-sm" data-action="account-goto-home">返回賽事總覽</button></div>
         <p class="hint">摘要優先顯示姓名、帳號分類與活躍度；點擊個別帳號即可展開角色、狀態、永久刪除及完整資料。刪除僅限最高管理員，且不可刪除自己或最後一位啟用中的最高管理員。</p>
         ${authFormError ? `<div class="auth-error">${esc(authFormError)}</div>` : ""}
         <div class="account-overview-grid">
@@ -12449,7 +12449,7 @@ function mailboxButtonHtml(){
 }
 function renderMailboxPage(){
   const c=mailboxContext(),messages=c.messages||[],selected=messages.find(m=>m.id===c.selectedId)||null;
-  return `<section class="panel"><div class="panel-title"><span>✉️ 站內信</span><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="mailbox-refresh" ${c.loading||c.busy?'disabled':''}>重新整理</button><button class="btn btn-ghost btn-sm" data-action="mailbox-close">返回賽事大廳</button></div></div>
+  return `<section class="panel"><div class="panel-title"><span>✉️ 站內信</span><div class="btn-row"><button class="btn btn-ghost btn-sm" data-action="mailbox-refresh" ${c.loading||c.busy?'disabled':''}>重新整理</button><button class="btn btn-ghost btn-sm" data-action="mailbox-close">← 返回上一頁</button></div></div>
     <p class="hint">未讀 ${c.unreadCount} 封｜系統通知、活動及中獎訊息會集中在這裡。</p>
     ${c.error?`<div class="auth-error" role="alert">${esc(c.error)}</div>`:''}
     ${c.loading&&!c.messages?'<div class="empty-state">正在載入站內信……</div>':`<div class="mailbox-layout"><div class="mailbox-list">${messages.length?messages.map(m=>`<button class="mailbox-item ${m.readAt?'':'unread'} ${selected?.id===m.id?'active':''}" data-action="mailbox-select" data-message-id="${esc(m.id)}"><div class="mailbox-item-title">${m.readAt?'':'● '}${esc(m.subject||'系統通知')}</div><div class="mailbox-item-meta"><span>${esc(m.senderName||'BXH ARENA')}</span><span>${esc(mailboxDate(m.createdAt))}</span></div></button>`).join(''):'<div class="empty-state">目前沒有站內信。</div>'}</div><div>${selected?`<article class="panel"><div class="panel-title">${esc(selected.subject||'系統通知')}</div><p class="hint">${esc(selected.senderName||'BXH ARENA')}｜${esc(mailboxDate(selected.createdAt))}</p><div class="mailbox-body">${esc(selected.body||'')}</div><div class="btn-row" style="margin-top:16px"><button class="btn btn-ghost" data-action="mailbox-toggle-read" data-message-id="${esc(selected.id)}" data-read="${selected.readAt?'1':'0'}" ${c.busy?'disabled':''}>標記為${selected.readAt?'未讀':'已讀'}</button></div></article>`:'<div class="panel empty-state">請選擇一封信件查看內容。</div>'}</div></div>`}
@@ -14567,7 +14567,7 @@ function render(){
   const __viewportSnapshot = captureRenderViewport();
   try{
     const app = document.getElementById("app");
-  if(appPhase==='raffle-public'){app.innerHTML=authShellOpen()+'<div class="raffle-public-shellbar"><button class="raffle-public-back" data-action="raffle-home" aria-label="返回首頁">←</button><div class="raffle-public-shellbrand"><strong>BXH ARENA</strong><span>MEMBER RAFFLE</span></div><span class="raffle-public-shellstatus">會員專區</span></div>'+renderRafflePage()+authShellClose();return;}
+  if(appPhase==='raffle-public'){app.innerHTML=authShellOpen()+'<div class="raffle-public-shellbar"><button class="raffle-public-back" data-action="raffle-home" aria-label="返回系統首頁" title="返回系統首頁">←</button><div class="raffle-public-shellbrand"><strong>BXH ARENA</strong><span>MEMBER RAFFLE</span></div><span class="raffle-public-shellstatus">會員專區</span></div>'+renderRafflePage()+authShellClose();return;}
   if(appPhase==="landing"){ app.innerHTML = renderLandingScreen(); bindAuthInputs(); return; }
   if(appPhase==="admin-login"){ app.innerHTML = renderAdminLoginScreen(); bindAuthInputs(); return; }
   if(appPhase==="admin-setup"){ app.innerHTML = renderAdminSetupScreen(); bindAuthInputs(); return; }
@@ -14680,12 +14680,12 @@ function accountMenuItemsHtml(){
     <button data-action="account-back-to-role">返回系統首頁</button>
     <button data-action="account-logout" class="danger">登出系統</button>
   ` : `
-    <button data-action="account-goto-home">返回系統首頁</button>
+    <button data-action="account-goto-home">返回賽事總覽</button>
     ${isSuperAdmin() ? `<button data-action="open-account-management">帳號管理</button>` : ""}
     ${(userProfile && roleAllowsMode(userProfile.role,"player")) ? `<button data-action="switch-to-player-mode">切換至玩家模式</button><button data-action="account-open-checkin">每日簽到</button>` : ""}
     ${themePickerHtml()}
     <button data-action="account-change-password">變更密碼</button>
-    <button data-action="account-back-to-role">返回身分選擇</button>
+    <button data-action="account-back-to-role">返回系統首頁</button>
     <button data-action="account-logout" class="danger">登出系統</button>
   `;
 }
@@ -14894,7 +14894,7 @@ function renderEventEntryModal(){
         <button class="btn btn-primary" data-action="event-entry-register">玩家報名</button>
         <button class="btn btn-primary" data-action="event-entry-watch">即時觀賽</button>
         <button class="btn btn-ghost" data-action="event-entry-bracket">查看完整對戰表</button>
-        <button class="btn btn-ghost" data-action="event-entry-close">返回首頁</button>
+        <button class="btn btn-ghost" data-action="event-entry-close">關閉活動入口</button>
       </div>
     </div>
   </div>`;
@@ -14917,7 +14917,7 @@ function renderQrScannerModal(){
       </div>
       <div id="qr-scanner-status" class="hint" style="text-align:center;margin-top:10px;">${esc(qrScannerStatus||"準備開啟鏡頭……")}</div>
       <div class="btn-row" style="margin-top:14px;">
-        <button class="btn btn-primary" data-action="retry-qr-scanner">重新啟動相機</button><button class="btn btn-ghost" data-action="close-qr-scanner">改用手動輸入／返回</button>
+        <button class="btn btn-primary" data-action="retry-qr-scanner">重新啟動相機</button><button class="btn btn-ghost" data-action="close-qr-scanner">改用手動輸入</button>
       </div>
     </div>
   </div>`;
