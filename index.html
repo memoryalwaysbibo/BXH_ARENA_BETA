@@ -2181,6 +2181,8 @@ main{min-width:0;max-width:100vw;overflow-x:hidden;box-sizing:border-box;}
 .mobile-table-hint{display:none;font-size:11px;color:var(--metal-dim);margin:0 0 8px;text-align:right;}
 .public-watch-return{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(233,255,46,.045);border-bottom:1px solid var(--border);}
 .public-watch-return span{font-size:11px;color:var(--metal-dim);}
+.bracket-context-return{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:8px 10px;border:1px solid rgba(217,185,92,.26);border-radius:10px;background:rgba(217,185,92,.055);}
+.bracket-context-return span{font-size:11px;color:var(--metal-dim);}
 @media(max-width:640px){
   .stickytop{position:sticky;left:0;right:0;}
   header.topbar{width:100%;max-width:100vw;overflow:hidden;}
@@ -2188,6 +2190,8 @@ main{min-width:0;max-width:100vw;overflow-x:hidden;box-sizing:border-box;}
   .mobile-table-hint{display:block;}
   .public-watch-return{position:relative;z-index:2;justify-content:space-between;}
   .public-watch-return .btn{min-height:38px;padding:8px 12px;}
+  .bracket-context-return{align-items:stretch;flex-direction:column;}
+  .bracket-context-return .btn{width:100%;}
 }
 
 
@@ -2745,7 +2749,7 @@ let mainTabNavCenterRequested = true;
 
 /* ==== leave tournament ==== */
 let leaveTournamentBusy = false;
-let publicWatchReturnContext = null; // "player-center" | "guest-lobby" when viewing a public room
+let publicWatchReturnContext = null; // "player-center" | "player-registered" | "guest-lobby" when viewing a public room
 // "最近查看" — up to 3 entries, each ONLY {code, name, viewedAt}. Never stores
 // private tournament data, phone numbers, or a full tournament JSON blob.
 // Only ever populated from a REAL successful public join, never fabricated.
@@ -9434,6 +9438,9 @@ function renderBracket(){
     <div style="margin-top:16px;"><button class="btn btn-primary" data-action="goto-settings">前往賽事設定</button></div>
     </div></div>`;
   }
+  const bracketReturn = publicWatchReturnContext==="player-registered"
+    ? `<div class="bracket-context-return"><button class="btn btn-ghost btn-sm" data-action="back-from-public-watch">← 返回我的賽程</button><span>查看完賽程後可直接回到你的參賽卡片</span></div>`
+    : "";
   const treeIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M5 7h5M5 17h5M10 7v4h5M10 17v-4h5"/><rect x="15" y="8.5" width="5" height="7" rx="1.2"/></svg>';
   const listIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>';
   const modeToggle = `<div class="bracket-view-toggle" role="group" aria-label="對戰表檢視模式">
@@ -9441,9 +9448,9 @@ function renderBracket(){
     <button class="bvt-btn ${bracketViewMode==='standard'?'active':''}" data-action="set-bracket-view-mode" data-mode="standard" aria-pressed="${bracketViewMode==='standard'}">${listIcon}<span>賽事清單</span></button>
   </div>`;
   if(bracketViewMode==="board"){
-    return modeToggle + renderBoardMode();
+    return bracketReturn + modeToggle + renderBoardMode();
   }
-  return modeToggle + matchLegendHtml() + renderTournamentMatchList();
+  return bracketReturn + modeToggle + matchLegendHtml() + renderTournamentMatchList();
 }
 
 function tournamentMatchListGroup(m, fmt){
@@ -15078,7 +15085,7 @@ function renderApp(){
         <div class="spacer"></div>
         <div class="header-account-controls">${accountMenuHtml()}</div>
       </header>
-      ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← 返回賽事大廳</button><span>目前為公開觀賽模式</span></div>`:""}
+      ${publicWatchReturnContext?`<div class="public-watch-return"><button class="btn btn-ghost" data-action="back-from-public-watch">← ${publicWatchReturnContext==="player-registered"?"返回我的賽程":(publicWatchReturnContext==="guest-lobby"?"返回賽事大廳":"返回玩家中心")}</button><span>目前為公開觀賽模式</span></div>`:""}
       <nav class="tabs">
         ${tabs.map(t=>`<button class="${activeTab===t[0]?'active':''}" data-action="switch-tab" data-tab="${t[0]}">${t[1]}</button>`).join("")}
       </nav>
@@ -16459,7 +16466,9 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     const code=target.getAttribute("data-code");
     const requestedView=target.getAttribute("data-view")==="bracket"?"bracket":"live";
     if(!code) return;
-    publicWatchReturnContext = currentRole==="guest" ? "guest-lobby" : "player-center";
+    publicWatchReturnContext = currentRole==="guest"
+      ? "guest-lobby"
+      : (currentRole==="player" && playerActiveTab==="registered" ? "player-registered" : "player-center");
     (async()=>{
       const result=await resolveAndJoinTournamentByCode(code,{forcePublic:true});
       if(!result.ok){ publicWatchReturnContext=null; showToast(CODE_ENTRY_ERROR_MESSAGES[result.reason]||"無法開啟賽事",true); return; }
@@ -16480,7 +16489,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
       guestActiveTab="events";
     }else{
       appPhase="player-center";
-      playerActiveTab="home";
+      playerActiveTab=dest==="player-registered" ? "registered" : "home";
       invalidatePublicTournamentsCache();
     }
     render();
