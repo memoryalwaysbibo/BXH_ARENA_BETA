@@ -9380,7 +9380,7 @@ function renderLive(){
   </div>`;
   const liveRankingHtml=`
 
-  <details class="panel live-ranking-panel" ${rankingOpen?"open":""}>
+  <details class="panel live-ranking-panel" ${(rankingOpen||spectatorSettling)?"open":""}>
     <summary>${spectatorSettling?"暫定選手排名":"即時選手排名"}</summary>
     <div class="live-ranking-body">
     ${stats.length===0 ? '<div class="empty-state">尚無選手資料，請至「賽事設定」新增選手</div>' : `
@@ -12983,7 +12983,7 @@ function lobbyPlayerRosterHtml(t){
   const countText=count+" 人"+(players.length&&checked?" · 已報到 "+checked:"");
   const body=players.length
     ? `<div class="lobby-roster-list">${players.map((p,i)=>`<div class="lobby-roster-player"><span class="lobby-roster-index">${i+1}</span><button type="button" class="lobby-roster-name lobby-roster-card-link" data-action="card-event-open" data-code="${esc(t.code)}" data-player-id="${esc(p.id)}" aria-label="查看 ${esc(p.name)} 的公開玩家名片">${esc(p.name)}</button>${p.checkedIn?'<span class="badge badge-ok">已報到</span>':""}</div>`).join("")}</div>
-       <div class="lobby-roster-note">僅顯示賽事公開名稱與報到狀態，不顯示電話、Email 或帳號識別資料。</div>`
+       <div class="lobby-roster-note">僅顯示賽事公開名稱與報到狀態；可點擊名稱查看玩家自行公開的名片，不顯示電話、Email 或帳號識別資料。</div>`
     : `<div class="lobby-roster-empty">${confirmed>0?"已有正取玩家，但正式公開名單尚未同步。":"目前尚無公開參賽名單。"}</div>`;
   return `<details class="lobby-roster-block">
     <summary class="lobby-roster-head"><span>👥 參賽玩家</span><span class="lobby-roster-count">${countText}</span></summary>
