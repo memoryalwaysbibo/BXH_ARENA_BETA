@@ -8,6 +8,7 @@ on:
       - 'sw.js'
       - 'tests/performance-phase1.cjs'
       - 'tests/firebase-module-syntax.cjs'
+      - 'tests/classic-script-syntax.cjs'
       - '.github/workflows/performance-phase1.yml'
 permissions:
   contents: read
@@ -20,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check classic inline JavaScript syntax
+        run: node tests/classic-script-syntax.cjs
       - name: Check Firebase module JavaScript syntax
         run: node tests/firebase-module-syntax.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
