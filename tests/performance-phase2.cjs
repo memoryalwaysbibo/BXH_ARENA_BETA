@@ -47,4 +47,31 @@ assert.match(
   'smart-call summary refresh must be parallel'
 );
 
+
+// Phase 2B: short-burst public reads are coalesced and hidden tabs do not poll.
+assert.match(
+  html,
+  /const PUBLIC_TOURNAMENT_DOC_READ_TTL_MS=5000;/,
+  'public tournament document reads must have a short de-duplication TTL'
+);
+assert.match(
+  html,
+  /async function readPublicTournamentDocCoalesced\(code\)/,
+  'public tournament reads must share an in-flight/cache helper'
+);
+assert.ok(
+  (html.match(/await readPublicTournamentDocCoalesced\(code\)/g)||[]).length>=2,
+  'summary and full public-event reads must both use the coalesced helper'
+);
+assert.match(
+  html,
+  /document\.visibilityState!=="visible" \|\| smartCallRefreshBusy/,
+  'BXH CALL polling must pause while the browser tab is hidden'
+);
+assert.match(
+  html,
+  /if\(document\.visibilityState!=="visible" \|\| smartCallRefreshBusy\)\{\s*scheduleSmartCallAutoRefresh\(\);/,
+  'hidden/busy smart-call refresh must re-arm instead of silently stopping'
+);
+
 console.log('PASS Phase 2 read de-duplication and parallel refresh guards');
