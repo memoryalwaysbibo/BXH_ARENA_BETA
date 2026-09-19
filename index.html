@@ -12943,16 +12943,16 @@ function lobbyPublicPlayers(t){
 function lobbyPlayerRosterHtml(t){
   const players=lobbyPublicPlayers(t);
   const confirmed=Number(t&&t.confirmedCount||0);
-  const titleCount=players.length||confirmed;
-  if(!titleCount) return '<div class="lobby-roster-empty">目前尚無公開參賽名單</div>';
-  if(!players.length){
-    return `<div class="lobby-roster-block"><div class="lobby-roster-head"><span>👥 參賽玩家</span><strong>${confirmed} 人</strong></div><div class="lobby-roster-empty">已有正取玩家，但正式公開名單尚未同步。</div></div>`;
-  }
   const checked=players.filter(p=>p.checkedIn).length;
+  const count=players.length||confirmed;
+  const countText=count+" 人"+(players.length&&checked?" · 已報到 "+checked:"");
+  const body=players.length
+    ? `<div class="lobby-roster-list">${players.map((p,i)=>`<div class="lobby-roster-player"><span class="lobby-roster-index">${i+1}</span><button type="button" class="lobby-roster-name lobby-roster-card-link" data-action="card-event-open" data-code="${esc(t.code)}" data-player-id="${esc(p.id)}" aria-label="查看 ${esc(p.name)} 的公開玩家名片">${esc(p.name)}</button>${p.checkedIn?'<span class="badge badge-ok">已報到</span>':""}</div>`).join("")}</div>
+       <div class="lobby-roster-note">僅顯示賽事公開名稱與報到狀態，不顯示電話、Email 或帳號識別資料。</div>`
+    : `<div class="lobby-roster-empty">${confirmed>0?"已有正取玩家，但正式公開名單尚未同步。":"目前尚無公開參賽名單。"}</div>`;
   return `<details class="lobby-roster-block">
-    <summary class="lobby-roster-head"><span>👥 參賽玩家</span><span class="lobby-roster-count">${players.length} 人${checked?" · 已報到 "+checked:""}</span></summary>
-    <div class="lobby-roster-list">${players.map((p,i)=>`<div class="lobby-roster-player"><span class="lobby-roster-index">${i+1}</span><button type="button" class="lobby-roster-name lobby-roster-card-link" data-action="card-event-open" data-code="${esc(t.code)}" data-player-id="${esc(p.id)}" aria-label="查看 ${esc(p.name)} 的公開玩家名片">${esc(p.name)}</button>${p.checkedIn?'<span class="badge badge-ok">已報到</span>':""}</div>`).join("")}</div>
-    <div class="lobby-roster-note">僅顯示賽事公開名稱與報到狀態，不顯示電話、Email 或帳號識別資料。</div>
+    <summary class="lobby-roster-head"><span>👥 參賽玩家</span><span class="lobby-roster-count">${countText}</span></summary>
+    ${body}
   </details>`;
 }
 
