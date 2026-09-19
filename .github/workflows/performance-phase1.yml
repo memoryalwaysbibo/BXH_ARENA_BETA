@@ -7,6 +7,7 @@ on:
       - 'index.html'
       - 'sw.js'
       - 'tests/performance-phase1.cjs'
+      - 'tests/performance-phase2.cjs'
       - 'tests/firebase-module-syntax.cjs'
       - 'tests/classic-script-syntax.cjs'
       - 'tests/smart-call-default.cjs'
@@ -40,5 +41,7 @@ jobs:
         run: node tests/button-hierarchy.cjs
       - name: Check lobby navigation semantics
         run: node tests/lobby-navigation.cjs
+      - name: Check Phase 2 read de-duplication
+        run: node tests/performance-phase2.cjs
       - name: Run 16/32/64-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
