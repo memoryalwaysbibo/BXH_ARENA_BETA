@@ -547,7 +547,7 @@ service cloud.firestore {
         || (
              request.auth.uid == uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                  ['displayName','realName','nickname','gameId','phone','birthDate','gender','region','preferredNameMode',
+                  ['displayName','realName','nickname','gameId','phone','birthDate','gender','city','region','preferredNameMode',
                    'realNameVerified','realNameVerifiedAt','realNameVerifiedBy','profileCompleted','profileCompletedAt','avatarUrl','updatedAt','lastLoginAt']
                 )
              && (
