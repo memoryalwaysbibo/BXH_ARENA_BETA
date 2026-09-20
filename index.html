@@ -12022,12 +12022,12 @@ function renderPlayerHomeScreen(){
         <span class="role-card-desc">使用 Email 登入，查看您的個人賽事紀錄、主辦賽事與帳號設定</span>
         <span class="role-card-enter">進入 →</span>
       </button>
-      <button class="role-card role-card-player" data-action="player-goto-apply">
+      <button class="role-card role-card-player" disabled aria-disabled="true" title="資料移轉期間暫停新帳號申請">
         <span class="role-card-icon">${ROLE_ICON_PLAYER}</span>
         <span class="role-card-cn">申請帳號</span>
-        <span class="role-card-en">APPLY</span>
-        <span class="role-card-desc">還沒有帳號嗎？填寫基本資料即可建立玩家帳號</span>
-        <span class="role-card-enter">進入 →</span>
+        <span class="role-card-en">TEMPORARILY CLOSED</span>
+        <span class="role-card-desc">資料移轉期間暫停新帳號申請，既有玩家仍可正常登入</span>
+        <span class="role-card-enter">暫停申請</span>
       </button>
       <button class="role-card role-card-guest" data-action="player-goto-lookup">
         <span class="role-card-icon">${ROLE_ICON_GUEST}</span>
@@ -12091,7 +12091,7 @@ function renderPlayerLoginScreen(){
       <button class="hoc-btn hoc-btn-primary btn-block" style="width:100%;" data-action="player-email-signin" ${verifying?'disabled':''}>${verifying?'正在驗證帳號權限……':'登入'}</button>
       <div class="auth-links">
         <button class="link-btn" data-action="player-forgot-password">忘記密碼</button>
-        <button class="link-btn" data-action="player-goto-apply">還沒有帳號？申請帳號</button>
+        <button class="link-btn" disabled aria-disabled="true" title="資料移轉期間暫停新帳號申請">帳號申請暫停中</button>
       </div>
       <div class="auth-links">
         <button class="link-btn" data-action="account-back-to-role">返回身分選擇</button>
@@ -16296,7 +16296,7 @@ if(isTester() && ADMIN_ONLY_ACTIONS.has(action) && !testerCanOperateAction && !T
     }
     return;
   }
-  if(action==="player-goto-apply"){ playerApplyError=""; appPhase="player-apply"; render(); return; }
+  if(action==="player-goto-apply"){ playerApplyError="資料移轉期間暫停新帳號申請，既有玩家仍可正常登入。"; appPhase="player-login"; render(); return; }
   if(action==="player-goto-lookup"){ playerLookupQuery=""; playerLookupResult=null; appPhase="player-lookup"; render(); return; }
   if(action==="player-google-signin"){
     if(playerLoginBusy) return;
