@@ -16,14 +16,14 @@ const box={
   esc:s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')
 };
 vm.createContext(box);
-vm.runInContext(block,box);
+vm.runInContext(block+'\nthis.__cities=TAIWAN_CITY_DISTRICTS;this.__normalize=normalizeTaiwanCityName;this.__parts=profileLocationParts;',box);
 
-assert.equal(Object.keys(box.TAIWAN_CITY_DISTRICTS).length,22,'must provide all 22 Taiwan cities/counties');
-assert(box.TAIWAN_CITY_DISTRICTS['台南市'].includes('中西區'),'Tainan must include West Central District');
-assert.equal(box.normalizeTaiwanCityName('台南'),'台南市','legacy 台南 must normalize to 台南市');
-assert.equal(box.normalizeTaiwanCityName('臺南市'),'台南市','臺/台 spelling must normalize');
-assert.deepEqual(JSON.parse(JSON.stringify(box.profileLocationParts({region:'台南'}))),{city:'台南市',region:''});
-assert.deepEqual(JSON.parse(JSON.stringify(box.profileLocationParts({city:'台南市',region:'中西區'}))),{city:'台南市',region:'中西區'});
+assert.equal(Object.keys(box.__cities).length,22,'must provide all 22 Taiwan cities/counties');
+assert(box.__cities['台南市'].includes('中西區'),'Tainan must include West Central District');
+assert.equal(box.__normalize('台南'),'台南市','legacy 台南 must normalize to 台南市');
+assert.equal(box.__normalize('臺南市'),'台南市','臺/台 spelling must normalize');
+assert.deepEqual(JSON.parse(JSON.stringify(box.__parts({region:'台南'}))),{city:'台南市',region:''});
+assert.deepEqual(JSON.parse(JSON.stringify(box.__parts({city:'台南市',region:'中西區'}))),{city:'台南市',region:'中西區'});
 
 assert.match(html,/id="profile-city"/,'profile editor must expose city dropdown');
 assert.match(html,/id="profile-region"/,'profile editor must expose district dropdown');
