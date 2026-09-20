@@ -8,11 +8,13 @@ on:
       - 'activity-points-ui.js'
       - 'family-ui.js'
       - 'raffle-ui.js'
+      - 'raffle-claims-ui.js'
       - 'registration-invitations-ui.js'
       - 'sw.js'
       - 'tests/performance-phase1.cjs'
       - 'tests/performance-phase2.cjs'
       - 'tests/activity-points-performance.cjs'
+      - 'tests/modal-watchdogs.cjs'
       - 'tests/registration-invitations-performance.cjs'
       - 'tests/firebase-module-syntax.cjs'
       - 'tests/classic-script-syntax.cjs'
@@ -53,5 +55,7 @@ jobs:
         run: node tests/registration-invitations-performance.cjs
       - name: Check activity points retry backoff
         run: node tests/activity-points-performance.cjs
+      - name: Check background modal watchdogs
+        run: node tests/modal-watchdogs.cjs
       - name: Run 16/32/64/96/128-client snapshot coalescing stress test
         run: node tests/performance-phase1.cjs
