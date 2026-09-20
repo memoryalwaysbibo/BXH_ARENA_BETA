@@ -66,7 +66,7 @@ async function runClient(snapshotCount){
 }
 
 (async()=>{
-  const scenarios=[16,32,64];
+  const scenarios=[16,32,64,96,128];
   const snapshotsPerClient=40;
   for(const clients of scenarios){
     const results=await Promise.all(Array.from({length:clients},()=>runClient(snapshotsPerClient)));
@@ -95,5 +95,5 @@ async function runClient(snapshotCount){
       persistReductionPct:Number(persistReduction.toFixed(1))
     }));
   }
-  console.log('PASS Phase 1 synthetic 16/32/64-client snapshot coalescing');
+  console.log('PASS Phase 1 synthetic 16/32/64/96/128-client snapshot coalescing');
 })().catch(error=>{console.error(error);process.exit(1);});
