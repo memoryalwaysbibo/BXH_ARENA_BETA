@@ -19,6 +19,11 @@ assert.doesNotMatch(html,/class="btn btn-ghost btn-sm" data-action="ops-forfeit"
 assert.match(raffle,/class="btn btn-danger" data-action="raffle-cancel"/,'cancelling an entire raffle and refunding tickets must be danger-styled');
 assert.match(raffle,/class="btn btn-danger btn-sm" data-action="raffle-reject"/,'rejecting a raffle participant must be danger-styled');
 assert.doesNotMatch(raffle,/class="btn btn-ghost" data-action="raffle-cancel"/,'raffle cancellation must not look neutral');
+assert.match(raffle,/class="btn btn-danger btn-sm" data-action="raffle-forfeit"/,'recording prize forfeiture must be danger-styled');
+assert.match(raffle,/class="btn btn-danger" data-action="raffle-remove-prize"/,'removing a draft prize must be visually destructive');
+assert.match(raffle,/class="btn btn-danger btn-sm" data-action="raffle-remove-rule"/,'removing a draft eligibility rule must be visually destructive');
+assert.match(raffle,/forfeit:'確定記錄此獎項棄領？棄領紀錄會保留。'/,'forfeiture must require an explicit confirmation before asking for a reason');
+assert.match(raffle,/reject:'確定拒絕此參賽者的資格審核？'/,'participant rejection must require an explicit confirmation');
 assert.match(family,/data-close>取消<\/button>/,'family registration selection modal must describe dismissal as cancel, not navigation');
 
 console.log('PASS button hierarchy distinguishes primary, secondary, and dangerous actions');
