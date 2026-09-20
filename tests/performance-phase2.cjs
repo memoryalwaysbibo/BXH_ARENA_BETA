@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
 const html=fs.readFileSync('index.html','utf8');
+const raffle=fs.readFileSync('raffle-ui.js','utf8');
 
 // Phase 2A: my registrations may reuse the already-loaded public tournament list.
 assert.match(
@@ -72,6 +73,19 @@ assert.match(
   html,
   /if\(document\.visibilityState!=="visible" \|\| smartCallRefreshBusy\)\{\s*scheduleSmartCallAutoRefresh\(\);/,
   'hidden/busy smart-call refresh must re-arm instead of silently stopping'
+);
+
+
+// Phase 2C: raffle detail polling must not keep refreshing in background tabs.
+assert.match(
+  raffle,
+  /setInterval\(\(\)=>\{\s*if\(document\.hidden\)return;\s*raffleAnnouncementsState\.loaded=false;/,
+  'raffle auto-refresh must pause while the browser tab is hidden'
+);
+assert.match(
+  raffle,
+  /visibilitychange'[\s\S]*if\(document\.hidden\)return;[\s\S]*loadRaffles\(\);/,
+  'raffle view must refresh promptly after returning to the foreground'
 );
 
 console.log('PASS Phase 2 read de-duplication and parallel refresh guards');
