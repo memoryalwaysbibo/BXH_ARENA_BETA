@@ -25,5 +25,6 @@ assert.match(raffle,/class="btn btn-danger btn-sm" data-action="raffle-remove-ru
 assert.match(raffle,/forfeit:'確定記錄此獎項棄領？棄領紀錄會保留。'/,'forfeiture must require an explicit confirmation before asking for a reason');
 assert.match(raffle,/reject:'確定拒絕此參賽者的資格審核？'/,'participant rejection must require an explicit confirmation');
 assert.match(family,/data-close>取消<\/button>/,'family registration selection modal must describe dismissal as cancel, not navigation');
+assert.match(raffle,/data-action="raffle-editor-close"[\s\S]*\$\{c\.draftId\?'取消編輯':'取消新增'\}/,'raffle editor dismissal must describe unsaved-edit cancellation, not navigation');
 
 console.log('PASS button hierarchy distinguishes primary, secondary, and dangerous actions');
