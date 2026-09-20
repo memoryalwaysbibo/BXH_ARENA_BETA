@@ -20118,7 +20118,7 @@ init();
           phone:String(data.phone||"").trim(),
           birthDate:String(data.birthDate||"").trim(),
           gender:["female","male","other"].includes(data.gender)?data.gender:"",
-          city:normalizeTaiwanCityName(data.city),
+          city:String(data.city||"").trim().replace(/^臺/,"台"),
           region:String(data.region||"").trim(),
           preferredNameMode:data.preferredNameMode==="gameId"?"gameId":"realName",
           profileCompleted:!!realName,
