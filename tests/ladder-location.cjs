@@ -40,11 +40,11 @@ const players=[
   {uid:'b',city:'高雄市',region:'左營區',seasonPoints:50,careerPoints:50,championCount:0,runnerUpCount:0,thirdPlaceCount:0,fourthPlaceCount:0},
   {uid:'c',city:'台南市',region:'東區',seasonPoints:30,careerPoints:30,championCount:0,runnerUpCount:0,thirdPlaceCount:0,fourthPlaceCount:0}
 ];
-box.ladderLocationCity='台南市';box.ladderLocationRegion='';
+box.__setLocation('台南市','');
 let rows=box.__rank(box.__filter(players));
 assert.deepEqual(rows.map(x=>x.uid),['c','a'],'city board must include only selected city and re-sort');
 assert.deepEqual(rows.map(x=>x.__rank),[1,2],'city board must recalculate local ranks');
-box.ladderLocationRegion='中西區';
+box.__setLocation('台南市','中西區');
 rows=box.__rank(box.__filter(players));
 assert.deepEqual(rows.map(x=>x.uid),['a'],'district board must narrow to selected district');
 assert.equal(rows[0].__rank,1,'district board leader must be NO.1 within the district');
