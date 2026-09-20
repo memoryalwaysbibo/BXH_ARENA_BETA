@@ -845,7 +845,8 @@ isAdminOrAbove() || (isSignedIn() && tournamentExistsFor(code) && (isCommunityOw
         && request.resource.data.thirdPlaceCount is number
         && request.resource.data.fourthPlaceCount is number;
 
-      allow update: if isAdminOrAbove()
+      allow update: if (
+        isAdminOrAbove()
         && request.resource.data.uid == uid
         && request.resource.data.seasonPoints is number
         && request.resource.data.seasonPoints >= 0
@@ -860,7 +861,14 @@ isAdminOrAbove() || (isSignedIn() && tournamentExistsFor(code) && (isCommunityOw
         && request.resource.data.championCount is number
         && request.resource.data.runnerUpCount is number
         && request.resource.data.thirdPlaceCount is number
-        && request.resource.data.fourthPlaceCount is number;
+        && request.resource.data.fourthPlaceCount is number
+      ) || (
+        isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['city','region'])
+        && request.resource.data.get('city','') is string
+        && request.resource.data.get('region','') is string
+      );
 
       allow delete: if isSuperAdmin();
     }
