@@ -16,95 +16,26 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - name: Patch login reconnect without rebuilding credential fields
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-
-          old_player = '''    if(!(window.cloudAuth && window.cloudAuth.isReady())){
-      playerLoginBusy=true;playerLoginError="正在重新連線雲端…";render();
-      Promise.resolve().then(async()=>{
-        try{if(window.cloudSync&&window.cloudSync.connect)await window.cloudSync.connect();}catch(e){}
-        playerLoginBusy=false;
-        if(!(window.cloudAuth && window.cloudAuth.isReady())){
-          playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";
-          render();
-          return;
-        }
-        playerLoginError="";
-        render();
-        handleAction("player-email-signin",target);
-      });
-      return;
-    }'''
-
-          new_player = '''    if(!(window.cloudAuth && window.cloudAuth.isReady())){
-      playerLoginBusy=true;playerLoginError="";
-      try{ if(target) target.disabled=true; }catch(e){}
-      showToast("正在重新連線雲端…");
-      Promise.resolve().then(async()=>{
-        try{
-          if(window.cloudSync&&window.cloudSync.connect){
-            await withLoginTimeout(window.cloudSync.connect(),LOGIN_TIMEOUT_MS);
-          }
-        }catch(e){}
-        playerLoginBusy=false;
-        try{ if(target) target.disabled=false; }catch(e){}
-        if(!(window.cloudAuth && window.cloudAuth.isReady())){
-          playerLoginError="雲端服務尚未連線，請確認網路連線或稍後再試";
-          render();
-          return;
-        }
-        playerLoginError="";
-        handleAction("player-email-signin",target);
-      });
-      return;
-    }'''
-
-          old_admin = '''    if(!authAvailable()){ loginError="雲端服務尚未連線，請確認網路連線或稍後再試"; render(); return; }'''
-
-          new_admin = '''    if(!authAvailable()){
-      loginBusy=true; loginError="";
-      try{ if(target) target.disabled=true; }catch(e){}
-      showToast("正在重新連線雲端…");
-      Promise.resolve().then(async()=>{
-        try{
-          if(window.cloudSync&&window.cloudSync.connect){
-            await withLoginTimeout(window.cloudSync.connect(),LOGIN_TIMEOUT_MS);
-          }
-        }catch(e){}
-        loginBusy=false;
-        try{ if(target) target.disabled=false; }catch(e){}
-        if(!authAvailable()){
-          loginError="雲端服務尚未連線，請確認網路連線或稍後再試";
-          render();
-          return;
-        }
-        loginError="";
-        handleAction("admin-login-submit",target);
-      });
-      return;
-    }'''
-
-          if old_player not in s:
-              raise SystemExit('player reconnect target not found')
-          if old_admin not in s:
-              raise SystemExit('admin reconnect target not found')
-
+          old_player = "    if(!(window.cloudAuth && window.cloudAuth.isReady())){\n      playerLoginBusy=true;playerLoginError=\"正在重新連線雲端…\";render();\n      Promise.resolve().then(async()=>{\n        try{if(window.cloudSync&&window.cloudSync.connect)await window.cloudSync.connect();}catch(e){}\n        playerLoginBusy=false;\n        if(!(window.cloudAuth && window.cloudAuth.isReady())){\n          playerLoginError=\"雲端服務尚未連線，請確認網路連線或稍後再試\";\n          render();\n          return;\n        }\n        playerLoginError=\"\";\n        render();\n        handleAction(\"player-email-signin\",target);\n      });\n      return;\n    }"
+          new_player = "    if(!(window.cloudAuth && window.cloudAuth.isReady())){\n      playerLoginBusy=true;playerLoginError=\"\";\n      try{ if(target) target.disabled=true; }catch(e){}\n      showToast(\"正在重新連線雲端…\");\n      Promise.resolve().then(async()=>{\n        try{\n          if(window.cloudSync&&window.cloudSync.connect){\n            await withLoginTimeout(window.cloudSync.connect(),LOGIN_TIMEOUT_MS);\n          }\n        }catch(e){}\n        playerLoginBusy=false;\n        try{ if(target) target.disabled=false; }catch(e){}\n        if(!(window.cloudAuth && window.cloudAuth.isReady())){\n          playerLoginError=\"雲端服務尚未連線，請確認網路連線或稍後再試\";\n          render();\n          return;\n        }\n        playerLoginError=\"\";\n        handleAction(\"player-email-signin\",target);\n      });\n      return;\n    }"
+          old_admin = "    if(!authAvailable()){ loginError=\"雲端服務尚未連線，請確認網路連線或稍後再試\"; render(); return; }"
+          new_admin = "    if(!authAvailable()){\n      loginBusy=true; loginError=\"\";\n      try{ if(target) target.disabled=true; }catch(e){}\n      showToast(\"正在重新連線雲端…\");\n      Promise.resolve().then(async()=>{\n        try{\n          if(window.cloudSync&&window.cloudSync.connect){\n            await withLoginTimeout(window.cloudSync.connect(),LOGIN_TIMEOUT_MS);\n          }\n        }catch(e){}\n        loginBusy=false;\n        try{ if(target) target.disabled=false; }catch(e){}\n        if(!authAvailable()){\n          loginError=\"雲端服務尚未連線，請確認網路連線或稍後再試\";\n          render();\n          return;\n        }\n        loginError=\"\";\n        handleAction(\"admin-login-submit\",target);\n      });\n      return;\n    }"
+          if old_player not in s: raise SystemExit('player reconnect target not found')
+          if old_admin not in s: raise SystemExit('admin reconnect target not found')
           s = s.replace(old_player, new_player, 1)
           s = s.replace(old_admin, new_admin, 1)
           p.write_text(s, encoding='utf-8')
           PY
-
       - name: Verify auth reliability regression
         run: node tests/auth-reliability.cjs
-
       - name: Commit patch
         shell: bash
         run: |
