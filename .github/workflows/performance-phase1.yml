@@ -14,6 +14,7 @@ on:
       - 'tests/performance-phase1.cjs'
       - 'tests/performance-phase2.cjs'
       - 'tests/activity-points-performance.cjs'
+      - 'tests/auth-reliability.cjs'
       - 'tests/modal-watchdogs.cjs'
       - 'tests/registration-invitations-performance.cjs'
       - 'tests/firebase-module-syntax.cjs'
@@ -55,6 +56,8 @@ jobs:
         run: node tests/registration-invitations-performance.cjs
       - name: Check activity points retry backoff
         run: node tests/activity-points-performance.cjs
+      - name: Check mobile auth reliability
+        run: node tests/auth-reliability.cjs
       - name: Check background modal watchdogs
         run: node tests/modal-watchdogs.cjs
       - name: Run 16/32/64/96/128-client snapshot coalescing stress test
