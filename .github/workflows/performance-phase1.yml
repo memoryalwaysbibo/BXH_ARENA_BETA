@@ -1,4 +1,5 @@
 name: Phase 1 performance regression
+# Mobile auth reconnect regression included.
 on:
   workflow_dispatch:
   push:
