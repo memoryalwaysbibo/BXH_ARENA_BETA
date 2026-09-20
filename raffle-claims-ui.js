@@ -11,7 +11,7 @@
   d.querySelector('h2').textContent=title;document.body.appendChild(d);const body=d.querySelector('.claim-content'),status=d.querySelector('.claim-status');let disposed=false,onDispose=()=>{};
   const valid=()=>!disposed&&uid===currentAuthUid()&&epoch===engagementSessionEpoch;
   const close=()=>{if(disposed)return;disposed=true;clearInterval(watch);onDispose();d.close();d.remove();previous?.focus?.();if(closeActive===close)closeActive=null;};
-  const watch=setInterval(()=>{if(!valid())close();},500);d.querySelector('.claim-close').onclick=close;d.oncancel=e=>{e.preventDefault();close();};d.onclose=close;closeActive=close;d.showModal();
+  const watch=setInterval(()=>{if(document.hidden)return;if(!valid())close();},1000);d.querySelector('.claim-close').onclick=close;d.oncancel=e=>{e.preventDefault();close();};d.onclose=close;closeActive=close;d.showModal();
   return {d,body,status,valid,close,setDispose:fn=>onDispose=fn,async api(data){if(!valid())throw Error('auth-required');const r=await window.engagementService.raffle(data);if(!valid())throw Error('auth-required');if(!r?.ok)throw Error('load-failed');return r;}};
  }
  async function showCode(detail){
