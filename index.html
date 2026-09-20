@@ -14878,7 +14878,7 @@ function renderWatchErrorScreen(){
 
 const BXH_INTERFACE_THEME_KEY="bxh.interface.theme.v1";
 const BXH_INTERFACE_THEME_OPTIONS=[
-  {id:"gold",label:"暗曜金",english:"Dark Gold",color:"#b8922e"},
+  {id:"gold",label:"暗耀金",english:"Dark Gold",color:"#b8922e"},
   {id:"blue",label:"霓虹藍",english:"Neon Blue",color:"#35c9d0"},
   {id:"red",label:"烈焰紅",english:"Crimson Red",color:"#d95778"},
   {id:"green",label:"螢光綠",english:"Toxic Green",color:"#43cf7c"}
@@ -14893,22 +14893,12 @@ function applyInterfaceTheme(value,persist=true){
   if(persist){try{localStorage.setItem(BXH_INTERFACE_THEME_KEY,interfaceTheme);}catch(e){}}
 }
 function themePickerHtml(){
-  const activeTheme=BXH_INTERFACE_THEME_OPTIONS.find(item=>item.id===interfaceTheme)||BXH_INTERFACE_THEME_OPTIONS[0];
-  return `<details class="account-theme-picker">
-    <summary class="account-theme-summary" aria-label="介面主題，目前為 ${esc(activeTheme.label)}">
-      <span class="account-theme-summary-main">
-        <span class="account-theme-summary-label">介面主題</span>
-        <small>${esc(activeTheme.label)} · ${esc(activeTheme.english)}</small>
-      </span>
-      <span class="account-theme-summary-caret" aria-hidden="true">›</span>
-    </summary>
-    <div class="account-theme-options" role="group" aria-label="介面主題選擇">
-      <div class="account-theme-options-label">選擇主題</div>
-      <div class="account-theme-swatches">
-        ${BXH_INTERFACE_THEME_OPTIONS.map(item=>`<button type="button" class="account-theme-swatch ${interfaceTheme===item.id?"is-active":""}" data-action="set-interface-theme" data-theme="${item.id}" aria-label="${item.label} (${item.english})" title="${item.label} (${item.english})" aria-pressed="${interfaceTheme===item.id?"true":"false"}" style="--swatch-color:${item.color}"><span class="account-theme-dot" aria-hidden="true"></span><span class="account-theme-option-copy"><strong>${esc(item.label)}</strong><small>${esc(item.english)}</small></span><span class="account-theme-check" aria-hidden="true">✓</span></button>`).join("")}
-      </div>
-    </div>
-  </details>`;
+  return `<div class="account-theme-select-row" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);">
+    <label for="account-theme-select" style="flex:0 0 auto;font-size:15px;font-weight:700;color:var(--white);">介面主題</label>
+    <select id="account-theme-select" aria-label="介面主題" onchange="applyInterfaceTheme(this.value,true)" style="min-width:0;flex:1;height:40px;padding:0 34px 0 12px;border:1px solid var(--border);border-radius:9px;background:var(--panel-2);color:var(--white);font:inherit;outline:none;">
+      ${BXH_INTERFACE_THEME_OPTIONS.map(item=>`<option value="${item.id}" ${interfaceTheme===item.id?"selected":""}>${esc(item.label)} · ${esc(item.english)}</option>`).join("")}
+    </select>
+  </div>`;
 }
 
 function accountMenuItemsHtml(){
