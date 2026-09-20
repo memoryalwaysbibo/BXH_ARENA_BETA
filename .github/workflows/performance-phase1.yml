@@ -27,6 +27,7 @@ on:
       - 'tests/lobby-navigation.cjs'
       - 'tests/player-top-nav.cjs'
       - 'tests/profile-location.cjs'
+      - 'tests/ladder-location.cjs'
       - '.github/workflows/performance-phase1.yml'
 permissions:
   contents: read
@@ -57,6 +58,8 @@ jobs:
         run: node tests/player-top-nav.cjs
       - name: Check profile city and district selectors
         run: node tests/profile-location.cjs
+      - name: Check city and district ladder rankings
+        run: node tests/ladder-location.cjs
       - name: Check Phase 2 read de-duplication
         run: node tests/performance-phase2.cjs
       - name: Check invitation background polling
