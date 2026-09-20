@@ -12190,13 +12190,42 @@ function formatLadderDate(ts){
   try{ return new Date(ts).toLocaleDateString("zh-TW",{year:"numeric",month:"2-digit",day:"2-digit"}); }catch(e){ return "—"; }
 }
 function defaultLadderProfile(uid,name,seasonId){
-  return { uid:uid||"", playerName:name||"", seasonPoints:0, careerPoints:0, rankTier:"黑鐵", currentSeason:seasonId||"S1", highestRankTier:"黑鐵", totalEvents:0, championCount:0, runnerUpCount:0, thirdPlaceCount:0, fourthPlaceCount:0, rankedWins:0, rankedLosses:0, lastPointsUpdatedAt:null, seasonHistory:{} };
+  return { uid:uid||"", playerName:name||"", city:"", region:"", seasonPoints:0, careerPoints:0, rankTier:"黑鐵", currentSeason:seasonId||"S1", highestRankTier:"黑鐵", totalEvents:0, championCount:0, runnerUpCount:0, thirdPlaceCount:0, fourthPlaceCount:0, rankedWins:0, rankedLosses:0, lastPointsUpdatedAt:null, seasonHistory:{} };
 }
 
 let ladderPublicLoading=false;
 let ladderPublicLoaded=false;
 let ladderPublicError="";
 let ladderPublicData={ control:null, season:null, players:[] };
+let ladderLocationCity="";
+let ladderLocationRegion="";
+function ladderLocationRows(players){
+  const city=normalizeTaiwanCityName(ladderLocationCity);
+  const region=String(ladderLocationRegion||"").trim();
+  return (players||[]).filter(p=>{
+    if(!city)return true;
+    if(normalizeTaiwanCityName(p.city)!==city)return false;
+    if(region&&String(p.region||"").trim()!==region)return false;
+    return true;
+  });
+}
+function ladderLocationLabel(){
+  const city=normalizeTaiwanCityName(ladderLocationCity);
+  const region=String(ladderLocationRegion||"").trim();
+  if(!city)return "全區總榜";
+  return region?city+"・"+region+" 地區榜":city+" 都市榜";
+}
+function ladderLocationFilterHtml(){
+  const city=normalizeTaiwanCityName(ladderLocationCity);
+  return `<div class="panel ladder-location-filter">
+    <div class="panel-title">地區分類</div>
+    <div class="grid grid-2">
+      <div class="field"><label>所在都市</label><select id="ladder-city-filter">${profileCityOptionsHtml(city)}</select></div>
+      <div class="field"><label>所在地區</label><select id="ladder-region-filter" ${city?'':'disabled'}>${profileDistrictOptionsHtml(city,ladderLocationRegion)}</select></div>
+    </div>
+    <div class="hint">未填完整所在地的玩家仍會出現在全區總榜，但不會進入都市／地區分類榜。</div>
+  </div>`;
+}
 let ladderAdminLogs=[];
 let ladderAdminLogsLoaded=false;
 let ladderSelectedUid=null;
@@ -12345,7 +12374,7 @@ function renderLadderLeaderboardPage(adminMode=false){
   if(adminMode && isAdminTierOrAbove() && !ladderAdminLogsLoaded) setTimeout(()=>loadLadderAdminLogs(false),0);
   const control=ladderPublicData.control;
   const season=ladderPublicData.season;
-  const rows=rankLadderRows(ladderPublicData.players||[]);
+  const rows=rankLadderRows(ladderLocationRows(ladderPublicData.players||[]));
   const selected=ladderSelectedUid ? rows.find(x=>x.uid===ladderSelectedUid) : null;
   const adjustment=ladderAdjustmentUid ? rows.find(x=>x.uid===ladderAdjustmentUid) : null;
   const now=Date.now();
@@ -12363,8 +12392,9 @@ function renderLadderLeaderboardPage(adminMode=false){
       </div>
       <div class="hint" style="margin-top:10px;">同分依序比較：冠軍次數 → 亞軍 → 季軍 → 殿軍 → 生涯積分；仍相同則並列。</div>
     </div>
+    ${ladderLocationFilterHtml()}
     <div class="panel">
-      <div class="panel-title">${esc((control&&control.currentSeason)||"S1")} 排行</div>
+      <div class="panel-title">${esc((control&&control.currentSeason)||"S1")}｜${esc(ladderLocationLabel())}</div>
       ${ladderPublicLoading?'<div class="empty-state">正在讀取天梯資料…</div>':ladderLeaderboardTable(rows,adminMode)}
     </div>
     ${adminMode&&adjustment?`<div class="panel" style="border-color:var(--gold-dim);">
@@ -13170,7 +13200,7 @@ function guestLadderRowsHtml(rows){
 function renderGuestLadder(){
   if(!ladderPublicLoaded && !ladderPublicLoading) setTimeout(()=>loadLadderPublic(false),0);
   const control=ladderPublicData.control;
-  const rows=rankLadderRows(ladderPublicData.players||[]);
+  const rows=rankLadderRows(ladderLocationRows(ladderPublicData.players||[]));
   const total=rows.length;
   return `
     <div class="guest-ladder-head">
@@ -13181,6 +13211,8 @@ function renderGuestLadder(){
       </div>
       <button class="btn btn-ghost btn-sm" data-action="ladder-refresh">重新整理</button>
     </div>
+
+    ${ladderLocationFilterHtml()}
 
     <div class="guest-ladder-search-wrap">
       <span class="guest-search-icon">⌕</span>
@@ -15732,6 +15764,23 @@ function bindDynamicInputs(){
         el.addEventListener("change",update);
       });
 
+      const ladderCityFilter=document.getElementById("ladder-city-filter");
+      if(ladderCityFilter){
+        ladderCityFilter.addEventListener("change",()=>{
+          ladderLocationCity=normalizeTaiwanCityName(ladderCityFilter.value);
+          ladderLocationRegion="";
+          guestLadderExpanded=false;
+          render();
+        });
+      }
+      const ladderRegionFilter=document.getElementById("ladder-region-filter");
+      if(ladderRegionFilter){
+        ladderRegionFilter.addEventListener("change",()=>{
+          ladderLocationRegion=String(ladderRegionFilter.value||"").trim();
+          guestLadderExpanded=false;
+          render();
+        });
+      }
       const guestLadderSearchInput=document.getElementById("guest-ladder-search");
       if(guestLadderSearchInput){
         guestLadderSearchInput.addEventListener("input", applyGuestLadderFilter);
@@ -20138,6 +20187,13 @@ init();
           payload.realNameVerificationName="";
         }
         await fx.updateDoc(ref,payload);
+        try{
+          const ladderRef=fx.doc(dbHandle,"ladderPlayers",uid);
+          const ladderSnap=await fx.getDoc(ladderRef);
+          if(ladderSnap.exists()){
+            await fx.updateDoc(ladderRef,{city:payload.city||"",region:payload.region||""});
+          }
+        }catch(e){ console.warn("同步天梯地區分類失敗",e); }
         await fx.setDoc(fx.doc(dbHandle,"publicPlayers",uid),{
           publicName:gameId||realName,
           avatarUrl:old.avatarUrl||null,
@@ -20889,6 +20945,8 @@ init();
           const placement=Number(item.placement||0)||null;
           const data={
             uid:item.playerUid, playerName:item.playerName||old.playerName||"",
+            city:String(profile.city||"").trim().replace(/^臺/,"台"),
+            region:String(profile.region||"").trim(),
             seasonPoints,careerPoints,rankTier,currentSeason:seasonId,highestRankTier,
             totalEvents:Number(old.totalEvents||0)+1,
             championCount:Number(old.championCount||0)+(placement===1?1:0),
