@@ -1626,6 +1626,12 @@ body:has(.board-expanded) .toast-wrap{z-index:2200;}
 .account-tools-card>summary{list-style:none;cursor:pointer;padding:13px 15px;font-weight:900;color:var(--ivory);display:flex;justify-content:space-between;align-items:center;gap:12px;}
 .account-tools-card>summary::-webkit-details-marker{display:none;}
 .account-tools-body{padding:14px 15px 15px;border-top:1px solid rgba(255,255,255,.07);}
+.merge-review-list{display:grid;gap:9px;margin-top:12px}
+.merge-review-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(255,255,255,.02)}
+.merge-review-main{display:grid;gap:3px;min-width:0}.merge-review-main b{color:var(--ivory)}.merge-review-main span,.merge-review-main small{color:var(--metal);overflow-wrap:anywhere}
+.merge-review-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:640px){.merge-review-row{grid-template-columns:1fr}.merge-review-actions{justify-content:flex-start}}
+
 @media(max-width:900px){
   .account-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .account-filter-toolbar{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -11569,6 +11575,76 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{if(isSuperAdmin()&&e.target.id==='engagement-title-id')titleRecipientContext().titleId=e.target.value;});
 
+
+let migrationMergeReviewBusy=false,migrationMergeReviewError="",migrationMergeSeedResult=null;
+function migrationMergeReviewStats(users){
+ const rows=(users||[]).filter(u=>u&&u.migrationMergeCandidate===true);
+ return {total:rows.length,pending:rows.filter(u=>!u.migrationMergeReviewStatus||u.migrationMergeReviewStatus==="pending").length,approved:rows.filter(u=>u.migrationMergeReviewStatus==="approved").length,rejected:rows.filter(u=>u.migrationMergeReviewStatus==="rejected").length};
+}
+function migrationMergeStatusInfo(user){
+ const status=String(user&&user.migrationMergeReviewStatus||"pending");
+ if(status==="approved")return{label:"已確認合併",badge:"badge-neon"};
+ if(status==="rejected")return{label:"不合併",badge:"badge-danger"};
+ return{label:"待確認",badge:"badge-gold"};
+}
+function renderMigrationMergeReviewPanel(users){
+ const stats=migrationMergeReviewStats(users);
+ const rows=(users||[]).filter(u=>u&&u.migrationMergeCandidate===true).sort((a,b)=>{
+  const rank={pending:0,approved:1,rejected:2};
+  return (rank[String(a.migrationMergeReviewStatus||"pending")]??0)-(rank[String(b.migrationMergeReviewStatus||"pending")]??0)||String(accountPrimaryName(a)).localeCompare(String(accountPrimaryName(b)),"zh-Hant");
+ });
+ return `<details class="panel account-tools-card" open>
+  <summary><span>人員資料合併確認</span><span class="hint">待確認 ${stats.pending}｜已確認 ${stats.approved}｜不合併 ${stats.rejected}</span></summary>
+  <div class="account-tools-body">
+    <p class="hint">只建立 Beta 的人工合併決策，不會直接修改 Production。正式移植時只接受你已標記「同一人，可合併」的帳號。</p>
+    <div class="field"><label>匯入待確認 Email（每行一筆）</label><textarea id="migration-merge-email-list" rows="5" placeholder="player1@gmail.com&#10;player2@gmail.com"></textarea></div>
+    <div class="btn-row"><button class="btn btn-primary" data-action="migration-merge-seed" ${migrationMergeReviewBusy?'disabled':''}>${migrationMergeReviewBusy?'處理中……':'建立待確認名單'}</button></div>
+    ${migrationMergeReviewError?`<div class="auth-error">${esc(migrationMergeReviewError)}</div>`:""}
+    ${migrationMergeSeedResult?`<div class="hint">本次匯入：建立 ${Number(migrationMergeSeedResult.queued||0)}｜找不到 ${Number(migrationMergeSeedResult.missing||0)}</div>`:""}
+    ${rows.length?`<div class="merge-review-list">${rows.map(user=>{const info=migrationMergeStatusInfo(user);return `
+      <div class="merge-review-row">
+        <div class="merge-review-main"><b>${esc(accountPrimaryName(user))}</b><span>${esc(accountGameId(user)||"未設定遊戲 ID")}</span><small>${esc(user.email||"未提供 Email")}</small><small>UID｜${esc(user.uid)}</small></div>
+        <div class="merge-review-actions"><span class="badge ${info.badge}">${info.label}</span>
+          <button class="btn btn-primary btn-sm" data-action="migration-merge-decision" data-decision="approved" data-uid="${esc(user.uid)}" ${migrationMergeReviewBusy?'disabled':''}>同一人，可合併</button>
+          <button class="btn btn-ghost btn-sm" data-action="migration-merge-decision" data-decision="rejected" data-uid="${esc(user.uid)}" ${migrationMergeReviewBusy?'disabled':''}>不同人，不合併</button>
+          ${user.migrationMergeReviewStatus&&user.migrationMergeReviewStatus!=="pending"?`<button class="btn btn-ghost btn-sm" data-action="migration-merge-decision" data-decision="pending" data-uid="${esc(user.uid)}" ${migrationMergeReviewBusy?'disabled':''}>重設待確認</button>`:""}
+        </div>
+      </div>`;}).join("")}</div>`:'<div class="empty-state">尚未建立待確認名單。</div>'}
+  </div>
+ </details>`;
+}
+async function handleMigrationMergeReview(action,target){
+ if(!isSuperAdmin()||migrationMergeReviewBusy)return;
+ if(!window.engagementService||!window.engagementService.migrationMergeReview){showToast("合併確認服務尚未部署",true);return;}
+ const actor=currentAuthUid();
+ if(action==="migration-merge-seed"){
+  const raw=document.getElementById("migration-merge-email-list")?.value||"";
+  const emails=[...new Set(raw.split(/[\n,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
+  if(!emails.length){showToast("請先貼上待確認 Email",true);return;}
+  if(emails.length>100){showToast("一次最多 100 筆 Email",true);return;}
+  migrationMergeReviewBusy=true;migrationMergeReviewError="";migrationMergeSeedResult=null;render();
+  try{
+   const result=await window.engagementService.migrationMergeReview({action:"seed-by-email",emails});
+   if(!result||result.ok!==true)throw Error("seed-failed");
+   migrationMergeSeedResult={queued:(result.results||[]).filter(r=>r.status==="queued").length,missing:(result.results||[]).filter(r=>r.status==="not-found").length};
+   accountMgmtUsers=await window.cloudAuth.listUsers();showToast("待確認名單已建立");
+  }catch(e){migrationMergeReviewError="建立待確認名單失敗，請確認後端服務已部署。";}
+  finally{if(actor===currentAuthUid()){migrationMergeReviewBusy=false;render();}}return;
+ }
+ if(action==="migration-merge-decision"){
+  const uid=target.getAttribute("data-uid")||"",decision=target.getAttribute("data-decision")||"",user=(accountMgmtUsers||[]).find(x=>x.uid===uid);
+  if(!user)return;
+  const wording=decision==="approved"?"確認此 Beta 帳號與 Production 同 Email 帳號為同一人，允許正式移植時合併資料？":decision==="rejected"?"確認標記為不同人，不允許自動合併？":"將此筆重設為待確認？";
+  openModal({type:"generic",title:"人員資料合併確認",message:"玩家："+accountPrimaryName(user)+"\nEmail："+String(user.email||"—")+"\n\n"+wording,confirmLabel:decision==="approved"?"確認可合併":decision==="rejected"?"確認不合併":"重設",danger:decision==="rejected",onConfirm:()=>{
+   (async()=>{migrationMergeReviewBusy=true;render();try{
+    const result=await window.engagementService.migrationMergeReview({action:"decide",targetUid:uid,decision});
+    if(!result||result.ok!==true)throw Error("decision-failed");
+    accountMgmtUsers=await window.cloudAuth.listUsers();showToast(decision==="approved"?"已確認可合併":decision==="rejected"?"已標記不合併":"已重設待確認");
+   }catch(e){showToast("合併確認未完成，請稍後再試",true);}finally{migrationMergeReviewBusy=false;render();}})();
+  }});
+ }
+}
+
 let accountBatch={key:'',selected:new Set(),busy:false,result:null,error:''};
 function accountBatchContext(){
  const key=[currentAuthUid(),accountMgmtRoleFilter,accountMgmtQuery,accountMgmtStatusFilter,accountMgmtNameFilter,accountMgmtActivityFilter,accountMgmtSort].join('|');
@@ -11863,6 +11939,7 @@ function renderAccountManagementScreen(){
           <div class="field"><label>排序</label><select class="account-filter-select" data-filter-key="sort"><option value="created-desc" ${accountMgmtSort==='created-desc'?'selected':''}>申辦時間｜最新</option><option value="created-asc" ${accountMgmtSort==='created-asc'?'selected':''}>申辦時間｜最早</option><option value="activity-desc" ${accountMgmtSort==='activity-desc'?'selected':''}>最近登入</option><option value="name" ${accountMgmtSort==='name'?'selected':''}>姓名筆畫</option></select></div>
           <button class="btn btn-ghost" data-action="account-clear-filters">清除條件</button>
         </div>
+        ${renderMigrationMergeReviewPanel(users)}
         ${renderAccountBatchPanel()}
         <div class="account-result-line"><span>${loading?'正在讀取帳號……':`顯示 ${visibleUsers.length}／${users.length} 筆`}</span><span>點擊帳號查看詳細資料⌄</span></div>
         ${loading?'<div class="empty-state">正在讀取帳號資料……</div>':visibleUsers.length===0?'<div class="empty-state">沒有符合目前條件的帳號</div>':`
@@ -16032,6 +16109,7 @@ function handleAction(action, target){
   }
   if(action.startsWith('title-editor-')||action.startsWith('title-pioneer-')){handleTitleEditor(action);return;}
 
+  if(action==="migration-merge-seed"||action==="migration-merge-decision"){handleMigrationMergeReview(action,target);return;}
   if(action.startsWith("account-batch-")){handleAccountBatch(action,target);return;}
   const id = target.getAttribute("data-id");
   if(action.startsWith("ops-")){handleTournamentOperationsAction(action,target);return;}
@@ -20370,6 +20448,7 @@ init();
     async changeManagedAccounts(payload){return callEngagementFunction("changeManagedAccounts",payload,30000);},
     async deleteManagedAccount(payload){return callEngagementFunction("deleteManagedAccount",payload,120000);},
     async realNameVerification(payload){return callEngagementFunction("realNameVerificationService",payload,120000);},
+    async migrationMergeReview(payload){return callEngagementFunction("migrationMergeReviewService",payload,120000);},
     async tournamentOperation(name,payload){return callEngagementFunction(name,payload,30000);},
     async playerCard(payload){return callEngagementFunction("playerCardService",payload,120000);},
     async health(){return callEngagementFunction('getEngagementHealth',{});},
