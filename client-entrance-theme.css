@@ -3368,39 +3368,3 @@ button.btn-primary,
   color:#eef0f3!important;
   box-shadow:none!important;
 }
-
-
-/* BXH BETA DATA MIGRATION MAINTENANCE MODE */
-html,body{min-height:100%!important;background:#050707!important;}
-body>*{display:none!important;}
-body::before{
-  content:"BXH ARENA BETA\A\A資料移轉中\A DATA MIGRATION IN PROGRESS\A\A為確保玩家資料完整性，測試站目前暫停開放。\A資料移轉完成後將重新開放。";
-  white-space:pre-line;
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  box-sizing:border-box;
-  padding:32px 22px;
-  color:#f2f3ed;
-  background:
-    radial-gradient(circle at 50% 42%,rgba(214,255,0,.07),transparent 30%),
-    linear-gradient(155deg,#080b0c 0%,#050707 56%,#020303 100%);
-  font:700 clamp(15px,3.6vw,22px)/1.85 system-ui,-apple-system,"Noto Sans TC","PingFang TC",sans-serif;
-  letter-spacing:.06em;
-}
-body::after{
-  content:"MAINTENANCE MODE";
-  position:fixed;
-  left:50%;
-  bottom:max(24px,env(safe-area-inset-bottom));
-  transform:translateX(-50%);
-  z-index:2147483647;
-  color:#dfff1b;
-  font:800 10px/1 system-ui,-apple-system,sans-serif;
-  letter-spacing:.24em;
-  opacity:.82;
-}
