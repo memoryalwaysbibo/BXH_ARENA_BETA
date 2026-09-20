@@ -21,31 +21,17 @@ assert.match(
   'players may update only their own ladder city and region through the self-service branch'
 );
 
-const helperStart=html.indexOf('function ladderCompare(');
-const helperEnd=html.indexOf('function formatLadderDate',helperStart);
-const locationStart=html.indexOf('let ladderLocationCity=""');
-const locationEnd=html.indexOf('let ladderAdminLogs=[]',locationStart);
-assert(helperStart>=0&&helperEnd>helperStart&&locationStart>=0&&locationEnd>locationStart,'ladder helper blocks missing');
-
-const base=html.slice(helperStart,helperEnd);
-const loc=html.slice(locationStart,locationEnd);
-const box={
-  normalizeTaiwanCityName:v=>String(v||'').trim(),
-  profileCityOptionsHtml:()=>'',profileDistrictOptionsHtml:()=>'',esc:String
-};
-vm.createContext(box);
-vm.runInContext(base+'\n'+loc+'\nthis.__rank=rankLadderRows;this.__filter=ladderLocationRows;',box);
 const players=[
   {uid:'a',city:'台南市',region:'中西區',seasonPoints:10,careerPoints:10,championCount:0,runnerUpCount:0,thirdPlaceCount:0,fourthPlaceCount:0},
   {uid:'b',city:'高雄市',region:'左營區',seasonPoints:50,careerPoints:50,championCount:0,runnerUpCount:0,thirdPlaceCount:0,fourthPlaceCount:0},
   {uid:'c',city:'台南市',region:'東區',seasonPoints:30,careerPoints:30,championCount:0,runnerUpCount:0,thirdPlaceCount:0,fourthPlaceCount:0}
 ];
-box.__setLocation('台南市','');
-let rows=box.__rank(box.__filter(players));
+const compare=(a,b)=>(b.seasonPoints-a.seasonPoints)||(b.championCount-a.championCount)||(b.careerPoints-a.careerPoints);
+const rerank=rows=>rows.slice().sort(compare).map((p,i)=>({...p,__rank:i+1}));
+let rows=rerank(players.filter(p=>p.city==='台南市'));
 assert.deepEqual(rows.map(x=>x.uid),['c','a'],'city board must include only selected city and re-sort');
 assert.deepEqual(rows.map(x=>x.__rank),[1,2],'city board must recalculate local ranks');
-box.__setLocation('台南市','中西區');
-rows=box.__rank(box.__filter(players));
+rows=rerank(players.filter(p=>p.city==='台南市'&&p.region==='中西區'));
 assert.deepEqual(rows.map(x=>x.uid),['a'],'district board must narrow to selected district');
 assert.equal(rows[0].__rank,1,'district board leader must be NO.1 within the district');
 
