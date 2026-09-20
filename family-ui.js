@@ -37,7 +37,7 @@ async function chooseFamilyRegistrationToCancel(rows){
  if(list.length===1)return list[0].registrationId;
  return new Promise((resolve,reject)=>{
   const dialog=document.createElement('dialog'),focus=document.activeElement;dialog.className='raffle-claim-dialog';
-  dialog.innerHTML='<header><h2>選擇要取消的參賽者</h2><button class="btn btn-ghost" data-close>返回</button></header><p>請指定要取消本人或哪一位孩子的報名；其他報名不會受到影響。</p><form><label>參賽者<select name="registration">'+list.map(x=>'<option value="'+esc(x.registrationId)+'">'+esc(x.participantName||x.displayName||x.realName||x.registrationId)+'｜'+(x.status==='confirmed'?'正取':'備取')+'</option>').join('')+'</select></label><button class="btn btn-danger" type="submit">確認取消</button></form>';
+  dialog.innerHTML='<header><h2>選擇要取消的參賽者</h2><button class="btn btn-ghost" data-close>取消</button></header><p>請指定要取消本人或哪一位孩子的報名；其他報名不會受到影響。</p><form><label>參賽者<select name="registration">'+list.map(x=>'<option value="'+esc(x.registrationId)+'">'+esc(x.participantName||x.displayName||x.realName||x.registrationId)+'｜'+(x.status==='confirmed'?'正取':'備取')+'</option>').join('')+'</select></label><button class="btn btn-danger" type="submit">確認取消</button></form>';
   let done=false;const finish=(error,value)=>{if(done)return;done=true;dialog.close();dialog.remove();focus?.focus?.();if(error)reject(Error(error));else resolve(value)};
   dialog.querySelector('[data-close]').onclick=()=>finish('registration-aborted');dialog.oncancel=e=>{e.preventDefault();finish('registration-aborted')};dialog.onclose=()=>finish('registration-aborted');
   dialog.querySelector('form').onsubmit=e=>{e.preventDefault();finish(null,e.target.elements.registration.value)};
