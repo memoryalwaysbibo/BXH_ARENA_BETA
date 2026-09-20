@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'family-ui.js'
+      - 'raffle-ui.js'
+      - 'registration-invitations-ui.js'
       - 'sw.js'
       - 'tests/performance-phase1.cjs'
       - 'tests/performance-phase2.cjs'
